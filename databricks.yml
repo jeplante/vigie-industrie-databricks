@@ -1,0 +1,7 @@
+bundle:
+  name: vigie-databricks-foundation
+  uuid: 00000000-0000-0000-0000-000000000000
+workspace:
+  host: https://<your-workspace-host>
+  profile: DEFAULT
+resources: {}
