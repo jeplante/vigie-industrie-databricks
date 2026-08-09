@@ -7,6 +7,8 @@ __all__ = [
 	"SilverLoadResult",
 	"load_silver_observations",
 	"classify_rejection_reason",
+	"GoldLoadResult",
+	"load_gold_observations",
 ]
 
 __version__ = "0.2.0"
@@ -32,6 +34,14 @@ def __getattr__(name: str):
 			"SilverLoadResult": SilverLoadResult,
 			"load_silver_observations": load_silver_observations,
 			"classify_rejection_reason": classify_rejection_reason,
+		}
+		return symbols[name]
+	if name in {"GoldLoadResult", "load_gold_observations"}:
+		from .gold import GoldLoadResult, load_gold_observations
+
+		symbols = {
+			"GoldLoadResult": GoldLoadResult,
+			"load_gold_observations": load_gold_observations,
 		}
 		return symbols[name]
 	raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
