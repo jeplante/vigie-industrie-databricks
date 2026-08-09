@@ -1,11 +1,19 @@
-# Vigie Databricks Foundation
+# Vigie Databricks Slice 1
 
-This repository is the Slice 0 foundation for a Databricks-based implementation of the Vigie industry monitoring project.
+This repository now includes Slice 1 for a Databricks-based implementation of the Vigie industry monitoring project.
 
-Scope intentionally limited to:
-- a clean Python package skeleton for future Databricks work,
-- a minimal Databricks Asset Bundle descriptor,
-- an architecture note describing the intended medallion model and Slice boundaries,
-- a lightweight acceptance test suite that verifies the foundation is in place.
+Current scope:
+- foundation assets from Slice 0,
+- a Bronze Delta loading module for observations,
+- local tests proving row counts, duplicate handling, and rerun idempotence,
+- a Databricks-marked acceptance test for the same Bronze behavior on runtime.
 
-This is not a production implementation of the data pipeline, not a business transformation layer, and not a Slice 1 delivery.
+Supported runtime for this slice:
+- Python 3.12
+
+Canonical Databricks Connect integration command:
+- `py -3.12 -m pytest -m databricks_connect -q -rs`
+
+Out of scope in this slice:
+- Silver and Gold transformations,
+- scheduling, UI, streaming, and MLflow features.

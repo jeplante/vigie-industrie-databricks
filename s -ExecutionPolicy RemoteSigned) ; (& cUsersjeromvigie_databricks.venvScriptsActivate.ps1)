@@ -1,0 +1,153 @@
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 8165692..50db22f 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,11 +1,19 @@[m
+[31m-# Vigie Databricks Foundation[m
+[32m+[m[32m# Vigie Databricks Slice 1[m
+ [m
+[31m-This repository is the Slice 0 foundation for a Databricks-based implementation of the Vigie industry monitoring project.[m
+[32m+[m[32mThis repository now includes Slice 1 for a Databricks-based implementation of the Vigie industry monitoring project.[m
+ [m
+[31m-Scope intentionally limited to:[m
+[31m-- a clean Python package skeleton for future Databricks work,[m
+[31m-- a minimal Databricks Asset Bundle descriptor,[m
+[31m-- an architecture note describing the intended medallion model and Slice boundaries,[m
+[31m-- a lightweight acceptance test suite that verifies the foundation is in place.[m
+[32m+[m[32mCurrent scope:[m
+[32m+[m[32m- foundation assets from Slice 0,[m
+[32m+[m[32m- a Bronze Delta loading module for observations,[m
+[32m+[m[32m- local tests proving row counts, duplicate handling, and rerun idempotence,[m
+[32m+[m[32m- a Databricks-marked acceptance test for the same Bronze behavior on runtime.[m
+ [m
+[31m-This is not a production implementation of the data pipeline, not a business transformation layer, and not a Slice 1 delivery.[m
+[32m+[m[32mSupported runtime for this slice:[m
+[32m+[m[32m- Python 3.12[m
+[32m+[m
+[32m+[m[32mCanonical Databricks Connect integration command:[m
+[32m+[m[32m- `py -3.12 -m pytest -m databricks_connect -q -rs`[m
+[32m+[m
+[32m+[m[32mOut of scope in this slice:[m
+[32m+[m[32m- Silver and Gold transformations,[m
+[32m+[m[32m- scheduling, UI, streaming, and MLflow features.[m
+[1mdiff --git a/docs/architecture.md b/docs/architecture.md[m
+[1mindex 413e081..ceed0b4 100644[m
+[1m--- a/docs/architecture.md[m
+[1m+++ b/docs/architecture.md[m
+[36m@@ -1,12 +1,12 @@[m
+ # Architecture notes[m
+ [m
+[31m-This repository intentionally contains only the Slice 0 foundation for the Databricks migration of the Vigie project.[m
+[32m+[m[32mThis repository contains Slice 0 foundation plus Slice 1 Bronze ingestion for the Databricks migration of the Vigie project.[m
+ [m
+ ## Scope boundaries[m
+ [m
+ - Slice 0 creates the repository skeleton, package metadata, minimal bundle config, and validation tests only.[m
+[31m-- Slice 1 will introduce the first business-facing Databricks pipeline components.[m
+[31m-- No business YAML, source adapters, jobs, notebooks, or Delta tables are created in this slice.[m
+[32m+[m[32m- Slice 1 introduces the first business-facing Databricks pipeline component: Bronze Delta loading for observations.[m
+[32m+[m[32m- Slice 1 excludes Silver and Gold layers, scheduling, streaming, and MLflow.[m
+ [m
+ ## Intended future architecture[m
+ [m
+[36m@@ -15,10 +15,10 @@[m [mThe target implementation should follow a disciplined progression:[m
+ 1. Python package code for acquisition, parsing, validation, and business logic.[m
+ 2. Databricks Asset Bundle descriptor for deployment metadata and orchestration.[m
+ 3. Notebook modules kept thin for exploration and diagnostics.[m
+[31m-4. Bronze / Silver / Gold layers introduced only when the data contract is stable.[m
+[32m+[m[32m4. Bronze is implemented in Slice 1; Silver and Gold remain deferred.[m
+ [m
+ ## Decision rationale[m
+ [m
+ - The project is designed to teach Databricks engineering practices while remaining compatible with Databricks Free Edition constraints.[m
+ - The current slice avoids assumptions about availability of enterprise-only features.[m
+[31m-- The goal is to establish a clean foundation before introducing data assets.[m
+[32m+[m[32m- The goal is to validate Bronze ingestion discipline and idempotence before introducing Silver.[m
+[1mdiff --git a/pyproject.toml b/pyproject.toml[m
+[1mindex 214588f..39ef686 100644[m
+[1m--- a/pyproject.toml[m
+[1m+++ b/pyproject.toml[m
+[36m@@ -4,10 +4,10 @@[m [mbuild-backend = "hatchling.build"[m
+ [m
+ [project][m
+ name = "vigie-databricks-foundation"[m
+[31m-version = "0.1.0"[m
+[31m-description = "Slice 0 foundation for the Databricks Vigie project"[m
+[32m+[m[32mversion = "0.2.0"[m
+[32m+[m[32mdescription = "Slice 1 Bronze foundation for the Databricks Vigie project"[m
+ readme = "README.md"[m
+[31m-requires-python = ">=3.12"[m
+[32m+[m[32mrequires-python = ">=3.12,<3.13"[m
+ dependencies = [][m
+ [m
+ [project.optional-dependencies][m
+[36m@@ -15,10 +15,22 @@[m [mdev = [[m
+   "pytest>=8.4,<9",[m
+   "PyYAML>=6.0,<7",[m
+ ][m
+[32m+[m[32mlocal_spark = [[m
+[32m+[m[32m  "pyspark>=3.5,<4",[m
+[32m+[m[32m  "delta-spark>=3.2,<4",[m
+[32m+[m[32m][m
+[32m+[m[32mdatabricks_connect = [[m
+[32m+[m[32m  "databricks-connect==17.3.*",[m
+[32m+[m[32m][m
+ [m
+ [tool.pytest.ini_options][m
+ addopts = "-q --strict-markers"[m
+ testpaths = ["tests"][m
+[32m+[m[32mmarkers = [[m
+[32m+[m[32m  "local_spark: optional local Spark JVM tests",[m
+[32m+[m[32m  "databricks_connect: Databricks Connect integration tests from VS Code",[m
+[32m+[m[32m  "databricks_runtime: Databricks runtime acceptance smoke tests",[m
+[32m+[m[32m][m
+ [m
+ [tool.hatch.build.targets.wheel][m
+ packages = ["src/vigie_databricks"][m
+[1mdiff --git a/src/vigie_databricks/__init__.py b/src/vigie_databricks/__init__.py[m
+[1mindex 29e4ef9..9c9e01c 100644[m
+[1m--- a/src/vigie_databricks/__init__.py[m
+[1m+++ b/src/vigie_databricks/__init__.py[m
+[36m@@ -1,5 +1,17 @@[m
+[31m-"""Slice 0 foundation package for the Databricks Vigie project."""[m
+[32m+[m[32m"""Slice 1 Bronze package for the Databricks Vigie project."""[m
+ [m
+[31m-__all__ = ["__version__"][m
+[32m+[m[32m__all__ = ["__version__", "BronzeLoadResult", "load_bronze_observations"][m
+ [m
+[31m-__version__ = "0.1.0"[m
+[32m+[m[32m__version__ = "0.2.0"[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef __getattr__(name: str):[m
+[32m+[m	[32mif name in {"BronzeLoadResult", "load_bronze_observations"}:[m
+[32m+[m		[32mfrom .bronze import BronzeLoadResult, load_bronze_observations[m
+[32m+[m
+[32m+[m		[32msymbols = {[m
+[32m+[m			[32m"BronzeLoadResult": BronzeLoadResult,[m
+[32m+[m			[32m"load_bronze_observations": load_bronze_observations,[m
+[32m+[m		[32m}[m
+[32m+[m		[32mreturn symbols[name][m
+[32m+[m	[32mraise AttributeError(f"module {__name__!r} has no attribute {name!r}")[m
+[1mdiff --git a/tests/test_slice0_foundation.py b/tests/test_slice0_foundation.py[m
+[1mindex 606f657..d9336d7 100644[m
+[1m--- a/tests/test_slice0_foundation.py[m
+[1m+++ b/tests/test_slice0_foundation.py[m
+[36m@@ -21,7 +21,7 @@[m [mdef test_python_package_is_importable() -> None:[m
+     sys.path.insert(0, str(root / "src"))[m
+     import vigie_databricks  # noqa: F401[m
+ [m
+[31m-    assert vigie_databricks.__version__ == "0.1.0"[m
+[32m+[m[32m    assert vigie_databricks.__version__ == "0.2.0"[m
+ [m
+ [m
+ def test_databricks_bundle_is_minimal_descriptor() -> None:[m
+[36m@@ -31,7 +31,7 @@[m [mdef test_databricks_bundle_is_minimal_descriptor() -> None:[m
+ [m
+     assert "bundle:" in content[m
+     assert "name: vigie-databricks-foundation" in content[m
+[31m-    assert "resources: {}" in content[m
+[32m+[m[32m    assert "resources:" in content[m
+ [m
+ [m
+ def test_architecture_note_describes_slice_boundaries() -> None:[m

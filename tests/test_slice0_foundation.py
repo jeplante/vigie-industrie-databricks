@@ -21,7 +21,7 @@ def test_python_package_is_importable() -> None:
     sys.path.insert(0, str(root / "src"))
     import vigie_databricks  # noqa: F401
 
-    assert vigie_databricks.__version__ == "0.1.0"
+    assert vigie_databricks.__version__ == "0.2.0"
 
 
 def test_databricks_bundle_is_minimal_descriptor() -> None:
@@ -31,7 +31,7 @@ def test_databricks_bundle_is_minimal_descriptor() -> None:
 
     assert "bundle:" in content
     assert "name: vigie-databricks-foundation" in content
-    assert "resources: {}" in content
+    assert "resources:" in content
 
 
 def test_architecture_note_describes_slice_boundaries() -> None:

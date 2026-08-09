@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vigie-databricks-foundation"
-version = "0.1.0"
-description = "Slice 0 foundation for the Databricks Vigie project"
+version = "0.2.0"
+description = "Slice 1 Bronze foundation for the Databricks Vigie project"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [project.optional-dependencies]
@@ -15,10 +15,22 @@ dev = [
   "pytest>=8.4,<9",
   "PyYAML>=6.0,<7",
 ]
+local_spark = [
+  "pyspark>=3.5,<4",
+  "delta-spark>=3.2,<4",
+]
+databricks_connect = [
+  "databricks-connect==17.3.*",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
 testpaths = ["tests"]
+markers = [
+  "local_spark: optional local Spark JVM tests",
+  "databricks_connect: Databricks Connect integration tests from VS Code",
+  "databricks_runtime: Databricks runtime acceptance smoke tests",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vigie_databricks"]
