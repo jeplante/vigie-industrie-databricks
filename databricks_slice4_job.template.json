@@ -1,0 +1,69 @@
+{
+  "name": "vigie-slice4-bronze-silver-gold",
+  "max_concurrent_runs": 1,
+  "parameters": [
+    {"name": "catalog", "default": "<catalog>"},
+    {"name": "schema", "default": "<schema>"},
+    {"name": "bronze_object", "default": "<catalog>.<schema>.vigie_slice4_bronze"},
+    {"name": "silver_object", "default": "<catalog>.<schema>.vigie_slice4_silver"},
+    {"name": "gold_object", "default": "<catalog>.<schema>.vigie_slice4_gold"},
+    {"name": "input_mode", "default": "fixture"},
+    {"name": "input_fixture_path", "default": "/Workspace/Users/<user>/vigie_databricks_slice4/slice4_bronze.json"}
+  ],
+  "environments": [
+    {
+      "environment_key": "Default",
+      "spec": {
+        "environment_version": "5",
+        "dependencies": ["<uploaded-wheel-path>"]
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "task_key": "bronze",
+      "environment_key": "Default",
+      "python_wheel_task": {
+        "package_name": "vigie_databricks_foundation",
+        "entry_point": "bronze",
+        "parameters": [
+          "--catalog", "{{job.parameters.catalog}}",
+          "--schema", "{{job.parameters.schema}}",
+          "--bronze-object", "{{job.parameters.bronze_object}}",
+          "--input-mode", "{{job.parameters.input_mode}}",
+          "--input-fixture-path", "{{job.parameters.input_fixture_path}}"
+        ]
+      }
+    },
+    {
+      "task_key": "silver",
+      "depends_on": [{"task_key": "bronze"}],
+      "environment_key": "Default",
+      "python_wheel_task": {
+        "package_name": "vigie_databricks_foundation",
+        "entry_point": "silver",
+        "parameters": [
+          "--catalog", "{{job.parameters.catalog}}",
+          "--schema", "{{job.parameters.schema}}",
+          "--bronze-object", "{{job.parameters.bronze_object}}",
+          "--silver-object", "{{job.parameters.silver_object}}"
+        ]
+      }
+    },
+    {
+      "task_key": "gold",
+      "depends_on": [{"task_key": "silver"}],
+      "environment_key": "Default",
+      "python_wheel_task": {
+        "package_name": "vigie_databricks_foundation",
+        "entry_point": "gold",
+        "parameters": [
+          "--catalog", "{{job.parameters.catalog}}",
+          "--schema", "{{job.parameters.schema}}",
+          "--silver-object", "{{job.parameters.silver_object}}",
+          "--gold-object", "{{job.parameters.gold_object}}"
+        ]
+      }
+    }
+  ]
+}

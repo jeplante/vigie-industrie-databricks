@@ -10,6 +10,11 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
+[project.scripts]
+bronze = "vigie_databricks.tasks.bronze:main"
+silver = "vigie_databricks.tasks.silver:main"
+gold = "vigie_databricks.tasks.gold:main"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.4,<9",

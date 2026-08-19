@@ -1,0 +1,26 @@
+[
+  {
+    "observation_id": "slice4-revenue-2026q2",
+    "company_id": "S4-C1",
+    "metric_id": "revenue",
+    "period_id": "2026Q2",
+    "value": 120.0,
+    "ingested_at": "2026-01-01T00:00:00+00:00"
+  },
+  {
+    "observation_id": "slice4-revenue-2025q4",
+    "company_id": "S4-C1",
+    "metric_id": "revenue",
+    "period_id": "2025Q4",
+    "value": 100.0,
+    "ingested_at": "2025-10-01T00:00:00+00:00"
+  },
+  {
+    "observation_id": "slice4-margin-2026q2",
+    "company_id": "S4-C1",
+    "metric_id": "margin",
+    "period_id": "2026Q2",
+    "value": 20.0,
+    "ingested_at": "2026-01-01T00:00:00+00:00"
+  }
+]
