@@ -2,20 +2,20 @@
   "name": "vigie-slice4-bronze-silver-gold",
   "max_concurrent_runs": 1,
   "parameters": [
-    {"name": "catalog", "default": "<catalog>"},
-    {"name": "schema", "default": "<schema>"},
-    {"name": "bronze_object", "default": "<catalog>.<schema>.vigie_slice4_bronze"},
-    {"name": "silver_object", "default": "<catalog>.<schema>.vigie_slice4_silver"},
-    {"name": "gold_object", "default": "<catalog>.<schema>.vigie_slice4_gold"},
+    {"name": "catalog", "default": "workspace"},
+    {"name": "schema", "default": "vigie"},
+    {"name": "bronze_object", "default": "workspace.vigie.bronze_observations"},
+    {"name": "silver_object", "default": "workspace.vigie.silver_observations"},
+    {"name": "gold_object", "default": "workspace.vigie.gold_observations"},
     {"name": "input_mode", "default": "fixture"},
-    {"name": "input_fixture_path", "default": "/Workspace/Users/<user>/vigie_databricks_slice4/slice4_bronze.json"}
+    {"name": "input_fixture_path", "default": "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice4/slice4_bronze.json"}
   ],
   "environments": [
     {
       "environment_key": "Default",
       "spec": {
         "environment_version": "5",
-        "dependencies": ["<uploaded-wheel-path>"]
+        "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice4/vigie_databricks_foundation-0.2.0-py3-none-any.whl"]
       }
     }
   ],
