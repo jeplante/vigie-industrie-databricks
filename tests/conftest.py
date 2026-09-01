@@ -40,6 +40,6 @@ def cleanup_new_databricks_connect_tables(request):
             for name in created
             if name not in {"vigie_slice4_bronze", "vigie_slice4_silver", "vigie_slice4_gold"}
         }
-        for prefix in ("vigie_gold_", "vigie_silver_", "vigie_bronze_"):
+        for prefix in ("vigie_gold_", "vigie_news_", "vigie_silver_", "vigie_bronze_"):
             for name in sorted(name for name in disposable if name.startswith(prefix)):
                 spark.sql(f"DROP TABLE IF EXISTS `workspace`.`default`.`{name}`")

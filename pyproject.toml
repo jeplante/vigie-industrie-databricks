@@ -8,12 +8,18 @@ version = "0.2.0"
 description = "Slice 1 Bronze foundation for the Databricks Vigie project"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+  "databricks-sdk>=0.32,<1",
+]
 
 [project.scripts]
 bronze = "vigie_databricks.tasks.bronze:main"
 silver = "vigie_databricks.tasks.silver:main"
 gold = "vigie_databricks.tasks.gold:main"
+news_bronze = "vigie_databricks.tasks.news_bronze:main"
+news_silver = "vigie_databricks.tasks.news_silver:main"
+news_ai_enrichment = "vigie_databricks.tasks.news_ai:main"
+news_gold = "vigie_databricks.tasks.news_gold:main"
 
 [project.optional-dependencies]
 dev = [

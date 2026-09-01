@@ -45,7 +45,10 @@ def test_gold_config_reads_external_identifiers(monkeypatch):
     monkeypatch.setenv("GOLD_SCHEMA", "default")
     monkeypatch.setenv("GOLD_TABLE", "vigie_slice4_gold")
 
-    assert GoldConfig.from_environment().qualified_table == "`workspace`.`default`.`vigie_slice4_gold`"
+    monkeypatch.setenv("GOLD_NEWS_TABLE", "gold_news")
+    loaded = GoldConfig.from_environment()
+    assert loaded.qualified_table == "`workspace`.`default`.`vigie_slice4_gold`"
+    assert loaded.news_table == "gold_news"
 
 
 def test_gold_config_rejects_untrusted_identifier(monkeypatch):

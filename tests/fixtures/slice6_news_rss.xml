@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Vigie fixture feed</title>
+    <item>
+      <guid>slice6-news-1</guid>
+      <link>https://news.example.test/article-1?utm_source=fixture</link>
+      <title>Company announces quarterly results</title>
+      <description>The company reported a stable quarter.</description>
+      <pubDate>Wed, 19 Aug 2026 08:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <guid>slice6-news-2</guid>
+      <link>https://news.example.test/article-2</link>
+      <title>Company expands digital strategy</title>
+      <description>The company described a digital transformation initiative.</description>
+      <pubDate>Tue, 18 Aug 2026 08:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

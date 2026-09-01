@@ -33,3 +33,17 @@ the durable project contract.
 
 The Slice 5 Streamlit App consumes Gold read-only and does not trigger pipeline
 processing or write to Unity Catalog.
+
+## News + AI contract
+
+Slice 6 keeps News separate from financial Gold:
+
+- `workspace.vigie.bronze_news`
+- `workspace.vigie.silver_news`
+- `workspace.vigie.news_ai_enrichment`
+- `workspace.vigie.gold_news`
+
+The News Job is independent from the financial Job and uses a deterministic RSS
+fixture for acceptance. AI enrichment uses the native Databricks Foundation Model
+endpoint configured by `NEWS_AI_MODEL`; unchanged content, prompt, and model
+inputs skip inference. The Streamlit App reads enriched News read-only.

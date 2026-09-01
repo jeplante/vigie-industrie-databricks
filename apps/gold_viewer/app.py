@@ -8,6 +8,7 @@ from gold_data import (
     fetch_companies,
     fetch_company_metrics,
     fetch_comparison,
+    fetch_news,
 )
 from display import display_number, display_percentage, display_value
 
@@ -33,6 +34,11 @@ def metrics(config: GoldConfig, company_id: str) -> list[str]:
 @st.cache_data(ttl=60, show_spinner=False)
 def comparison(config: GoldConfig, company_id: str, metric_id: str | None = None) -> list[dict]:
     return fetch_comparison(connection(), config, company_id, metric_id)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def news(config: GoldConfig, company_id: str) -> list[dict]:
+    return fetch_news(connection(), config, company_id)
 
 
 st.title("Gold comparison viewer")
@@ -94,3 +100,19 @@ for metric_row in company_comparison_rows:
         }
     )
 st.dataframe(table_rows, hide_index=True, width="stretch")
+
+st.divider()
+st.subheader("News")
+st.caption("Read-only latest enriched news. Company-specific results are shown when deterministic mapping exists; otherwise the latest enriched news is shown globally.")
+news_rows = news(config, selected_company)
+if not news_rows:
+    news_rows = fetch_news(connection(), config)
+    st.caption("No deterministic company mapping was available; showing latest enriched news globally.")
+for article in news_rows:
+    published = display_value(article["published_at"])
+    st.markdown(f"**{article['title']}**  \n{article['source']} · {published}")
+    st.write(article["summary"] or "N/A")
+    categories = article.get("categories") or []
+    if categories:
+        st.caption("Categories: " + ", ".join(categories))
+    st.link_button("Open source", article["source_url"])

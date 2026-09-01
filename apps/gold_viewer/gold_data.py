@@ -24,6 +24,7 @@ class GoldConfig:
     catalog: str
     schema: str
     gold_table: str
+    news_table: str = "gold_news"
 
     @classmethod
     def from_environment(cls) -> "GoldConfig":
@@ -31,6 +32,7 @@ class GoldConfig:
             "catalog": os.environ.get("GOLD_CATALOG", ""),
             "schema": os.environ.get("GOLD_SCHEMA", ""),
             "gold_table": os.environ.get("GOLD_TABLE", ""),
+            "news_table": os.environ.get("GOLD_NEWS_TABLE", "gold_news"),
         }
         missing = [name for name, value in values.items() if not value]
         if missing:
@@ -115,6 +117,26 @@ def fetch_comparison(
         FROM {config.qualified_table}
         WHERE {' AND '.join(filters)}
         ORDER BY metric_id
+        """,
+        parameters,
+    )
+
+
+def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
+    filters = ["enrichment_status = 'succeeded'"]
+    parameters: list[Any] = []
+    if company_id:
+        filters.append("array_contains(relevant_company_ids, ?)")
+        parameters.append(company_id)
+    return _query(
+        connection,
+        f"""
+        SELECT article_id, source, source_url, title, published_at,
+               summary, categories, relevant_company_ids
+        FROM {".".join(f"`{part}`" for part in (config.catalog, config.schema, config.news_table))}
+        WHERE {' AND '.join(filters)}
+        ORDER BY published_at DESC NULLS LAST, article_id
+        LIMIT 20
         """,
         parameters,
     )
