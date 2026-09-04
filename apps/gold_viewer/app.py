@@ -104,6 +104,10 @@ st.dataframe(table_rows, hide_index=True, width="stretch")
 st.divider()
 st.subheader("News")
 st.caption("Read-only latest enriched news. Company-specific results are shown when deterministic mapping exists; otherwise the latest enriched news is shown globally.")
+st.caption(
+    "Statistique Canada : adapté du Quotidien (Fabrication et Commerce international). "
+    "Ceci ne constitue pas un endossement de Statistique Canada."
+)
 news_rows = news(config, selected_company)
 if not news_rows:
     news_rows = fetch_news(connection(), config)

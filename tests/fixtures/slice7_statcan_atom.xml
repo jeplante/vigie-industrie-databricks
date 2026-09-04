@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Statistics Canada, The Daily: Manufacturing</title>
+  <entry>
+    <id>https://www150.statcan.gc.ca/article-1</id>
+    <title>Manufacturing sales rise</title>
+    <updated>2026-08-27T08:30:00-04:00</updated>
+    <link rel="alternate" href="https://www150.statcan.gc.ca/n1/daily-quotidien/260827/article-1-eng.htm?utm_source=feed"/>
+    <summary>Manufacturing sales increased in July.</summary>
+  </entry>
+  <entry>
+    <id>https://www150.statcan.gc.ca/article-2</id>
+    <title>Inventory levels remain stable</title>
+    <updated>2026-08-26T08:30:00-04:00</updated>
+    <link rel="alternate" href="https://www150.statcan.gc.ca/n1/daily-quotidien/260826/article-2-eng.htm"/>
+    <summary>Inventories were unchanged.</summary>
+  </entry>
+</feed>

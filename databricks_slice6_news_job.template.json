@@ -1,9 +1,16 @@
 {
   "name": "vigie-slice6-news-ai",
   "max_concurrent_runs": 1,
+  "schedule": {
+    "quartz_cron_expression": "0 0 0/6 * * ?",
+    "timezone_id": "America/Toronto",
+    "pause_status": "UNPAUSED"
+  },
   "parameters": [
-    {"name": "source_mode", "default": "fixture"},
-    {"name": "source_url", "default": "https://feeds.bbci.co.uk/news/rss.xml"},
+    {"name": "source_mode", "default": "live"},
+    {"name": "source_url", "default": ""},
+    {"name": "sources_json", "default": "[{\"source_id\":\"statcan_manufacturing\",\"url\":\"https://www150.statcan.gc.ca/n1/rss/dai-quo/16-eng.atom\",\"enabled\":true},{\"source_id\":\"statcan_international_trade\",\"url\":\"https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom\",\"enabled\":true}]"},
+    {"name": "max_articles", "default": "25"},
     {"name": "fixture_path", "default": "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/slice6_news_rss.xml"},
     {"name": "bronze_object", "default": "workspace.vigie.bronze_news"},
     {"name": "silver_object", "default": "workspace.vigie.silver_news"},
@@ -15,11 +22,11 @@
     "environment_key": "Default",
     "spec": {
       "environment_version": "5",
-      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/vigie_databricks_foundation-0.2.0-py3-none-any.whl"]
+      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/vigie_databricks_foundation-0.3.1-py3-none-any.whl"]
     }
   }],
   "tasks": [
-    {"task_key": "bronze_news", "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_bronze", "parameters": ["--source-mode", "{{job.parameters.source_mode}}", "--source-url", "{{job.parameters.source_url}}", "--fixture-path", "{{job.parameters.fixture_path}}", "--bronze-object", "{{job.parameters.bronze_object}}"]}},
+    {"task_key": "bronze_news", "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_bronze", "parameters": ["--source-mode", "{{job.parameters.source_mode}}", "--source-url", "{{job.parameters.source_url}}", "--sources-json", "{{job.parameters.sources_json}}", "--max-articles", "{{job.parameters.max_articles}}", "--fixture-path", "{{job.parameters.fixture_path}}", "--bronze-object", "{{job.parameters.bronze_object}}"]}},
     {"task_key": "silver_news", "depends_on": [{"task_key": "bronze_news"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_silver", "parameters": ["--bronze-object", "{{job.parameters.bronze_object}}", "--silver-object", "{{job.parameters.silver_object}}"]}},
     {"task_key": "news_ai_enrichment", "depends_on": [{"task_key": "silver_news"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_ai_enrichment", "parameters": ["--silver-object", "{{job.parameters.silver_object}}", "--enrichment-object", "{{job.parameters.enrichment_object}}", "--model", "{{job.parameters.model}}"]}},
     {"task_key": "gold_news", "depends_on": [{"task_key": "news_ai_enrichment"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_gold", "parameters": ["--silver-object", "{{job.parameters.silver_object}}", "--enrichment-object", "{{job.parameters.enrichment_object}}", "--gold-object", "{{job.parameters.gold_object}}"]}}

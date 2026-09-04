@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from uuid import uuid4
@@ -57,3 +58,84 @@ def test_news_delta_pipeline_with_fake_enrichment(connect_spark, monkeypatch):
     assert first_gold.reconciliation_delta == 0
     assert second_ai.model_calls == 0
     assert connect_spark.table(gold).count() == 2
+
+
+def test_atom_bronze_is_idempotent(connect_spark):
+    context = connect_spark.sql("SELECT current_catalog() AS catalog, current_schema() AS schema").collect()[0]
+    bronze = f"{context['catalog']}.{context['schema']}.vigie_bronze_news_{uuid4().hex}"
+    fixture = Path(__file__).parent / "fixtures" / "slice7_statcan_atom.xml"
+
+    first = load_bronze_news(
+        connect_spark,
+        "fixture",
+        "",
+        str(fixture),
+        bronze,
+        source="statcan_manufacturing",
+        max_articles=25,
+    )
+    second = load_bronze_news(
+        connect_spark,
+        "fixture",
+        "",
+        str(fixture),
+        bronze,
+        source="statcan_manufacturing",
+        max_articles=25,
+    )
+
+    assert first.input_rows == 2
+    assert first.inserted_rows == 2
+    assert first.updated_rows == 0
+    assert second.inserted_rows == 0
+    assert second.updated_rows == 0
+    assert second.final_row_count == 2
+
+
+@pytest.mark.skipif(
+    os.environ.get("RUN_SLICE7_LIVE") != "1",
+    reason="Set RUN_SLICE7_LIVE=1 for the bounded, no-model live acceptance.",
+)
+def test_live_statcan_bronze_is_bounded_and_idempotent(connect_spark):
+    context = connect_spark.sql("SELECT current_catalog() AS catalog, current_schema() AS schema").collect()[0]
+    bronze = f"{context['catalog']}.{context['schema']}.vigie_bronze_news_{uuid4().hex}"
+    sources = json.dumps([
+        {
+            "source_id": "statcan_manufacturing",
+            "url": "https://www150.statcan.gc.ca/n1/rss/dai-quo/16-eng.atom",
+            "enabled": True,
+        },
+        {
+            "source_id": "statcan_international_trade",
+            "url": "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
+            "enabled": True,
+        },
+    ])
+
+    first = load_bronze_news(
+        connect_spark,
+        "live",
+        "",
+        None,
+        bronze,
+        max_articles=25,
+        sources_json=sources,
+    )
+    second = load_bronze_news(
+        connect_spark,
+        "live",
+        "",
+        None,
+        bronze,
+        max_articles=25,
+        sources_json=sources,
+    )
+
+    assert 1 <= first.input_rows <= 50
+    assert first.sources_succeeded == 2
+    assert first.sources_failed == 0
+    assert first.inserted_rows == first.input_rows
+    assert first.updated_rows == 0
+    assert second.inserted_rows == 0
+    assert second.updated_rows == 0
+    assert second.final_row_count == first.final_row_count

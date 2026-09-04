@@ -12,4 +12,12 @@ def test_fake_enrichment_contract_has_no_importance_or_score():
     assert result["categories"][0] in CATEGORIES
     assert "importance" not in result
     assert "score" not in result
-    assert PROMPT_VERSION == "slice6-news-enrichment-v1"
+    assert PROMPT_VERSION == "slice7-news-enrichment-v2"
+
+
+def test_slice7_industry_categories_are_valid():
+    result = parse_output(
+        '{"summary":"Trade declined in June.","categories":["international_trade","macroeconomics"],"relevant_company_ids":[]}',
+        set(),
+    )
+    assert result["categories"] == ["international_trade", "macroeconomics"]

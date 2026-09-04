@@ -47,3 +47,25 @@ The News Job is independent from the financial Job and uses a deterministic RSS
 fixture for acceptance. AI enrichment uses the native Databricks Foundation Model
 endpoint configured by `NEWS_AI_MODEL`; unchanged content, prompt, and model
 inputs skip inference. The Streamlit App reads enriched News read-only.
+
+## Slice 7 live News acquisition
+
+Slice 7 adds bounded multi-source Atom/RSS acquisition while retaining the
+deterministic Slice 6 fixture. The approved initial sources are Statistics
+Canada's *The Daily* feeds for Manufacturing and International trade.
+
+Live acquisition safeguards:
+
+- HTTPS and an explicit approved-host allowlist;
+- strict source JSON validation;
+- 20-second request timeout;
+- 1 MB response-size ceiling;
+- XML content-type validation;
+- maximum 25 articles per source and run;
+- isolation of a failed source when another source succeeds;
+- unchanged content continues to skip AI inference.
+
+The active six-hour schedule uses the America/Toronto timezone and defaults to
+live acquisition. Bounded acceptance and an identical rerun with zero model
+calls passed before activation. Statistics Canada source links and attribution
+must remain visible; official logos are not reused.

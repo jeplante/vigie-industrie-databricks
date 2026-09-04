@@ -200,20 +200,18 @@ Etat d'exploitation :
 
 ## 10. === RESUME HERE ===
 
-### Action 1 - Decision sur les sources Slice 7
+### Action 1 - Verifier la premiere execution planifiee Slice 7
 
-Recommandation :
+Slice 7 est deployee et active depuis le 2026-09-03. Verifier le prochain run
+planifie du Job News `1118291153119927`, les compteurs par source et le budget
+d'appels modele. Le dernier rerun d'acceptation comptait 6 lignes durables,
+6 enrichissements reussis et `model_calls=0`.
 
-1. Statistique Canada - Le Quotidien - Fabrication;
-2. Statistique Canada - Le Quotidien - Commerce international.
+### Action 2 - Choisir Slice 8
 
-Voir `docs/SLICE7_PLAN.md` pour les URLs, conditions et garde-fous.
-
-### Action 2 - Slice 7
-
-Utiliser `docs/SLICE7_PLAN.md`. La Slice vise une acquisition News live configurable et planifiee tout en conservant fixture, idempotence, isolation et limites de cout.
-
-Ne pas commencer la persistance live avant approbation des sources et de leurs conditions d'usage. Ne pas ajouter RAG, agent, sentiment ou scoring.
+Ne pas ajouter RAG, agent, sentiment ou scoring sans besoin valide. Prioriser
+l'observabilite du run planifie et la qualite des categories avant toute nouvelle
+source.
 
 ## 11. Instruction exacte de reprise
 
@@ -222,8 +220,8 @@ Reprends vigie-industrie-databricks avec docs/PROJECT_HANDOFF.md.
 
 Verifie d'abord Git et utilise docs/SLICE7_PLAN.md.
 
-Les sources recommandees sont les feeds Fabrication et Commerce international
-du Quotidien de Statistique Canada. Obtiens leur approbation explicite avant
-toute persistance live. Preserve le pipeline financier, les Jobs independants,
-le cleanup Unity Catalog et l'idempotence IA.
+Les feeds Fabrication et Commerce international du Quotidien de Statistique
+Canada sont approuves, deployes et planifies. Verifie d'abord le premier run
+planifie et preserve le pipeline financier, les Jobs independants, le cleanup
+Unity Catalog et l'idempotence IA.
 ```

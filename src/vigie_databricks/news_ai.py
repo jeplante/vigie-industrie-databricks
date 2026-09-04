@@ -15,8 +15,26 @@ from databricks.sdk.core import Config
 from pyspark.sql import SparkSession
 
 
-PROMPT_VERSION = "slice6-news-enrichment-v1"
-CATEGORIES = {"financial_results", "capital_management", "merger_acquisition", "strategy", "distribution", "digital_transformation", "artificial_intelligence", "regulation", "risk", "leadership", "product", "wealth_management", "insurance", "other"}
+PROMPT_VERSION = "slice7-news-enrichment-v2"
+CATEGORIES = {
+    "artificial_intelligence",
+    "capital_management",
+    "digital_transformation",
+    "distribution",
+    "financial_results",
+    "insurance",
+    "international_trade",
+    "leadership",
+    "macroeconomics",
+    "manufacturing",
+    "merger_acquisition",
+    "other",
+    "product",
+    "regulation",
+    "risk",
+    "strategy",
+    "wealth_management",
+}
 
 
 @dataclass(frozen=True)

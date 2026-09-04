@@ -236,3 +236,18 @@ Preserve fixture mode, financial modules, independent Jobs, Unity Catalog
 cleanup and AI idempotence. Do not add RAG, agents, sentiment, scoring or UI
 redesign.
 ```
+
+## 11. Etat de realisation - 2026-09-03
+
+Slice 7 est implementee et acceptee :
+
+- deux feeds Atom de Statistique Canada approuves et configures;
+- acquisition bornee a 25 articles par source et par run;
+- horaire actif toutes les 6 heures, fuseau `America/Toronto`;
+- wheel deploye : `vigie_databricks_foundation-0.3.1-py3-none-any.whl`;
+- Job News : `1118291153119927`;
+- run live borne : 2 sources, 4 articles, aucune source en echec;
+- contrat IA `slice7-news-enrichment-v2`, 6 enrichissements reussis;
+- rerun identique : aucune insertion/mise a jour et `model_calls=0`;
+- App `vigie-gold-viewer` deployee et RUNNING avec attribution;
+- modules financiers inchanges.
