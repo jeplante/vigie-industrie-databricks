@@ -51,6 +51,44 @@ Criteres :
 - aucune authentification pour cette slice;
 - conditions compatibles avec stockage des metadonnees, resume genere et lien source.
 
+Sources recommandees apres verification du 3 septembre 2026 :
+
+1. `statcan_manufacturing`
+   - produit : Statistique Canada, Le Quotidien, Fabrication;
+   - URL : `https://www150.statcan.gc.ca/n1/rss/dai-quo/16-eng.atom`;
+   - portee : publications officielles sur la fabrication;
+   - historique du feed : dernier 100 jours selon la page officielle.
+2. `statcan_international_trade`
+   - produit : Statistique Canada, Le Quotidien, Commerce international;
+   - URL : `https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom`;
+   - portee : publications officielles sur le commerce international;
+   - historique du feed : dernier 100 jours selon la page officielle.
+
+Justification :
+
+- feeds Atom officiels explicitement fournis pour abonnement;
+- pertinence directe pour une vigie industrielle canadienne;
+- metadonnees publiques et source primaire;
+- licence ouverte de Statistique Canada permettant utilisation et produits a
+  valeur ajoutee sous reserve d'exactitude, absence d'endossement et attribution.
+
+Attribution a implementer dans l'App ou la fiche source :
+
+`Adapte de Statistique Canada, Le Quotidien, [sujet], [date de reference]. Ceci ne constitue pas un endossement de Statistique Canada.`
+
+Ne pas utiliser les logos ou symboles officiels. Conserver le lien vers l'article
+source. Revalider la licence au moment du deploiement, puisqu'elle peut etre modifiee.
+
+Probe HTTP sans persistance du 3 septembre 2026 :
+
+| Source | HTTP | Type | Taille | Entrees | Derniere mise a jour du feed |
+|---|---:|---|---:|---:|---|
+| `statcan_manufacturing` | 200 | `application/atom+xml` | 17 231 octets | 24 | 2026-08-27 08:30 -04:00 |
+| `statcan_international_trade` | 200 | `application/atom+xml` | 13 944 octets | 20 | 2026-08-04 08:30 -04:00 |
+
+Les deux feeds sont accessibles et conformes a Atom. Aucune donnee n'a ete
+ecrite dans Databricks pendant ce probe.
+
 ### Configuration
 
 Utiliser un petit fichier versionne ou parametre JSON valide contenant `source_id`, `url`, `enabled` et optionnellement `category`. Aucune URL arbitraire ne vient de l'UI.
@@ -115,11 +153,10 @@ Aucun changement dans :
 
 ### A - Gate et decouverte
 
-1. Renouveler OAuth.
-2. Confirmer Jobs, App, Warehouse et sept tables.
-3. Verifier documentation et conditions des sources candidates.
-4. Lire un petit echantillon sans persistance.
-5. Faire approuver sources et frequence.
+1. Gate Databricks complete le 3 septembre 2026.
+2. Documentation et conditions des deux feeds Statistique Canada verifiees.
+3. Lire un petit echantillon des deux feeds sans persistance.
+4. Faire approuver sources, attribution et frequence.
 
 Critere : aucune ecriture Databricks; sources/cadence approuvees.
 

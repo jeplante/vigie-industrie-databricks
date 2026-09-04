@@ -5,7 +5,7 @@
 **GitHub :** `jeplante/vigie-industrie-databricks`
 **Branche / HEAD :** `main` / `1135f734607469b708100828a93b39aa0ebb0e28`
 
-> **ETAT VERIFIE.** Slice 6 est commitee et poussee. Le depot est propre et `main` est synchronisee avec `origin/main`. Les etats Databricks en direct restent a revalider apres renouvellement du cache OAuth du profil `jeplante`.
+> **ETAT VERIFIE.** Slice 6 est commitee et poussee. Le depot est propre et `main` est synchronisee avec `origin/main`. Le gate Databricks en lecture seule a ete complete le 3 septembre 2026.
 
 ## 1. Objectif
 
@@ -85,7 +85,7 @@ Objets News :
 - `workspace.vigie.news_ai_enrichment`;
 - `workspace.vigie.gold_news`.
 
-Derniers comptes confirmes le 19 aout : Finance 3/3/2; News 2/2/2/2. Ils doivent etre revalides apres reconnexion.
+Comptes confirmes le 3 septembre : Finance 3/3/2; News 2/2/2/2.
 
 ### Jobs
 
@@ -154,24 +154,28 @@ Derniers gates connus :
 - modules financiers `bronze.py`, `silver.py`, `gold.py` inchanges;
 - aucun secret externe ni dependance OpenAI.
 
-## 7. Verification du 3 septembre 2026
+## 7. Verification Databricks du 3 septembre 2026
 
-Confirme localement :
+Confirme :
 
 - `HEAD` et `origin/main` = `1135f73`;
 - arbre de travail propre avant ajout de la documentation;
 - commit Slice 6 contient les 20 fichiers attendus;
-- templates Jobs et configuration App pointent vers les objets durables;
-- Job News sans schedule.
+- les deux Jobs existent avec leurs bons noms, parametres et objets durables;
+- dernier run du Job financier : `SUCCESS`;
+- dernier run du Job News : `SUCCESS`;
+- Job News sans schedule;
+- les sept tables Delta managees existent;
+- comptes Finance 3/3/2 et News 2/2/2/2;
+- App `vigie-gold-viewer` presente avec le bon Warehouse et la bonne URL;
+- Warehouse `9afffea8b155f79d` present.
 
-Non confirme en direct :
+Etat d'exploitation :
 
-- etat actuel des deux Jobs;
-- etat actuel de l'App;
-- etat du Warehouse;
-- existence et comptes actuels des sept tables.
-
-Cause : le CLI a retourne `no cached credentials; run databricks auth login to sign in`. Aucun Job, App ou modele n'a ete declenche pendant cette verification.
+- Warehouse `STOPPED` par auto-stop, zero session active;
+- App `UNAVAILABLE`, compute `STOPPED`, message : arret en raison du statut workspace/account;
+- aucun Job, App, Warehouse ou modele n'a ete demarre pendant le gate;
+- un smoke UI demandera un redemarrage explicite de l'App et possiblement du Warehouse.
 
 ## 8. Decisions structurantes
 
@@ -196,25 +200,16 @@ Cause : le CLI a retourne `no cached credentials; run databricks auth login to s
 
 ## 10. === RESUME HERE ===
 
-### Action 1 - Renouveler OAuth
+### Action 1 - Decision sur les sources Slice 7
 
-Dans un terminal interactif :
+Recommandation :
 
-```powershell
-databricks auth login --profile jeplante
-```
+1. Statistique Canada - Le Quotidien - Fabrication;
+2. Statistique Canada - Le Quotidien - Commerce international.
 
-### Action 2 - Gate de sante en lecture seule
+Voir `docs/SLICE7_PLAN.md` pour les URLs, conditions et garde-fous.
 
-Confirmer sans declencher de Job :
-
-1. Jobs `319208446632488` et `1118291153119927`;
-2. App `vigie-gold-viewer`;
-3. Warehouse `9afffea8b155f79d`;
-4. existence des sept tables `workspace.vigie`;
-5. configuration de l'App vers les deux Gold.
-
-### Action 3 - Slice 7
+### Action 2 - Slice 7
 
 Utiliser `docs/SLICE7_PLAN.md`. La Slice vise une acquisition News live configurable et planifiee tout en conservant fixture, idempotence, isolation et limites de cout.
 
@@ -225,11 +220,10 @@ Ne pas commencer la persistance live avant approbation des sources et de leurs c
 ```text
 Reprends vigie-industrie-databricks avec docs/PROJECT_HANDOFF.md.
 
-Verifie d'abord Git. Renouvelle ensuite l'authentification du profil jeplante et
-complete le gate Databricks en lecture seule. Ne declenche aucun Job ou modele
-pendant ce gate.
+Verifie d'abord Git et utilise docs/SLICE7_PLAN.md.
 
-Ensuite, utilise docs/SLICE7_PLAN.md. Presente les sources candidates et leurs
-conditions d'usage avant toute persistance live. Preserve le pipeline financier,
-les Jobs independants, le cleanup Unity Catalog et l'idempotence IA.
+Les sources recommandees sont les feeds Fabrication et Commerce international
+du Quotidien de Statistique Canada. Obtiens leur approbation explicite avant
+toute persistance live. Preserve le pipeline financier, les Jobs independants,
+le cleanup Unity Catalog et l'idempotence IA.
 ```
