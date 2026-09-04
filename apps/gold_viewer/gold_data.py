@@ -128,12 +128,12 @@ def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = Non
     filters = ["enrichment_status = 'succeeded'"]
     parameters: list[Any] = []
     if company_id:
-        filters.append("array_contains(relevant_company_ids, ?)")
-        parameters.append(company_id)
+        filters.append("(company_id = ? OR array_contains(relevant_company_ids, ?))")
+        parameters.extend([company_id, company_id])
     return _query(
         connection,
         f"""
-        SELECT article_id, source, source_url, title, published_at,
+        SELECT article_id, source, source_type, company_id, source_url, title, published_at,
                summary, categories, relevant_company_ids
         FROM {".".join(f"`{part}`" for part in (config.catalog, config.schema, config.news_table))}
         WHERE {' AND '.join(filters)}

@@ -1,0 +1,66 @@
+metrics:
+  core_eps:
+    label: BPA activites de base
+    unit: CAD_PER_SHARE
+    comparison: percent
+    favorable_trend: up
+  core_earnings:
+    label: Resultat des activites de base
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  net_income:
+    label: Resultat net
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  licat_ratio:
+    label: Ratio LICAT
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: contextual
+  solvency_ratio:
+    label: Ratio de solvabilite
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: contextual
+  assets_under_management:
+    label: Actif sous gestion
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  assets_under_administration:
+    label: Actif sous administration
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  total_client_assets:
+    label: Actifs clients totaux
+    unit: CAD_TRILLION
+    comparison: percent
+    favorable_trend: up
+  core_roe:
+    label: Rendement des capitaux propres de base
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: up
+  csm:
+    label: Marge sur services contractuels
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  new_business_value:
+    label: Valeur des affaires nouvelles
+    unit: CAD_MILLION
+    comparison: percent
+    favorable_trend: up
+  ape_sales:
+    label: Souscriptions selon l EPA
+    unit: CAD_MILLION
+    comparison: percent
+    favorable_trend: up
+  capital_available:
+    label: Capital disponible
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: contextual

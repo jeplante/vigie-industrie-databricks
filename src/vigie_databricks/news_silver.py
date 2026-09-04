@@ -11,7 +11,7 @@ from pyspark.sql import functions as F
 from vigie_databricks.news_bronze import normalize_url
 
 
-SILVER_COLUMNS = ["article_id", "source", "source_article_id", "source_url", "title", "description", "published_at", "fetched_at", "content_hash", "silver_record_hash", "silver_normalized_at"]
+SILVER_COLUMNS = ["article_id", "source", "source_type", "company_id", "source_article_id", "source_url", "title", "description", "published_at", "fetched_at", "content_hash", "silver_record_hash", "silver_normalized_at"]
 
 
 @dataclass(frozen=True)
@@ -27,13 +27,17 @@ class NewsSilverLoadResult:
 
 def build_silver(spark, bronze_object: str):
     bronze = spark.table(bronze_object)
-    normalized = (bronze.select("article_id", "source", "source_article_id", "source_url", F.trim("title_raw").alias("title"), F.trim("description_raw").alias("description"), F.expr("try_to_timestamp(published_at_iso)").alias("published_at"), F.expr("try_to_timestamp(fetched_at)").alias("fetched_at"), "content_hash")
+    if "source_type" not in bronze.columns:
+        bronze = bronze.withColumn("source_type", F.lit("external_context"))
+    if "company_id" not in bronze.columns:
+        bronze = bronze.withColumn("company_id", F.lit(None).cast("string"))
+    normalized = (bronze.select("article_id", "source", "source_type", "company_id", "source_article_id", "source_url", F.trim("title_raw").alias("title"), F.trim("description_raw").alias("description"), F.expr("try_to_timestamp(published_at_iso)").alias("published_at"), F.expr("try_to_timestamp(fetched_at)").alias("fetched_at"), "content_hash")
         .withColumn("source_url", F.lower(F.regexp_replace(F.regexp_replace(F.trim("source_url"), r"#.*$", ""), r"/$", "")))
         .withColumn("_rejection", F.when(F.col("article_id").isNull() | (F.length("article_id") == 0), "missing_article_id").when(F.col("source_url").isNull() | (F.length("source_url") == 0), "missing_source_url").when(F.col("title").isNull() | (F.length("title") == 0), "missing_title"))
     )
     rejected = normalized.where(F.col("_rejection").isNotNull()).count()
     valid = normalized.where(F.col("_rejection").isNull()).drop("_rejection")
-    hash_expr = F.sha2(F.concat_ws("||", *[F.coalesce(F.col(c).cast("string"), F.lit("<NULL>")) for c in ["article_id", "source", "source_url", "title", "description", "published_at"]]), 256)
+    hash_expr = F.sha2(F.concat_ws("||", *[F.coalesce(F.col(c).cast("string"), F.lit("<NULL>")) for c in ["article_id", "source", "source_type", "company_id", "source_url", "title", "description", "published_at"]]), 256)
     valid = valid.withColumn("silver_record_hash", hash_expr).withColumn("silver_normalized_at", F.current_timestamp())
     window = Window.partitionBy("article_id").orderBy(F.col("fetched_at").desc(), F.col("silver_record_hash").desc())
     return valid.withColumn("_rn", F.row_number().over(window)).where("_rn=1").drop("_rn") .select(*SILVER_COLUMNS), rejected

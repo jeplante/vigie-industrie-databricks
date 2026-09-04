@@ -18,10 +18,10 @@ from pyspark.sql import functions as F
 
 
 BRONZE_COLUMNS = [
-    "article_id", "source", "source_article_id", "source_url", "title_raw",
+    "article_id", "source", "source_type", "company_id", "source_article_id", "source_url", "title_raw",
     "description_raw", "published_at_raw", "published_at_iso", "fetched_at", "raw_payload", "content_hash",
 ]
-ALLOWED_LIVE_HOSTS = {"www150.statcan.gc.ca"}
+ALLOWED_LIVE_HOSTS = {"www150.statcan.gc.ca", "www.manulife.com", "www.sunlife.com", "www.greatwestlifeco.com", "ia.ca"}
 ALLOWED_CONTENT_TYPES = {"application/atom+xml", "application/rss+xml", "application/xml", "text/xml"}
 
 
@@ -30,6 +30,8 @@ class NewsSource:
     source_id: str
     url: str
     enabled: bool = True
+    source_type: str = "external_context"
+    company_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -170,20 +172,26 @@ def parse_sources_json(value: str) -> list[NewsSource]:
     sources: list[NewsSource] = []
     seen: set[str] = set()
     for item in raw:
-        if not isinstance(item, dict) or set(item) - {"source_id", "url", "enabled"}:
-            raise ValueError("Each source must contain only source_id, url, and enabled")
+        if not isinstance(item, dict) or set(item) - {"source_id", "url", "enabled", "source_type", "company_id"}:
+            raise ValueError("Each source must contain only source_id, url, enabled, source_type, and company_id")
         source_id = str(item.get("source_id", "")).strip()
         url = str(item.get("url", "")).strip()
         enabled = item.get("enabled", True)
+        source_type = item.get("source_type", "external_context")
+        company_id = item.get("company_id")
         if not source_id or not source_id.replace("_", "").isalnum():
             raise ValueError("source_id must contain only letters, numbers, and underscores")
         if source_id in seen:
             raise ValueError(f"Duplicate source_id: {source_id}")
         if not isinstance(enabled, bool):
             raise ValueError("enabled must be a boolean")
+        if source_type not in {"external_context", "official_insurer"}:
+            raise ValueError("source_type is unsupported")
+        if source_type == "official_insurer" and company_id not in {"MFC", "SLF", "GWO", "IAG"}:
+            raise ValueError("official_insurer sources require a configured company_id")
         validate_live_url(url)
         seen.add(source_id)
-        sources.append(NewsSource(source_id, url, enabled))
+        sources.append(NewsSource(source_id, url, enabled, source_type, company_id))
     if not any(source.enabled for source in sources):
         raise ValueError("At least one source must be enabled")
     return sources
@@ -231,7 +239,11 @@ def acquire_sources(sources: Iterable[NewsSource], max_articles: int = 25) -> tu
         if not source.enabled:
             continue
         try:
-            rows.extend(acquire_feed(source.url, source.source_id, max_articles=max_articles))
+            acquired = acquire_feed(source.url, source.source_id, max_articles=max_articles)
+            for row in acquired:
+                row["source_type"] = source.source_type
+                row["company_id"] = source.company_id
+            rows.extend(acquired)
             succeeded += 1
         except Exception:
             failed += 1
@@ -306,6 +318,8 @@ def load_bronze_news(
     rows = _deduplicate_rows(rows)
     for row in rows:
         row.setdefault("published_at_iso", row.get("published_at_raw"))
+        row.setdefault("source_type", "external_context")
+        row.setdefault("company_id", None)
     source_df = spark.createDataFrame(rows).select(*BRONZE_COLUMNS)
     inserted, updated = _merge(spark, source_df, bronze_object)
     return NewsBronzeLoadResult(

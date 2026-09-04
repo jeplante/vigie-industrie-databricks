@@ -66,6 +66,12 @@ def test_source_configuration_is_strict():
             {"source_id": "same", "url": "https://www150.statcan.gc.ca/a.atom"},
             {"source_id": "same", "url": "https://www150.statcan.gc.ca/b.atom"},
         ]))
+
+
+def test_official_insurer_source_requires_deterministic_company_provenance():
+    source = parse_sources_json(json.dumps([{"source_id": "mfc_news", "url": "https://www.manulife.com/news.xml", "source_type": "official_insurer", "company_id": "MFC"}]))[0]
+    assert source.company_id == "MFC"
+    assert source.source_type == "official_insurer"
     with pytest.raises(ValueError, match="only source_id"):
         parse_sources_json(json.dumps([
             {"source_id": "one", "url": "https://www150.statcan.gc.ca/a.atom", "unexpected": 1},

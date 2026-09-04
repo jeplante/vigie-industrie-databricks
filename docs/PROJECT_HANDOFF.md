@@ -27,6 +27,9 @@ Le projet combine un pipeline financier Bronze/Silver/Gold, une App Databricks S
 | 7 - News live | Terminee et validee | `32a9e5b` |
 | 8 - Observabilite IA | Terminee et validee | `b492753` |
 | 9 - Fiabilite sorties IA | Terminee et validee | `HEAD` |
+| 10 - Contrat vigie assurance | Implemente en local : configuration, provenance, audit et tests | commit courant |
+| 11 - Acquisition documents Finance | En cours : retrieval borne teste hors ligne | commit courant |
+| 12 a 17 - Extraction a exploitation | Fondations locales implementees; non deployees | commit courant |
 
 Le commit Slice 6 porte le message peu descriptif `update`, mais contient exactement les 20 chemins attendus : 586 insertions et 4 suppressions. La Slice 8 arrive via deux commits au message identique (`3f59d0b`, `d16e550`) reconcilies par le merge `b492753`. Ne pas reecrire l'historique pour renommer ces commits.
 
@@ -284,9 +287,12 @@ reconcilies, aucune source en echec.
 
 ### Action 2 - Prochaine portee
 
-Aucune Slice 10 n'est cadree. Ne pas ajouter RAG, agent, sentiment ou
-scoring sans besoin valide. Prioriser l'observation des runs planifies et
-une decision produit explicite avant toute extension de la taxonomie.
+La feuille de route du produit cible est dans
+`docs/INSURER_VIGIE_ROADMAP.md`. Les Slices 10 a 17 font migrer la vigie des
+quatre assureurs de personnes canadiens : contrat metier, acquisition officielle,
+extraction deterministe, validation/fraicheur, secours IA, actualites officielles,
+experience App et exploitation. Ne pas ajouter RAG, agent, sentiment ou scoring
+hors de cette feuille de route.
 
 ## 11. Instruction exacte de reprise
 

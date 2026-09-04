@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_latest_news_ai_audit
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_latest_news_ai_audit, fetch_news
 
 
 class FakeCursor:
@@ -109,3 +109,11 @@ def test_fetch_latest_news_ai_audit_is_read_only():
     assert row == {"run_id": "run-1", "model_calls": 3, "max_model_calls": 10}
     assert connection.cursor_instance.statement.lstrip().startswith("SELECT")
     assert "ORDER BY observed_at DESC" in connection.cursor_instance.statement
+
+
+def test_fetch_news_uses_deterministic_and_model_company_provenance():
+    connection = FakeConnection([], [])
+    fetch_news(connection, config(), "MFC")
+    assert connection.cursor_instance.parameters == ["MFC", "MFC"]
+    assert "company_id = ? OR array_contains" in connection.cursor_instance.statement
+    assert "source_type" in connection.cursor_instance.statement

@@ -1,0 +1,46 @@
+[
+  {
+    "observation_id": "MFC-2026-Q1-core_earnings",
+    "company_id": "MFC",
+    "metric_id": "core_earnings",
+    "period_id": "2026-Q1",
+    "value": 1.8,
+    "source_url": "https://www.manulife.com/ca/en/about-us/investors/results-and-reports",
+    "source_document_hash": "fixture-mfc-2026-q1",
+    "unit": "CAD_BILLION",
+    "quality_status": "candidate"
+  },
+  {
+    "observation_id": "SLF-2026-Q1-licat_ratio",
+    "company_id": "SLF",
+    "metric_id": "licat_ratio",
+    "period_id": "2026-Q1",
+    "value": 152.0,
+    "source_url": "https://www.sunlife.com/en/investors/financial-results-and-reports/quarterly-reports/",
+    "source_document_hash": "fixture-slf-2026-q1",
+    "unit": "PERCENT",
+    "quality_status": "candidate"
+  },
+  {
+    "observation_id": "GWO-2025-Q4-net_income",
+    "company_id": "GWO",
+    "metric_id": "net_income",
+    "period_id": "2025-Q4",
+    "value": 0.95,
+    "source_url": "https://www.greatwestlifeco.com/news-events/annual-reports.html",
+    "source_document_hash": "fixture-gwo-2025-q4",
+    "unit": "CAD_BILLION",
+    "quality_status": "candidate"
+  },
+  {
+    "observation_id": "IAG-2026-AN-assets_under_management",
+    "company_id": "IAG",
+    "metric_id": "assets_under_management",
+    "period_id": "2026-AN",
+    "value": 250.0,
+    "source_url": "https://ia.ca/a-propos/investisseurs/rapports-financiers",
+    "source_document_hash": "fixture-iag-2026-an",
+    "unit": "CAD_BILLION",
+    "quality_status": "candidate"
+  }
+]

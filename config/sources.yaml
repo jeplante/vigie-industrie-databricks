@@ -1,0 +1,21 @@
+financial_documents:
+  MFC:
+    source_id: mfc_financial_results
+    url: https://www.manulife.com/ca/en/about-us/investors/results-and-reports
+    allowed_hosts: [www.manulife.com]
+    document_types: [quarterly_report, annual_report]
+  SLF:
+    source_id: slf_quarterly_reports
+    url: https://www.sunlife.com/en/investors/financial-results-and-reports/quarterly-reports/
+    allowed_hosts: [www.sunlife.com]
+    document_types: [quarterly_report, annual_report]
+  GWO:
+    source_id: gwo_annual_reports
+    url: https://www.greatwestlifeco.com/news-events/annual-reports.html
+    allowed_hosts: [www.greatwestlifeco.com]
+    document_types: [quarterly_report, annual_report]
+  IAG:
+    source_id: iag_financial_reports
+    url: https://ia.ca/a-propos/investisseurs/rapports-financiers
+    allowed_hosts: [ia.ca]
+    document_types: [quarterly_report, annual_report]

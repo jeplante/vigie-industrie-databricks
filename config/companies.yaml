@@ -1,0 +1,21 @@
+companies:
+  MFC:
+    name: Manuvie
+    full_name: La Societe Financiere Manuvie
+    ticker: MFC.TO
+    investor_relations_url: https://www.manulife.com/ca/en/about-us/investors/results-and-reports
+  SLF:
+    name: Sun Life
+    full_name: Sun Life Financial Inc.
+    ticker: SLF.TO
+    investor_relations_url: https://www.sunlife.com/en/investors/financial-results-and-reports/quarterly-reports/
+  GWO:
+    name: Great-West Lifeco
+    full_name: Great-West Lifeco Inc.
+    ticker: GWO.TO
+    investor_relations_url: https://www.greatwestlifeco.com/news-events/annual-reports.html
+  IAG:
+    name: iA Groupe financier
+    full_name: iA Societe financiere inc.
+    ticker: IAG.TO
+    investor_relations_url: https://ia.ca/a-propos/investisseurs/rapports-financiers

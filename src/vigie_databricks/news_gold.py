@@ -21,7 +21,7 @@ def load_gold_news(spark: SparkSession, silver_object: str, enrichment_object: s
     silver = spark.table(silver_object)
     enrichment = spark.table(enrichment_object)
     latest = (enrichment.where(F.col("enrichment_status") == "succeeded").withColumn("_rn", F.row_number().over(Window.partitionBy("article_id").orderBy(F.col("enriched_at").desc()))).where("_rn=1").drop("_rn"))
-    gold = silver.join(latest, "article_id", "left").select("article_id", "source", "source_url", "title", "published_at", "relevant_company_ids", "summary", "categories", "enrichment_status", "model_name", "prompt_version", "enriched_at")
+    gold = silver.join(latest, "article_id", "left").select("article_id", "source", "source_type", "company_id", "source_url", "title", "published_at", "relevant_company_ids", "summary", "categories", "enrichment_status", "model_name", "prompt_version", "enriched_at")
     gold.write.format("delta").mode("overwrite").saveAsTable(gold_object)
     count = spark.table(gold_object).count()
     return NewsGoldLoadResult(gold_object, silver.count(), enrichment.count(), count, count - silver.count())

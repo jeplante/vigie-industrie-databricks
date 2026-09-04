@@ -1,6 +1,11 @@
 {
   "name": "vigie-slice4-bronze-silver-gold",
   "max_concurrent_runs": 1,
+  "schedule": {
+    "quartz_cron_expression": "0 17 6 * * ?",
+    "timezone_id": "America/Toronto",
+    "pause_status": "PAUSED"
+  },
   "parameters": [
     {"name": "catalog", "default": "workspace"},
     {"name": "schema", "default": "vigie"},
