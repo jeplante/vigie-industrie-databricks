@@ -113,9 +113,7 @@ Job News :
 - service principal : `app-338nse vigie-gold-viewer`
   (`c3560961-d1b6-4253-8b9a-d299f857f393`);
 - privileges read-only verifies : `USE_SCHEMA` sur `workspace.vigie` et
-  `SELECT` sur `gold_observations` et `gold_news`;
-- apres creation de `news_ai_run_audit`, lui accorder egalement `SELECT` avant
-  de valider le panneau de sante Slice 8;
+  `SELECT` sur `gold_observations`, `gold_news` et `news_ai_run_audit`;
 - aucun pipeline declenche par l'App.
 
 ## 6. Slices 0 a 6
