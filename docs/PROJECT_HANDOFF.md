@@ -110,6 +110,12 @@ Job News :
 - URL connue : `https://vigie-gold-viewer-7474651721951651.aws.databricksapps.com`;
 - resource binding : `sql_warehouse`;
 - configuration versionnee : `workspace.vigie.gold_observations` et `workspace.vigie.gold_news`;
+- service principal : `app-338nse vigie-gold-viewer`
+  (`c3560961-d1b6-4253-8b9a-d299f857f393`);
+- privileges read-only verifies : `USE_SCHEMA` sur `workspace.vigie` et
+  `SELECT` sur `gold_observations` et `gold_news`;
+- apres creation de `news_ai_run_audit`, lui accorder egalement `SELECT` avant
+  de valider le panneau de sante Slice 8;
 - aucun pipeline declenche par l'App.
 
 ## 6. Slices 0 a 6
@@ -199,6 +205,17 @@ Etat d'exploitation :
 - Ne jamais conclure qu'un Job est sain a partir d'un ancien snapshot.
 
 ## 10. === RESUME HERE ===
+
+### Etat Slice 8
+
+Slice 8 est implementee et deployee. Elle ajoute un budget dur de 10 appels
+modele par run, le statut `budget_deferred`, la table
+`workspace.vigie.news_ai_run_audit` et un panneau sante read-only dans l'App.
+Le wheel actif est `0.4.0`. L'acceptation budget zero du run
+`433107641891201` a conserve 43 succes, differe 2 lignes et effectue 0 appel.
+
+Les runs planifies de minuit et 6 h ainsi que le deploiement Slice 8 sont
+documentes dans `docs/SLICE8_PLAN.md`.
 
 ### Action 1 - Verifier la premiere execution planifiee Slice 7
 

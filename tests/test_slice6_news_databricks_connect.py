@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from vigie_databricks.news_ai import load_news_ai
+from vigie_databricks.news_ai import ensure_news_ai_audit_table, load_news_ai
 from vigie_databricks.news_bronze import load_bronze_news
 from vigie_databricks.news_gold import load_gold_news
 from vigie_databricks.news_silver import load_silver_news
@@ -35,8 +35,10 @@ def test_news_delta_pipeline_with_fake_enrichment(connect_spark, monkeypatch):
     bronze = f"{context['catalog']}.{context['schema']}.vigie_bronze_news_{prefix}"
     silver = f"{context['catalog']}.{context['schema']}.vigie_silver_news_{prefix}"
     enrichment = f"{context['catalog']}.{context['schema']}.vigie_news_ai_enrichment_{prefix}"
+    audit = f"{context['catalog']}.{context['schema']}.vigie_news_ai_run_audit_{prefix}"
     gold = f"{context['catalog']}.{context['schema']}.vigie_gold_news_{prefix}"
     fixture = Path(__file__).parent / "fixtures" / "slice6_news_rss.xml"
+    ensure_news_ai_audit_table(connect_spark, audit)
 
     first_bronze = load_bronze_news(connect_spark, "fixture", "", str(fixture), bronze)
     first_silver = load_silver_news(connect_spark, bronze, silver)
@@ -45,19 +47,40 @@ def test_news_delta_pipeline_with_fake_enrichment(connect_spark, monkeypatch):
         return {"summary": "Fixture summary", "categories": ["other"], "relevant_company_ids": []}, {"total_tokens": 1}
 
     monkeypatch.setattr("vigie_databricks.news_ai.call_model", fake_model)
-    first_ai = load_news_ai(connect_spark, silver, enrichment, "databricks-gpt-oss-20b")
+    first_ai = load_news_ai(connect_spark, silver, enrichment, "databricks-gpt-oss-20b", max_model_calls=2, audit_object=audit, run_id="test-run-1")
     first_gold = load_gold_news(connect_spark, silver, enrichment, gold)
-    second_ai = load_news_ai(connect_spark, silver, enrichment, "databricks-gpt-oss-20b")
+    second_ai = load_news_ai(connect_spark, silver, enrichment, "databricks-gpt-oss-20b", max_model_calls=2, audit_object=audit, run_id="test-run-1")
 
     assert first_bronze.inserted_rows == 2
     assert first_silver.silver_rows == 2
     assert first_silver.rejected_rows == 0
     assert first_ai.model_calls == 2
     assert first_ai.succeeded_rows == 2
+    assert first_ai.deferred_rows == 0
+    assert connect_spark.table(audit).where("run_id='test-run-1'").count() == 1
     assert first_gold.gold_rows == 2
     assert first_gold.reconciliation_delta == 0
     assert second_ai.model_calls == 0
+    assert connect_spark.table(audit).where("run_id='test-run-1' AND model_calls=0").count() == 1
     assert connect_spark.table(gold).count() == 2
+
+
+def test_news_ai_budget_defers_without_calling_model(connect_spark, monkeypatch):
+    context = connect_spark.sql("SELECT current_catalog() AS catalog, current_schema() AS schema").collect()[0]
+    prefix = uuid4().hex
+    bronze = f"{context['catalog']}.{context['schema']}.vigie_bronze_news_{prefix}"
+    silver = f"{context['catalog']}.{context['schema']}.vigie_silver_news_{prefix}"
+    enrichment = f"{context['catalog']}.{context['schema']}.vigie_news_ai_enrichment_{prefix}"
+    fixture = Path(__file__).parent / "fixtures" / "slice6_news_rss.xml"
+    load_bronze_news(connect_spark, "fixture", "", str(fixture), bronze)
+    load_silver_news(connect_spark, bronze, silver)
+
+    monkeypatch.setattr("vigie_databricks.news_ai.call_model", lambda *_: (_ for _ in ()).throw(AssertionError("model must not be called")))
+    result = load_news_ai(connect_spark, silver, enrichment, max_model_calls=0, run_id="budget-zero")
+
+    assert result.model_calls == 0
+    assert result.deferred_rows == 2
+    assert connect_spark.table(enrichment).where("enrichment_status='budget_deferred'").count() == 2
 
 
 def test_atom_bronze_is_idempotent(connect_spark):

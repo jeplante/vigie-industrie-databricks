@@ -69,3 +69,12 @@ The active six-hour schedule uses the America/Toronto timezone and defaults to
 live acquisition. Bounded acceptance and an identical rerun with zero model
 calls passed before activation. Statistics Canada source links and attribution
 must remain visible; official logos are not reused.
+
+## Slice 8 observability and model-call budget
+
+The News AI task has a hard, externally configurable per-run model-call budget
+(`max_model_calls`, default 10). Pending articles beyond the budget are retained
+as `budget_deferred` and retried deterministically on a later run. Every AI task
+execution upserts one row into `workspace.vigie.news_ai_run_audit`, keyed by the
+Databricks Job run ID. The read-only App shows the latest call count, budget,
+success, failure, invalid-output and deferred counts.

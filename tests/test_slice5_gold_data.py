@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_latest_news_ai_audit
 
 
 class FakeCursor:
@@ -98,3 +98,14 @@ def test_fetch_comparison_binds_company_and_metric_and_excludes_audit_fields():
     assert connection.cursor_instance.parameters == ["C1", "revenue"]
     assert "gold_record_hash" not in connection.cursor_instance.statement
     assert "computed_at" not in connection.cursor_instance.statement
+
+
+def test_fetch_latest_news_ai_audit_is_read_only():
+    columns = ["run_id", "model_calls", "max_model_calls"]
+    connection = FakeConnection([("run-1", 3, 10)], columns)
+
+    row = fetch_latest_news_ai_audit(connection, config())
+
+    assert row == {"run_id": "run-1", "model_calls": 3, "max_model_calls": 10}
+    assert connection.cursor_instance.statement.lstrip().startswith("SELECT")
+    assert "ORDER BY observed_at DESC" in connection.cursor_instance.statement

@@ -128,8 +128,15 @@ def test_job_template_has_approved_sources_and_active_schedule():
     ]
     assert parameters["source_mode"] == "live"
     assert parameters["max_articles"] == "25"
+    assert parameters["max_model_calls"] == "10"
+    assert parameters["ai_audit_object"] == "workspace.vigie.news_ai_run_audit"
     assert template["schedule"] == {
         "quartz_cron_expression": "0 0 0/6 * * ?",
         "timezone_id": "America/Toronto",
         "pause_status": "UNPAUSED",
     }
+    ai_task = next(task for task in template["tasks"] if task["task_key"] == "news_ai_enrichment")
+    task_parameters = ai_task["python_wheel_task"]["parameters"]
+    assert "--max-model-calls" in task_parameters
+    assert "--audit-object" in task_parameters
+    assert "{{job.run_id}}" in task_parameters
