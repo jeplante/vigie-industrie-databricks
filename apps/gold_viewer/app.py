@@ -9,6 +9,7 @@ from gold_data import (
     fetch_company_metrics,
     fetch_comparison,
     fetch_news,
+    fetch_latest_news_ai_audit,
 )
 from display import display_number, display_percentage, display_value
 
@@ -41,6 +42,11 @@ def news(config: GoldConfig, company_id: str) -> list[dict]:
     return fetch_news(connection(), config, company_id)
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def latest_news_ai_audit(config: GoldConfig) -> dict | None:
+    return fetch_latest_news_ai_audit(connection(), config)
+
+
 st.title("Gold comparison viewer")
 st.caption("Read-only view of the deterministic Gold comparison mart.")
 
@@ -50,6 +56,21 @@ try:
 except Exception as exc:
     st.error(f"Gold data is unavailable: {exc}")
     st.stop()
+
+with st.expander("News pipeline health", expanded=False):
+    try:
+        audit = latest_news_ai_audit(config)
+    except Exception:
+        audit = None
+    if audit:
+        first, second, third, fourth = st.columns(4)
+        first.metric("Model calls", f"{audit['model_calls']} / {audit['max_model_calls']}")
+        second.metric("Succeeded", audit["succeeded_rows"])
+        third.metric("Deferred", audit["deferred_rows"])
+        fourth.metric("Invalid / failed", audit["invalid_output_rows"] + audit["failed_rows"])
+        st.caption(f"Run {audit['run_id']} | {audit['observed_at']} | {audit['model_name']} | {audit['prompt_version']}")
+    else:
+        st.caption("No Slice 8 AI audit is available yet.")
 
 if not available_companies:
     st.info("No companies are available in the Gold table.")

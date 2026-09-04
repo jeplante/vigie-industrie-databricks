@@ -25,6 +25,7 @@ class GoldConfig:
     schema: str
     gold_table: str
     news_table: str = "gold_news"
+    news_ai_audit_table: str = "news_ai_run_audit"
 
     @classmethod
     def from_environment(cls) -> "GoldConfig":
@@ -33,6 +34,7 @@ class GoldConfig:
             "schema": os.environ.get("GOLD_SCHEMA", ""),
             "gold_table": os.environ.get("GOLD_TABLE", ""),
             "news_table": os.environ.get("GOLD_NEWS_TABLE", "gold_news"),
+            "news_ai_audit_table": os.environ.get("NEWS_AI_AUDIT_TABLE", "news_ai_run_audit"),
         }
         missing = [name for name, value in values.items() if not value]
         if missing:
@@ -140,3 +142,21 @@ def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = Non
         """,
         parameters,
     )
+
+
+def fetch_latest_news_ai_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
+    table = ".".join(
+        f"`{part}`" for part in (config.catalog, config.schema, config.news_ai_audit_table)
+    )
+    rows = _query(
+        connection,
+        f"""
+        SELECT run_id, observed_at, input_rows, model_calls, max_model_calls,
+               succeeded_rows, failed_rows, invalid_output_rows, deferred_rows,
+               model_name, prompt_version
+        FROM {table}
+        ORDER BY observed_at DESC, run_id DESC
+        LIMIT 1
+        """,
+    )
+    return rows[0] if rows else None

@@ -15,20 +15,22 @@
     {"name": "bronze_object", "default": "workspace.vigie.bronze_news"},
     {"name": "silver_object", "default": "workspace.vigie.silver_news"},
     {"name": "enrichment_object", "default": "workspace.vigie.news_ai_enrichment"},
+    {"name": "ai_audit_object", "default": "workspace.vigie.news_ai_run_audit"},
     {"name": "gold_object", "default": "workspace.vigie.gold_news"},
+    {"name": "max_model_calls", "default": "10"},
     {"name": "model", "default": "databricks-gpt-oss-20b"}
   ],
   "environments": [{
     "environment_key": "Default",
     "spec": {
       "environment_version": "5",
-      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/vigie_databricks_foundation-0.3.1-py3-none-any.whl"]
+      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/vigie_databricks_foundation-0.4.0-py3-none-any.whl"]
     }
   }],
   "tasks": [
     {"task_key": "bronze_news", "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_bronze", "parameters": ["--source-mode", "{{job.parameters.source_mode}}", "--source-url", "{{job.parameters.source_url}}", "--sources-json", "{{job.parameters.sources_json}}", "--max-articles", "{{job.parameters.max_articles}}", "--fixture-path", "{{job.parameters.fixture_path}}", "--bronze-object", "{{job.parameters.bronze_object}}"]}},
     {"task_key": "silver_news", "depends_on": [{"task_key": "bronze_news"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_silver", "parameters": ["--bronze-object", "{{job.parameters.bronze_object}}", "--silver-object", "{{job.parameters.silver_object}}"]}},
-    {"task_key": "news_ai_enrichment", "depends_on": [{"task_key": "silver_news"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_ai_enrichment", "parameters": ["--silver-object", "{{job.parameters.silver_object}}", "--enrichment-object", "{{job.parameters.enrichment_object}}", "--model", "{{job.parameters.model}}"]}},
+    {"task_key": "news_ai_enrichment", "depends_on": [{"task_key": "silver_news"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_ai_enrichment", "parameters": ["--silver-object", "{{job.parameters.silver_object}}", "--enrichment-object", "{{job.parameters.enrichment_object}}", "--audit-object", "{{job.parameters.ai_audit_object}}", "--max-model-calls", "{{job.parameters.max_model_calls}}", "--run-id", "{{job.run_id}}", "--model", "{{job.parameters.model}}"]}},
     {"task_key": "gold_news", "depends_on": [{"task_key": "news_ai_enrichment"}], "environment_key": "Default", "python_wheel_task": {"package_name": "vigie_databricks_foundation", "entry_point": "news_gold", "parameters": ["--silver-object", "{{job.parameters.silver_object}}", "--enrichment-object", "{{job.parameters.enrichment_object}}", "--gold-object", "{{job.parameters.gold_object}}"]}}
   ]
 }
