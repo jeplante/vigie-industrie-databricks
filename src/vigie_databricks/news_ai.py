@@ -62,7 +62,7 @@ def enrichment_input_hash(row: dict[str, Any]) -> str:
 
 
 def build_prompt(row: dict[str, Any]) -> str:
-    return json.dumps({"instruction": "Return only valid json. Do not invent facts. Use empty relevant_company_ids when unsupported.", "schema": {"summary": "string", "categories": sorted(CATEGORIES), "relevant_company_ids": "array of known IDs only"}, "article": {"title": row.get("title", ""), "description": row.get("description", ""), "source_url": row.get("source_url", "")}}, ensure_ascii=False)
+    return json.dumps({"instruction": "Return only valid json. Do not invent facts. Use empty relevant_company_ids when unsupported. Categories must be selected only from the provided list; use other when no listed category fits.", "schema": {"summary": "string", "categories": sorted(CATEGORIES), "relevant_company_ids": "array of known IDs only"}, "article": {"title": row.get("title", ""), "description": row.get("description", ""), "source_url": row.get("source_url", "")}}, ensure_ascii=False)
 
 
 def parse_output(content: str, known_company_ids: set[str]) -> dict[str, Any]:
@@ -152,6 +152,8 @@ def load_news_ai(
             parsed, usage = call_model(row, model, known)
         except (requests.RequestException, TimeoutError):
             status, error_code = "failed", "model_request_failed"
+        except ValueError as error:
+            status, error_code = "invalid_output", str(error)
         except Exception:
             status, error_code = "invalid_output", "invalid_model_output"
         output.append({"article_id": row["article_id"], "input_hash": input_hash, "model_provider": "databricks", "model_name": model, "prompt_version": PROMPT_VERSION, "summary": parsed["summary"], "categories": parsed["categories"], "relevant_company_ids": parsed["relevant_company_ids"], "enrichment_status": status, "error_code": error_code, "enriched_at": datetime.now(UTC), "usage_metadata": json.dumps(usage or {}, sort_keys=True)})

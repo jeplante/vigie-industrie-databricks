@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vigie-databricks-foundation"
-version = "0.4.0"
+version = "0.4.1"
 description = "Slice 1 Bronze foundation for the Databricks Vigie project"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

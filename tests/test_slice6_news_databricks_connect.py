@@ -83,6 +83,26 @@ def test_news_ai_budget_defers_without_calling_model(connect_spark, monkeypatch)
     assert connect_spark.table(enrichment).where("enrichment_status='budget_deferred'").count() == 2
 
 
+def test_news_ai_persists_specific_validation_error(connect_spark, monkeypatch):
+    context = connect_spark.sql("SELECT current_catalog() AS catalog, current_schema() AS schema").collect()[0]
+    prefix = uuid4().hex
+    bronze = f"{context['catalog']}.{context['schema']}.vigie_bronze_news_{prefix}"
+    silver = f"{context['catalog']}.{context['schema']}.vigie_silver_news_{prefix}"
+    enrichment = f"{context['catalog']}.{context['schema']}.vigie_news_ai_enrichment_{prefix}"
+    fixture = Path(__file__).parent / "fixtures" / "slice6_news_rss.xml"
+    load_bronze_news(connect_spark, "fixture", "", str(fixture), bronze)
+    load_silver_news(connect_spark, bronze, silver)
+
+    monkeypatch.setattr(
+        "vigie_databricks.news_ai.call_model",
+        lambda *_: (_ for _ in ()).throw(ValueError("invalid_categories")),
+    )
+    result = load_news_ai(connect_spark, silver, enrichment, max_model_calls=2)
+
+    assert result.invalid_output_rows == 2
+    assert connect_spark.table(enrichment).where("error_code='invalid_categories'").count() == 2
+
+
 def test_atom_bronze_is_idempotent(connect_spark):
     context = connect_spark.sql("SELECT current_catalog() AS catalog, current_schema() AS schema").collect()[0]
     bronze = f"{context['catalog']}.{context['schema']}.vigie_bronze_news_{uuid4().hex}"

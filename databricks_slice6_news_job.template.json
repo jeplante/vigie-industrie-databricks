@@ -24,7 +24,7 @@
     "environment_key": "Default",
     "spec": {
       "environment_version": "5",
-      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/vigie_databricks_foundation-0.4.0-py3-none-any.whl"]
+      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/vigie_databricks_foundation-0.4.1-py3-none-any.whl"]
     }
   }],
   "tasks": [

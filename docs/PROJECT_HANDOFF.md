@@ -26,6 +26,7 @@ Le projet combine un pipeline financier Bronze/Silver/Gold, une App Databricks S
 | 6 - News + IA | Terminee, validee, poussee | `1135f73` |
 | 7 - News live | Terminee et validee | `32a9e5b` |
 | 8 - Observabilite IA | Terminee et validee | `b492753` |
+| 9 - Fiabilite sorties IA | Terminee et validee | `HEAD` |
 
 Le commit Slice 6 porte le message peu descriptif `update`, mais contient exactement les 20 chemins attendus : 586 insertions et 4 suppressions. La Slice 8 arrive via deux commits au message identique (`3f59d0b`, `d16e550`) reconcilies par le merge `b492753`. Ne pas reecrire l'historique pour renommer ces commits.
 
@@ -186,8 +187,8 @@ Derniers gates connus :
 - traitement progressif des differees : run manuel `937246177868747` du
   2026-09-04, `model_calls=2` sur budget 10, 43 succes non retraites,
   0 ligne differee restante, tables reconciliees a 45;
-- constat ouvert : les 2 memes articles produisent `invalid_output` a
-  chaque run (voir `docs/SLICE9_PLAN.md`).
+- la cause des 2 `invalid_output` recurrents est diagnostiquee et corrigee
+  en Slice 9 (voir `docs/SLICE9_PLAN.md`).
 
 ## 7. Verification Databricks du 3 septembre 2026
 
@@ -228,6 +229,21 @@ Confirme :
 - App `vigie-gold-viewer` RUNNING, compute ACTIVE;
 - pipeline financier et Job financier inchanges.
 
+## 7.2 Verification Databricks de la Slice 9 - 4 septembre 2026
+
+Confirme :
+
+- wheel `vigie_databricks_foundation-0.4.1-py3-none-any.whl` actif dans le
+  Job News;
+- run manuel `732901390317600` : `SUCCESS`;
+- les 2 articles Survey Methodology auparavant `invalid_output` sont
+  maintenant `succeeded` avec categories `["other"]`;
+- audit : 45 entrees, `model_calls=2` <= budget 10, 45 succes, 0 erreur,
+  0 sortie invalide et 0 differee;
+- les 43 enrichissements deja reussis n'ont pas ete retraites;
+- comptes Bronze/Silver/Enrichissement/Gold News reconcilies a 45;
+- pipeline financier et Job financier inchanges.
+
 ## 8. Decisions structurantes
 
 1. Tester, revoir, commiter et pousser chaque slice avant la suivante.
@@ -254,15 +270,11 @@ Confirme :
 
 ### Etat
 
-Slices 7 et 8 terminees et verifiees. Tous les criteres d'acceptation de la
-Slice 8 sont confirmes, dont le traitement progressif des lignes differees
-(run `937246177868747` du 2026-09-04 : `model_calls=2` sur budget 10, 43
-succes non retraites, 0 differee restante, tables reconciliees a 45,
-aucune duplication d'audit).
-
-Constat ouvert : les 2 memes articles produisent `invalid_output` a chaque
-run et consomment du budget a chaque replanification. Voir
-`docs/SLICE9_PLAN.md`.
+Slices 7, 8 et 9 terminees et verifiees. Tous les criteres d'acceptation de
+la Slice 8 sont confirmes, dont le traitement progressif des lignes
+differees. La Slice 9 a corrige les 2 `invalid_output` recurrents : le run
+`732901390317600` a consomme 2 appels sur budget 10, a conserve les 43
+succes existants et a enrichi les 2 lignes restantes avec `["other"]`.
 
 ### Action 1 - Surveiller les runs planifies
 
@@ -270,19 +282,19 @@ Le schedule 6 h est actif. Surveiller les prochaines lignes de
 `workspace.vigie.news_ai_run_audit` : `model_calls <= 10`, compteurs
 reconcilies, aucune source en echec.
 
-### Action 2 - Slice 9
+### Action 2 - Prochaine portee
 
-Portee proposee dans `docs/SLICE9_PLAN.md` : diagnostic et reparation
-bornee des sorties IA invalides. Ne pas ajouter RAG, agent, sentiment ou
-scoring sans besoin valide.
+Aucune Slice 10 n'est cadree. Ne pas ajouter RAG, agent, sentiment ou
+scoring sans besoin valide. Prioriser l'observation des runs planifies et
+une decision produit explicite avant toute extension de la taxonomie.
 
 ## 11. Instruction exacte de reprise
 
 ```text
 Reprends vigie-industrie-databricks avec docs/PROJECT_HANDOFF.md.
 
-Verifie d'abord Git. Les Slices 7 et 8 sont terminees et verifiees ; le
-prochain chantier propose est docs/SLICE9_PLAN.md.
+Verifie d'abord Git. Les Slices 7, 8 et 9 sont terminees et verifiees ;
+aucune nouvelle slice n'est cadree.
 
 Les feeds Fabrication et Commerce international du Quotidien de Statistique
 Canada sont approuves, deployes et planifies. Preserve le pipeline
