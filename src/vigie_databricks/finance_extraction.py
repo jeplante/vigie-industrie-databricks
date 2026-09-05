@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from io import BytesIO
 import re
+
+from pypdf import PdfReader
 
 from vigie_databricks.insurer_contract import InsurerContract
 
@@ -61,9 +64,23 @@ def extract_finance_metrics(company_id: str, content: str, contract: InsurerCont
     return extracted
 
 
+def extract_document_text(content: bytes, content_type: str, *, max_pages: int = 120, max_characters: int = 500_000) -> str:
+    """Extract bounded text; PDF parsing is deterministic and never invokes AI."""
+    if content_type == "application/pdf":
+        reader = PdfReader(BytesIO(content))
+        parts = [(page.extract_text() or "") for page in reader.pages[:max_pages]]
+        return " ".join(parts)[:max_characters]
+    if content_type in {"text/html", "application/xhtml+xml"}:
+        return content.decode("utf-8", errors="replace")[:max_characters]
+    raise ValueError("unsupported_document_content_type")
+
+
 def infer_reporting_period(title: str) -> str | None:
     normalized = title.lower()
+    compact_match = re.search(r"(?<!\d)(?:q([1-4])|(\d)q)(\d{2})(?!\d)", normalized)
     year_match = re.search(r"\b(20\d{2})\b", normalized)
+    if compact_match:
+        return f"20{compact_match.group(3)}-Q{compact_match.group(1) or compact_match.group(2)}"
     if not year_match:
         return None
     year = year_match.group(1)

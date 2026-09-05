@@ -48,6 +48,10 @@ def upsert_financial_documents(
     object_name: str,
     documents: Iterable[FinancialDocument],
 ) -> None:
+    if spark.catalog.tableExists(object_name):
+        columns = {field.name for field in spark.table(object_name).schema.fields}
+        if "raw_content_path" not in columns:
+            spark.sql(f"ALTER TABLE {object_name} ADD COLUMNS (raw_content_path STRING)")
     _upsert_rows(
         spark,
         object_name,
@@ -55,6 +59,12 @@ def upsert_financial_documents(
         FINANCIAL_DOCUMENT_SCHEMA,
         "document_id",
     )
+
+
+def load_financial_document_index(spark: SparkSession, object_name: str) -> dict[str, dict[str, Any]]:
+    if not spark.catalog.tableExists(object_name):
+        return {}
+    return {row["source_url"]: row.asDict(recursive=True) for row in spark.table(object_name).collect()}
 
 
 def upsert_finance_run_audit(

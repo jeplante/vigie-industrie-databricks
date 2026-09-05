@@ -328,6 +328,22 @@ Prochaine action : implementer et accepter la chaine d'acquisition live vers
 `workspace.vigie.financial_documents` et le volume brut avant toute activation
 du schedule. Conserver le mode fixture comme acceptance reproductible.
 
+### Finance live 0.6.3 - validation du 5 septembre 2026
+
+- sources officielles mises a jour pour Great-West et iA; Sun Life accepte les
+  periodes compactes comme `q226`;
+- Job `319208446632488` migre vers `finance_live`, wheel 0.6.3, mode par defaut
+  `dry_run=true`, toujours sans schedule;
+- Volume `workspace.vigie.finance_raw` cree;
+- dry-run `299021816442080`: 3 sources valides sur 4, 15 KPI, Manuvie rejetee
+  (`no_report_with_explicit_period`) car sa page anti-bot ne fournit aucun
+  rapport au client automatise;
+- runs persistants `895665963091838` et `857444811722347`: 3 PDF conserves,
+  3/4 sources, 15 KPI, puis 2 documents `unchanged` et 1 retente avec le meme
+  hash; audits `stale`;
+- Gold preserve a 6 lignes. Ne pas activer le schedule avant validation de la
+  quatrieme source Manuvie.
+
 ## 11. Instruction exacte de reprise
 
 ```text

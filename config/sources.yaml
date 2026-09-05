@@ -10,12 +10,12 @@ financial_documents:
     allowed_hosts: [www.sunlife.com]
     document_types: [quarterly_report, annual_report]
   GWO:
-    source_id: gwo_annual_reports
-    url: https://www.greatwestlifeco.com/news-events/annual-reports.html
-    allowed_hosts: [www.greatwestlifeco.com]
+    source_id: gwo_financial_reports
+    url: https://www.greatwestlifeco.com/investor-relations/financial-reports.html
+    allowed_hosts: [www.greatwestlifeco.com, www.canadalife.com]
     document_types: [quarterly_report, annual_report]
   IAG:
     source_id: iag_financial_reports
-    url: https://ia.ca/a-propos/investisseurs/rapports-financiers
+    url: https://ia.ca/investorrelations
     allowed_hosts: [ia.ca]
     document_types: [quarterly_report, annual_report]

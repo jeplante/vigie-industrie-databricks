@@ -6,6 +6,7 @@ __pycache__/
 .connect-venv/
 .uv-cache/
 .uv-python/
+.tmp/
 dist/
 build/
 *.egg-info/

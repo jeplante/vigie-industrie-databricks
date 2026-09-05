@@ -35,3 +35,9 @@ def test_discovery_deduplicates_links_deterministically() -> None:
 
     assert len(documents) == 1
     assert documents[0].document_type == "quarterly_report"
+
+
+def test_discovery_accepts_compact_quarter_year_in_official_filename() -> None:
+    source = load_insurer_contract(ROOT / "config").financial_sources["SLF"]
+    documents = discover_financial_documents('<a href="/reports/pa-e-q226-shrpt.pdf">Report to shareholders</a>', source)
+    assert documents[0].document_type == "quarterly_report"

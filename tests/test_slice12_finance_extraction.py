@@ -26,4 +26,6 @@ def test_sun_life_and_iag_extract_their_source_specific_metrics():
 def test_reporting_period_inference_requires_an_explicit_year_and_period_marker():
     assert infer_reporting_period("Sun Life reports first quarter 2026 results") == "2026-Q1"
     assert infer_reporting_period("Great-West Lifeco full year 2025 results") == "2025-AN"
+    assert infer_reporting_period("pa-e-q226-earnings.pdf") == "2026-Q2"
+    assert infer_reporting_period("Manulife 2Q26 results") == "2026-Q2"
     assert infer_reporting_period("Quarterly results") is None
