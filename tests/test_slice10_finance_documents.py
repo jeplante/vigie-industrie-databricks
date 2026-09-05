@@ -72,3 +72,5 @@ def test_finance_schemas_include_provenance_and_run_counters() -> None:
     assert "acquisition_status string" in FINANCIAL_DOCUMENT_SCHEMA
     assert "sources_succeeded long" in FINANCE_RUN_AUDIT_SCHEMA
     assert "candidate_observations long" in FINANCE_RUN_AUDIT_SCHEMA
+    assert "ai_model_calls long" in FINANCE_RUN_AUDIT_SCHEMA
+    assert "retention_deleted_files long" in FINANCE_RUN_AUDIT_SCHEMA

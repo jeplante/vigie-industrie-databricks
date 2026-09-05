@@ -70,6 +70,8 @@ class ReportingPeriod:
 @dataclass(frozen=True)
 class FinancePolicy:
     raw_content_retention_days: int
+    failed_document_retention_days: int
+    stale_audit_retention_days: int
     raw_content_volume: str
     ai_provider: str
     ai_model: str
@@ -238,6 +240,8 @@ def _source(company_id: str, values: dict[str, Any]) -> FinancialSource:
 
 def _finance_policy(values: dict[str, Any]) -> FinancePolicy:
     retention_days = values.get("raw_content_retention_days")
+    failed_retention_days = values.get("failed_document_retention_days")
+    stale_retention_days = values.get("stale_audit_retention_days")
     max_calls = values.get("ai_max_calls_per_run")
     live_default = values.get("live_network_enabled_by_default")
     volume = _required_string(values, "raw_content_volume", "finance_policy")
@@ -245,6 +249,10 @@ def _finance_policy(values: dict[str, Any]) -> FinancePolicy:
     destination = _required_string(values, "publication_destination", "finance_policy")
     if not isinstance(retention_days, int) or isinstance(retention_days, bool) or not 1 <= retention_days <= 3650:
         raise ValueError("finance_policy.raw_content_retention_days must be between 1 and 3650")
+    if not isinstance(failed_retention_days, int) or not 1 <= failed_retention_days <= 3650:
+        raise ValueError("finance_policy.failed_document_retention_days must be between 1 and 3650")
+    if not isinstance(stale_retention_days, int) or not 1 <= stale_retention_days <= 3650:
+        raise ValueError("finance_policy.stale_audit_retention_days must be between 1 and 3650")
     if not volume.startswith("/Volumes/"):
         raise ValueError("finance_policy.raw_content_volume must be a Unity Catalog volume path")
     if provider not in VALID_AI_PROVIDERS:
@@ -257,6 +265,8 @@ def _finance_policy(values: dict[str, Any]) -> FinancePolicy:
         raise ValueError("finance_policy.live_network_enabled_by_default must be boolean")
     return FinancePolicy(
         retention_days,
+        failed_retention_days,
+        stale_retention_days,
         volume.rstrip("/"),
         provider,
         _required_string(values, "ai_model", "finance_policy"),

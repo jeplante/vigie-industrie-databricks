@@ -10,6 +10,8 @@ from gold_data import (
     fetch_comparison,
     fetch_news,
     fetch_latest_news_ai_audit,
+    fetch_finance_provenance,
+    fetch_latest_finance_audit,
 )
 from display import display_number, display_percentage, display_value
 
@@ -47,6 +49,16 @@ def latest_news_ai_audit(config: GoldConfig) -> dict | None:
     return fetch_latest_news_ai_audit(connection(), config)
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def finance_provenance(config: GoldConfig, company_id: str, period_id: str) -> dict | None:
+    return fetch_finance_provenance(connection(), config, company_id, period_id)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def latest_finance_audit(config: GoldConfig) -> dict | None:
+    return fetch_latest_finance_audit(connection(), config)
+
+
 st.title("Gold comparison viewer")
 st.caption("Read-only view of the deterministic Gold comparison mart.")
 
@@ -72,6 +84,21 @@ with st.expander("News pipeline health", expanded=False):
     else:
         st.caption("No Slice 8 AI audit is available yet.")
 
+with st.expander("Finance pipeline health", expanded=False):
+    try:
+        finance_audit = latest_finance_audit(config)
+    except Exception:
+        finance_audit = None
+    if finance_audit:
+        first, second, third, fourth = st.columns(4)
+        first.metric("Sources", f"{finance_audit['sources_succeeded']} / 4")
+        second.metric("Documents unchanged", finance_audit["documents_unchanged"])
+        third.metric("AI calls", finance_audit["ai_model_calls"] or 0)
+        fourth.metric("Quality", finance_audit["quality_status"])
+        st.caption(f"Run {finance_audit['run_id']} | {finance_audit['observed_at']} | expired files: {finance_audit['retention_deleted_files'] or 0}")
+    else:
+        st.caption("No Finance audit is available yet.")
+
 if not available_companies:
     st.info("No companies are available in the Gold table.")
     st.stop()
@@ -93,6 +120,16 @@ if not comparison_rows:
 
 row = comparison_rows[0]
 st.subheader(f"{selected_company} / {selected_metric}")
+
+try:
+    provenance = finance_provenance(config, selected_company, row["current_period_id"])
+except Exception:
+    provenance = None
+if provenance:
+    st.caption(f"Freshness: {provenance['fetched_at']} | Period: {provenance['reporting_period']} | Status: {provenance['acquisition_status']}")
+    st.link_button("Open official financial report", provenance["source_url"])
+else:
+    st.caption(f"Period: {row['current_period_id']} | No matching source document is available.")
 
 first, second, third, fourth = st.columns(4)
 first.metric("Current period", display_value(row["current_period_id"]))

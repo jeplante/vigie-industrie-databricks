@@ -357,6 +357,30 @@ du schedule. Conserver le mode fixture comme acceptance reproductible.
 - schedule quotidien `0 15 6 * * ?`, `America/Toronto`, `UNPAUSED`, avec
   `dry_run=false`.
 
+### Finance live 0.7.0 - exploitation du 5 septembre 2026
+
+- run persistant `340701954183438` SUCCESS: audit `current`, 4/4 sources,
+  20 observations candidates, 1 document `fetched`, 3 `unchanged`;
+- aucune insertion ou mise a jour Bronze/Silver/Gold et reconciliations a zero;
+- `ai_model_calls=0`: aucun appel IA inutile; `retention_deleted_files=0` car
+  aucun PDF n'avait depasse 365 jours;
+- alertes courriel du Job en cas d'echec; une source manquante provoque l'echec
+  du Job et utilise la meme alerte;
+- retention executee a chaque run persistant: PDF bruts apres 365 jours,
+  documents `failed` apres 30 jours et audits `stale` apres 90 jours; les audits
+  `current` sont conserves;
+- App enrichie avec sante Finance et provenance par KPI: fraicheur, periode et
+  lien vers le document officiel;
+- le premier run planifie suivant est attendu le 6 septembre 2026 apres 06:15
+  `America/Toronto`; son statut ne doit etre declare SUCCESS qu'apres controle
+  effectif du run et de son audit.
+- reprise locale: 73 tests hors Spark/Connect passes. Le confinement des chemins
+  de retention utilise maintenant les chemins resolus; wheel reconstruit et televerse.
+- CLI retrouve dans `.vscode/extensions/databricks.databricks-2.16.0-win32-x64/bin`.
+  Droits SELECT accordes aux deux tables via le client ID du service principal.
+- deploiement App `01f1a957840b1ca7b7768a039ab34854` SUCCEEDED et App RUNNING,
+  verifies le 5 septembre; schedule et notifications d'echec confirmes via API.
+
 ## 11. Instruction exacte de reprise
 
 ```text

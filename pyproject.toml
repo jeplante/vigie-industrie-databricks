@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vigie-databricks-foundation"
-version = "0.6.4"
+version = "0.7.0"
 description = "Databricks implementation of the Vigie insurer monitoring pipeline"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

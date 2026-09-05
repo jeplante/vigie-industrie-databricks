@@ -26,6 +26,8 @@ class GoldConfig:
     gold_table: str
     news_table: str = "gold_news"
     news_ai_audit_table: str = "news_ai_run_audit"
+    finance_documents_table: str = "financial_documents"
+    finance_audit_table: str = "finance_run_audit"
 
     @classmethod
     def from_environment(cls) -> "GoldConfig":
@@ -35,6 +37,8 @@ class GoldConfig:
             "gold_table": os.environ.get("GOLD_TABLE", ""),
             "news_table": os.environ.get("GOLD_NEWS_TABLE", "gold_news"),
             "news_ai_audit_table": os.environ.get("NEWS_AI_AUDIT_TABLE", "news_ai_run_audit"),
+            "finance_documents_table": os.environ.get("FINANCE_DOCUMENTS_TABLE", "financial_documents"),
+            "finance_audit_table": os.environ.get("FINANCE_AUDIT_TABLE", "finance_run_audit"),
         }
         missing = [name for name, value in values.items() if not value]
         if missing:
@@ -159,4 +163,33 @@ def fetch_latest_news_ai_audit(connection: Any, config: GoldConfig) -> dict[str,
         LIMIT 1
         """,
     )
+    return rows[0] if rows else None
+
+
+def fetch_finance_provenance(
+    connection: Any, config: GoldConfig, company_id: str, reporting_period: str
+) -> dict[str, Any] | None:
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    rows = _query(connection, f"""
+        SELECT company_id, reporting_period, source_url, content_hash, fetched_at,
+               acquisition_status
+        FROM {table}
+        WHERE company_id = ? AND reporting_period = ?
+          AND acquisition_status IN ('fetched', 'unchanged')
+        ORDER BY fetched_at DESC, document_id DESC
+        LIMIT 1
+        """, (company_id, reporting_period))
+    return rows[0] if rows else None
+
+
+def fetch_latest_finance_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_audit_table))
+    rows = _query(connection, f"""
+        SELECT run_id, observed_at, sources_succeeded, sources_failed,
+               documents_fetched, documents_unchanged, candidate_observations,
+               ai_model_calls, retention_deleted_files, quality_status
+        FROM {table}
+        ORDER BY observed_at DESC, run_id DESC
+        LIMIT 1
+        """)
     return rows[0] if rows else None

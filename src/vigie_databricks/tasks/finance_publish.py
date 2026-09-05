@@ -59,6 +59,8 @@ def main() -> None:
         "documents_fetched": 0,
         "documents_unchanged": 0,
         "candidate_observations": len(candidates),
+        "ai_model_calls": 0,
+        "retention_deleted_files": 0,
         "quality_status": publication.quality_status,
     }
 
