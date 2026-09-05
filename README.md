@@ -80,7 +80,7 @@ uv run --extra databricks_connect --python 3.12 pytest -m databricks_connect -q 
 ## Déploiement Finance
 
 `databricks_slice4_job.template.json` décrit le Job Finance live non planifié utilisant le
-wheel `0.6.3`. Avant son premier run :
+wheel `0.6.4`. Avant son premier run :
 
 1. construire et téléverser le wheel;
 2. téléverser `config/` et la fixture d'acceptation aux chemins configurés;

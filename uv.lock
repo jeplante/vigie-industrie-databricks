@@ -532,7 +532,7 @@ wheels = [
 
 [[package]]
 name = "vigie-databricks-foundation"
-version = "0.6.3"
+version = "0.6.4"
 source = { editable = "." }
 dependencies = [
     { name = "databricks-sdk" },

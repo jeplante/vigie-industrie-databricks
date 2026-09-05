@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
 import re
 from typing import Any, Callable
 
 from vigie_databricks.finance_acquisition import acquire_discovery_page, acquire_financial_document
-from vigie_databricks.finance_discovery import discover_financial_documents
+from vigie_databricks.finance_discovery import DiscoveredFinancialDocument, discover_financial_documents
 from vigie_databricks.finance_documents import FinancialDocument, create_financial_document
 from vigie_databricks.finance_extraction import extract_document_text, extract_finance_metrics, infer_reporting_period
 from vigie_databricks.insurer_contract import InsurerContract
@@ -32,6 +33,25 @@ def _latest_document(documents):
         if period:
             ranked.append((period, document.source_url, document))
     return max(ranked, default=(None, None, None))[2]
+
+
+def discover_mfc_direct_documents(now: datetime | None = None, *, max_quarters: int = 6) -> list[DiscoveredFinancialDocument]:
+    """Build a bounded list of official MFC shareholder-report candidates."""
+    if not 1 <= max_quarters <= 8:
+        raise ValueError("max_quarters must be between 1 and 8")
+    current = now or datetime.now(UTC)
+    year, quarter = current.year, (current.month - 1) // 3 + 1
+    documents = []
+    for _ in range(max_quarters):
+        documents.append(DiscoveredFinancialDocument(
+            "quarterly_report",
+            f"https://www.manulife.com/content/dam/manulife-com/ca/financial-documents/investors/MFC_SR_{year}_Q{quarter}_EN.pdf",
+            f"MFC Q{quarter} {year} report to shareholders",
+        ))
+        quarter -= 1
+        if quarter == 0:
+            year, quarter = year - 1, 4
+    return documents
 
 
 def _safe_error(error: Exception) -> str:
@@ -75,18 +95,33 @@ def acquire_live_finance(
     for company_id in sorted(contract.financial_sources):
         source = contract.financial_sources[company_id]
         try:
-            discovered = discover_financial_documents(page_fetcher(source), source)
-            discovered_count += len(discovered)
-            selected = _latest_document(discovered)
-            if selected is None:
-                raise ValueError("no_report_with_explicit_period")
-            period_id = infer_reporting_period(f"{selected.title} {selected.source_url}")
-            prior = prior_by_url.get(selected.source_url, {})
-            fetched = document_fetcher(
-                contract, company_id, selected.document_type, selected.source_url,
-                known_content_hash=prior.get("content_hash"), etag=prior.get("etag"),
-                last_modified=prior.get("last_modified"),
+            discovered = (
+                discover_mfc_direct_documents()
+                if company_id == "MFC"
+                else discover_financial_documents(page_fetcher(source), source)
             )
+            discovered_count += len(discovered)
+            selected_documents = discovered if company_id == "MFC" else [_latest_document(discovered)]
+            selected_documents = [item for item in selected_documents if item is not None]
+            if not selected_documents:
+                raise ValueError("no_report_with_explicit_period")
+            fetched = None; selected = None; prior = {}
+            for candidate_document in selected_documents:
+                candidate_prior = prior_by_url.get(candidate_document.source_url, {})
+                try:
+                    fetched = document_fetcher(
+                        contract, company_id, candidate_document.document_type, candidate_document.source_url,
+                        known_content_hash=candidate_prior.get("content_hash"), etag=candidate_prior.get("etag"),
+                        last_modified=candidate_prior.get("last_modified"),
+                    )
+                    selected, prior = candidate_document, candidate_prior
+                    break
+                except Exception:
+                    if company_id != "MFC":
+                        raise
+            if fetched is None or selected is None:
+                raise ValueError("no_accessible_official_report")
+            period_id = infer_reporting_period(f"{selected.title} {selected.source_url}")
             document = fetched.document
             if fetched.content is None:
                 unchanged_count += 1

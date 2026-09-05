@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from vigie_databricks.finance_documents import create_financial_document
-from vigie_databricks.finance_live import acquire_live_finance, persist_raw_content
+from datetime import UTC, datetime
+
+from vigie_databricks.finance_live import acquire_live_finance, discover_mfc_direct_documents, persist_raw_content
 from vigie_databricks.insurer_contract import load_insurer_contract
 
 
@@ -30,7 +32,7 @@ def test_live_finance_selects_latest_report_and_builds_deterministic_candidates(
 
     assert result.sources_succeeded == 4
     assert result.documents_fetched == 4
-    assert all(candidate["period_id"] == "2026-Q1" for candidate in result.candidates)
+    assert {candidate["period_id"] for candidate in result.candidates if candidate["company_id"] != "MFC"} == {"2026-Q1"}
     assert {candidate["company_id"] for candidate in result.candidates} == set(contract.companies)
 
 
@@ -38,16 +40,26 @@ def test_live_finance_isolates_one_failed_source():
     contract = load_insurer_contract(ROOT / "config")
 
     def page_fetcher(source):
-        if source.company_id == "MFC":
+        if source.company_id == "SLF":
             raise TimeoutError("secret details must not leak")
         return "<p>No reports</p>"
 
-    result = acquire_live_finance(contract, {}, persist_raw=False, page_fetcher=page_fetcher)
+    def document_fetcher(*args, **kwargs):
+        raise TimeoutError("unavailable")
+
+    result = acquire_live_finance(contract, {}, persist_raw=False, page_fetcher=page_fetcher, document_fetcher=document_fetcher)
 
     assert result.sources_succeeded == 0
-    assert result.source_errors["MFC"] == "timeouterror_secret_details_must_not_leak"
+    assert result.source_errors["SLF"] == "timeouterror_secret_details_must_not_leak"
     assert len(result.documents) == 4
     assert all(document.acquisition_status == "failed" for document in result.documents)
+
+
+def test_mfc_direct_discovery_is_bounded_newest_first():
+    documents = discover_mfc_direct_documents(datetime(2026, 9, 5, tzinfo=UTC), max_quarters=3)
+    assert [item.source_url.rsplit("/", 1)[-1] for item in documents] == [
+        "MFC_SR_2026_Q3_EN.pdf", "MFC_SR_2026_Q2_EN.pdf", "MFC_SR_2026_Q1_EN.pdf",
+    ]
 
 
 def test_raw_content_persistence_is_content_addressed_and_idempotent(tmp_path):

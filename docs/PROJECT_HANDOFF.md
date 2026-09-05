@@ -344,6 +344,19 @@ du schedule. Conserver le mode fixture comme acceptance reproductible.
 - Gold preserve a 6 lignes. Ne pas activer le schedule avant validation de la
   quatrieme source Manuvie.
 
+### Finance live 0.6.4 - mise en production du 5 septembre 2026
+
+- endpoint officiel Manuvie: rapport aux actionnaires
+  `MFC_SR_YYYY_QN_EN.pdf`, avec sondage borne aux six trimestres les plus
+  recents et arret au premier PDF valide;
+- dry-run `987606988079233` SUCCESS: 4/4 sources, 20 KPI, aucune erreur;
+- runs persistants `536588018199228` et `670694216184031` SUCCESS;
+- rerun: zero insertion ou mise a jour Bronze/Silver/Gold, reconciliations a
+  zero, 3 documents `unchanged`, un document retente avec hash identique;
+- comptes finaux Bronze/Silver/Gold: 27/27/23;
+- schedule quotidien `0 15 6 * * ?`, `America/Toronto`, `UNPAUSED`, avec
+  `dry_run=false`.
+
 ## 11. Instruction exacte de reprise
 
 ```text
