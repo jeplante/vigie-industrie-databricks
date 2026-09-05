@@ -320,6 +320,9 @@ Confirme le 4 septembre 2026 :
   suppression et comptes inchanges 7/7/6;
 - deux lignes `current` dans `workspace.vigie.finance_run_audit`, une par run;
 - aucun schedule Finance actif.
+- CI GitHub requiert l'extra `local_spark` car les modules de tests importent
+  le code Spark pendant la collecte, meme lorsque les marqueurs Databricks sont
+  exclus.
 
 Prochaine action : implementer et accepter la chaine d'acquisition live vers
 `workspace.vigie.financial_documents` et le volume brut avant toute activation
