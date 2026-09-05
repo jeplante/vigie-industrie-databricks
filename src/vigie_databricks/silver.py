@@ -13,7 +13,7 @@ from pyspark.sql import functions as F
 
 
 MATERIAL_COLUMNS = ["company_id", "metric_id", "period_id", "value"]
-PERIOD_PATTERN = r"^\d{4}Q[1-4]$"
+PERIOD_PATTERN = r"^\d{4}-?(?:Q[1-4]|AN)$"
 REJECTION_PRECEDENCE = (
     "missing_observation_id",
     "missing_company_id",

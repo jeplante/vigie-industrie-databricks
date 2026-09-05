@@ -9,6 +9,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
@@ -40,6 +42,12 @@ def cleanup_new_databricks_connect_tables(request):
             for name in created
             if name not in {"vigie_slice4_bronze", "vigie_slice4_silver", "vigie_slice4_gold"}
         }
-        for prefix in ("vigie_gold_", "vigie_news_", "vigie_silver_", "vigie_bronze_"):
+        for prefix in (
+            "vigie_gold_",
+            "vigie_news_",
+            "vigie_silver_",
+            "vigie_bronze_",
+            "vigie_finance_",
+        ):
             for name in sorted(name for name in disposable if name.startswith(prefix)):
                 spark.sql(f"DROP TABLE IF EXISTS `workspace`.`default`.`{name}`")

@@ -1,11 +1,13 @@
 # Architecture notes
 
-This repository contains Slice 0 foundation plus Slice 1 Bronze ingestion for the Databricks migration of the Vigie project.
+This repository contains the Databricks implementation of the Vigie insurer monitoring project, including the validated News pipeline and the locally integrated insurer Finance contract through Slice 14.
 
 ## Scope boundaries
 
 - Slice 0 creates the repository skeleton, package metadata, minimal bundle config, and validation tests only.
-- Slice 1 introduces the first business-facing Databricks pipeline component: Bronze Delta loading for observations.
+- Finance publication validates a complete candidate batch before advancing Bronze, Silver, and Gold.
+- Invalid Finance batches preserve the last-known-good tables and are recorded in `finance_run_audit`.
+- Live source access is disabled by default and raw content is retained in a Unity Catalog volume according to the versioned policy.
 - Slice 1 excludes Silver and Gold layers, scheduling, streaming, and MLflow.
 
 ## Intended future architecture

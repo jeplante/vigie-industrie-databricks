@@ -141,8 +141,10 @@ def _build_gold_snapshot(silver_df: DataFrame) -> DataFrame:
         silver_df.select("observation_id", "company_id", "metric_id", "period_id", "value", "ingested_at")
     )
 
+    period_key = F.regexp_extract(F.col("period_id"), r"(?:Q([1-4])|AN)$", 1)
     enriched = resolved.withColumn("_period_year", F.substring("period_id", 1, 4).cast("int")).withColumn(
-        "_period_quarter", F.substring("period_id", 6, 1).cast("int")
+        "_period_quarter",
+        F.when(F.col("period_id").endswith("AN"), F.lit(5)).otherwise(period_key.cast("int")),
     )
 
     window = Window.partitionBy("company_id", "metric_id").orderBy(

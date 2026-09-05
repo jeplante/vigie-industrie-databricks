@@ -21,6 +21,13 @@ def test_rejection_reason_is_none_for_structurally_valid_row() -> None:
     assert classify_rejection_reason(_valid_row()) is None
 
 
+def test_canonical_insurer_periods_are_structurally_valid() -> None:
+    for period_id in ("2026-Q1", "2026-Q4", "2026-AN"):
+        row = _valid_row()
+        row["period_id"] = period_id
+        assert classify_rejection_reason(row) is None
+
+
 def test_rejection_reason_precedence_is_first_failure() -> None:
     row = _valid_row()
     row["observation_id"] = "  "

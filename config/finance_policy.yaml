@@ -1,0 +1,9 @@
+finance_policy:
+  raw_content_retention_days: 365
+  raw_content_volume: /Volumes/workspace/vigie/finance_raw
+  ai_provider: databricks_model_serving
+  ai_model: databricks-gpt-oss-20b
+  ai_max_calls_per_run: 10
+  publication_destination: databricks_app
+  live_network_enabled_by_default: false
+

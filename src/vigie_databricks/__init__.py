@@ -1,4 +1,4 @@
-"""Slice 2 Bronze+Silver package for the Databricks Vigie project."""
+"""Databricks implementation of the Vigie insurer monitoring project."""
 
 __all__ = [
 	"__version__",
@@ -11,7 +11,7 @@ __all__ = [
 	"load_gold_observations",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.5.0"
 
 
 def __getattr__(name: str):

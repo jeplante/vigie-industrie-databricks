@@ -21,6 +21,7 @@ BRONZE_COLUMNS = [
     "article_id", "source", "source_type", "company_id", "source_article_id", "source_url", "title_raw",
     "description_raw", "published_at_raw", "published_at_iso", "fetched_at", "raw_payload", "content_hash",
 ]
+BRONZE_SCHEMA = ",".join(f"{column} string" for column in BRONZE_COLUMNS)
 ALLOWED_LIVE_HOSTS = {"www150.statcan.gc.ca", "www.manulife.com", "www.sunlife.com", "www.greatwestlifeco.com", "ia.ca"}
 ALLOWED_CONTENT_TYPES = {"application/atom+xml", "application/rss+xml", "application/xml", "text/xml"}
 
@@ -320,7 +321,9 @@ def load_bronze_news(
         row.setdefault("published_at_iso", row.get("published_at_raw"))
         row.setdefault("source_type", "external_context")
         row.setdefault("company_id", None)
-    source_df = spark.createDataFrame(rows).select(*BRONZE_COLUMNS)
+    # Spark Connect cannot infer the type of an all-null company_id column.
+    # The explicit schema also keeps fixture and live ingestion identical.
+    source_df = spark.createDataFrame(rows, schema=BRONZE_SCHEMA).select(*BRONZE_COLUMNS)
     inserted, updated = _merge(spark, source_df, bronze_object)
     return NewsBronzeLoadResult(
         bronze_object, source_mode, len(rows), inserted, updated, spark.table(bronze_object).count(),

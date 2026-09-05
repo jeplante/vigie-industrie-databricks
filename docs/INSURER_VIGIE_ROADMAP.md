@@ -1,6 +1,6 @@
 # Feuille de route - Vigie assurance de personnes dans Databricks
 
-**Statut :** fondations locales des Slices 10 a 17 implementees; acceptation live et deploiement en attente
+**Statut :** Slices 10 a 14 integrees localement; acceptation Databricks et acquisition live en attente
 **Date :** 2026-09-04
 **But produit :** transposer dans Databricks la vigie des quatre grands
 assureurs de personnes canadiens : Manuvie (MFC), Sun Life (SLF),
@@ -263,6 +263,20 @@ et revue des couts. Chaque slice met a jour le README et le handoff avec les
 ressources deployees, les decisions prises et les limites connues.
 
 ## 5. Decisions a prendre avant Slice 10
+
+Decisions confirmees le 4 septembre 2026 :
+
+- conserver les quatre assureurs et les 13 KPI initiaux;
+- conserver le contenu brut 365 jours dans
+  `/Volumes/workspace/vigie/finance_raw`;
+- n'autoriser que les domaines officiels versionnes dans `sources.yaml`;
+- utiliser Databricks Model Serving pour le secours IA, avec un maximum de
+  10 appels par run;
+- publier initialement dans l'App Databricks seulement;
+- garder le reseau live desactive par defaut jusqu'au gate d'acceptation.
+
+Les questions ci-dessous sont donc closes pour la premiere mise en production;
+elles devront etre rouvertes explicitement si la portee change.
 
 1. Confirmer la liste initiale des KPI publies et les unites attendues pour les
    quatre assureurs.

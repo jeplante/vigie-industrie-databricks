@@ -21,7 +21,7 @@ def test_python_package_is_importable() -> None:
     sys.path.insert(0, str(root / "src"))
     import vigie_databricks  # noqa: F401
 
-    assert vigie_databricks.__version__ == "0.2.0"
+    assert vigie_databricks.__version__ == "0.5.0"
 
 
 def test_databricks_bundle_is_minimal_descriptor() -> None:

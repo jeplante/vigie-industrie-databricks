@@ -16,6 +16,8 @@ VALID_UNITS = {"CAD_PER_SHARE", "CAD_MILLION", "CAD_BILLION", "CAD_TRILLION", "P
 VALID_COMPARISONS = {"percent", "percentage_point"}
 VALID_TRENDS = {"up", "down", "contextual"}
 VALID_DOCUMENT_TYPES = {"quarterly_report", "annual_report"}
+VALID_AI_PROVIDERS = {"databricks_model_serving"}
+VALID_PUBLICATION_DESTINATIONS = {"databricks_app"}
 
 
 @dataclass(frozen=True)
@@ -66,10 +68,22 @@ class ReportingPeriod:
 
 
 @dataclass(frozen=True)
+class FinancePolicy:
+    raw_content_retention_days: int
+    raw_content_volume: str
+    ai_provider: str
+    ai_model: str
+    ai_max_calls_per_run: int
+    publication_destination: str
+    live_network_enabled_by_default: bool
+
+
+@dataclass(frozen=True)
 class InsurerContract:
     companies: dict[str, Company]
     metrics: dict[str, Metric]
     financial_sources: dict[str, FinancialSource]
+    finance_policy: FinancePolicy
 
 
 def parse_period_id(period_id: str) -> ReportingPeriod:
@@ -107,7 +121,8 @@ def load_insurer_contract(config_directory: Path) -> InsurerContract:
     }
     if set(companies) != set(sources):
         raise ValueError("financial_documents must define exactly one source for every company")
-    return InsurerContract(companies, metrics, sources)
+    policy_data = _load_object(config_directory / "finance_policy.yaml", "finance_policy")
+    return InsurerContract(companies, metrics, sources, _finance_policy(policy_data))
 
 
 def parse_finance_observation_candidate(
@@ -163,6 +178,16 @@ def _load_mapping(path: Path, key: str) -> dict[str, dict[str, Any]]:
     return result
 
 
+def _load_object(path: Path, key: str) -> dict[str, Any]:
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise ValueError(f"Cannot read contract file: {path}") from error
+    if not isinstance(data, dict) or not isinstance(data.get(key), dict) or not data[key]:
+        raise ValueError(f"{path.name} must contain a non-empty {key} mapping")
+    return data[key]
+
+
 def _required_string(values: dict[str, Any], key: str, context: str) -> str:
     value = values.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -208,4 +233,34 @@ def _source(company_id: str, values: dict[str, Any]) -> FinancialSource:
         url,
         tuple(hosts),
         tuple(document_types),
+    )
+
+
+def _finance_policy(values: dict[str, Any]) -> FinancePolicy:
+    retention_days = values.get("raw_content_retention_days")
+    max_calls = values.get("ai_max_calls_per_run")
+    live_default = values.get("live_network_enabled_by_default")
+    volume = _required_string(values, "raw_content_volume", "finance_policy")
+    provider = _required_string(values, "ai_provider", "finance_policy")
+    destination = _required_string(values, "publication_destination", "finance_policy")
+    if not isinstance(retention_days, int) or isinstance(retention_days, bool) or not 1 <= retention_days <= 3650:
+        raise ValueError("finance_policy.raw_content_retention_days must be between 1 and 3650")
+    if not volume.startswith("/Volumes/"):
+        raise ValueError("finance_policy.raw_content_volume must be a Unity Catalog volume path")
+    if provider not in VALID_AI_PROVIDERS:
+        raise ValueError("finance_policy.ai_provider is unsupported")
+    if not isinstance(max_calls, int) or isinstance(max_calls, bool) or not 0 <= max_calls <= 100:
+        raise ValueError("finance_policy.ai_max_calls_per_run must be between 0 and 100")
+    if destination not in VALID_PUBLICATION_DESTINATIONS:
+        raise ValueError("finance_policy.publication_destination is unsupported")
+    if not isinstance(live_default, bool):
+        raise ValueError("finance_policy.live_network_enabled_by_default must be boolean")
+    return FinancePolicy(
+        retention_days,
+        volume.rstrip("/"),
+        provider,
+        _required_string(values, "ai_model", "finance_policy"),
+        max_calls,
+        destination,
+        live_default,
     )

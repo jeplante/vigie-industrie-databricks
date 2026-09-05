@@ -20,6 +20,12 @@ def publish_finance_candidates(
     prior_published: list[dict[str, Any]],
     contract: InsurerContract,
 ) -> FinancePublicationResult:
+    if not candidates:
+        return FinancePublicationResult(
+            tuple(prior_published),
+            "stale",
+            ("candidate batch is empty",),
+        )
     parsed = []
     reasons = []
     for candidate in candidates:

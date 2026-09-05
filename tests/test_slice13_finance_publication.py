@@ -21,3 +21,11 @@ def test_valid_candidate_batch_becomes_current_snapshot():
     result = publish_finance_candidates([candidate], [], load_insurer_contract(ROOT / "config"))
     assert result.quality_status == "current"
     assert result.observations == (candidate,)
+
+
+def test_empty_candidate_batch_preserves_last_known_good_snapshot():
+    prior = [{"observation_id": "MFC-2025-Q4-core_earnings", "value": 1.5}]
+    result = publish_finance_candidates([], prior, load_insurer_contract(ROOT / "config"))
+    assert result.quality_status == "stale"
+    assert result.observations == tuple(prior)
+    assert result.rejection_reasons == ("candidate batch is empty",)

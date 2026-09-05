@@ -3,7 +3,7 @@
 **Mise a jour : 2026-09-04 (America/Toronto)**
 **Repo :** `C:\Users\jerom\vigie_databricks`
 **GitHub :** `jeplante/vigie-industrie-databricks`
-**Branche / HEAD :** `main` / `b492753` (code) + commit documentation courant
+**Branche / HEAD de reference :** `main` / `c5057cb` avant integration locale Finance 0.5.0
 
 > **ETAT VERIFIE.** Les Slices 7 et 8 sont commitees et poussees. Le depot est propre et `main` est synchronisee avec `origin/main`. Le critere des lignes differees de la Slice 8 a ete verifie le 4 septembre 2026 sur le run `937246177868747`.
 
@@ -27,9 +27,12 @@ Le projet combine un pipeline financier Bronze/Silver/Gold, une App Databricks S
 | 7 - News live | Terminee et validee | `32a9e5b` |
 | 8 - Observabilite IA | Terminee et validee | `b492753` |
 | 9 - Fiabilite sorties IA | Terminee et validee | `HEAD` |
-| 10 - Contrat vigie assurance | Implemente en local : configuration, provenance, audit et tests | commit courant |
-| 11 - Acquisition documents Finance | En cours : retrieval borne teste hors ligne | commit courant |
-| 12 a 17 - Extraction a exploitation | Fondations locales implementees; non deployees | commit courant |
+| 10 - Contrat vigie assurance | Integre localement, politique produit versionnee | travail courant 0.5.0 |
+| 11 - Acquisition documents Finance | Retrieval borne teste hors ligne; live non active | travail courant 0.5.0 |
+| 12 - Extraction deterministe | Integree localement; fixtures seulement | travail courant 0.5.0 |
+| 13 - Publication atomique | Point d'entree, audit et last-known-good integres localement | travail courant 0.5.0 |
+| 14 - Secours IA Finance | Contrat local Databricks Model Serving; appel live non valide | travail courant 0.5.0 |
+| 15 a 17 - News assureurs a exploitation | Non commencees | - |
 
 Le commit Slice 6 porte le message peu descriptif `update`, mais contient exactement les 20 chemins attendus : 586 insertions et 4 suppressions. La Slice 8 arrive via deux commits au message identique (`3f59d0b`, `d16e550`) reconcilies par le merge `b492753`. Ne pas reecrire l'historique pour renommer ces commits.
 
@@ -288,11 +291,39 @@ reconcilies, aucune source en echec.
 ### Action 2 - Prochaine portee
 
 La feuille de route du produit cible est dans
-`docs/INSURER_VIGIE_ROADMAP.md`. Les Slices 10 a 17 font migrer la vigie des
-quatre assureurs de personnes canadiens : contrat metier, acquisition officielle,
-extraction deterministe, validation/fraicheur, secours IA, actualites officielles,
-experience App et exploitation. Ne pas ajouter RAG, agent, sentiment ou scoring
-hors de cette feuille de route.
+`docs/INSURER_VIGIE_ROADMAP.md`. Les choix produit des Slices 10 a 14 sont
+versionnes dans `config/finance_policy.yaml`. La prochaine action est le gate
+Databricks du wheel 0.5.0 et du point d'entree `finance_publish` sur fixture :
+tests Databricks Connect, run borne, rerun idempotent, audit
+`workspace.vigie.finance_run_audit`, documents
+`workspace.vigie.financial_documents`, reconciliation et verification du
+last-known-good. Le Job reste sans schedule. L'acquisition live ne
+sera activee qu'apres ce gate. Ne pas ajouter RAG, agent, sentiment ou scoring.
+
+### Validation locale et Databricks Connect de la version 0.5.0
+
+Confirme le 4 septembre 2026 :
+
+- suite locale hors marqueurs Databricks reussie;
+- wheel `vigie_databricks_foundation-0.5.0-py3-none-any.whl` construit;
+- gate Databricks Connect complet reussi, sauf l'acceptation News live
+  volontairement desactivee par `RUN_SLICE7_LIVE`;
+- upserts Delta idempotents confirmes pour les documents et l'audit Finance;
+- regression Spark Connect News corrigee par un schema Bronze explicite;
+- tables de test UUID nettoyees;
+- wheel, configuration et fixture televerses dans
+  `/Users/jerome.plante@hotmail.com/vigie_databricks_finance`;
+- Job Finance `319208446632488` migre vers `finance_publish` et wheel 0.5.0;
+- premier run `647115018039226` SUCCESS : 4 insertions, comptes
+  Bronze/Silver/Gold 7/7/6, aucune ligne rejetee, reconciliations a zero;
+- rerun `429054234619694` SUCCESS : zero insertion, zero mise a jour, zero
+  suppression et comptes inchanges 7/7/6;
+- deux lignes `current` dans `workspace.vigie.finance_run_audit`, une par run;
+- aucun schedule Finance actif.
+
+Prochaine action : implementer et accepter la chaine d'acquisition live vers
+`workspace.vigie.financial_documents` et le volume brut avant toute activation
+du schedule. Conserver le mode fixture comme acceptance reproductible.
 
 ## 11. Instruction exacte de reprise
 
