@@ -13,7 +13,7 @@ from vigie_databricks.insurer_contract import FinancialSource, InsurerContract
 FINANCIAL_DOCUMENT_SCHEMA = (
     "document_id string,company_id string,source_id string,document_type string,"
     "source_url string,content_hash string,etag string,last_modified string,"
-    "content_type string,content_length long,published_at timestamp,fetched_at timestamp,"
+    "content_type string,content_length long,raw_content_path string,published_at timestamp,fetched_at timestamp,"
     "acquisition_status string,error_code string"
 )
 FINANCE_RUN_AUDIT_SCHEMA = (
@@ -36,6 +36,7 @@ class FinancialDocument:
     last_modified: str | None
     content_type: str | None
     content_length: int | None
+    raw_content_path: str | None
     published_at: datetime | None
     fetched_at: datetime
     acquisition_status: str
@@ -59,6 +60,7 @@ def create_financial_document(
     etag: str | None = None,
     last_modified: str | None = None,
     content_type: str | None = None,
+    raw_content_path: str | None = None,
     published_at: datetime | None = None,
     error_code: str | None = None,
     fetched_at: datetime | None = None,
@@ -89,6 +91,7 @@ def create_financial_document(
         last_modified,
         content_type,
         len(content) if content is not None else None,
+        raw_content_path,
         published_at,
         fetched_at or datetime.now(UTC),
         acquisition_status,

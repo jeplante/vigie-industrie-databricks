@@ -68,6 +68,7 @@ def test_failed_document_records_a_reason_without_content() -> None:
 def test_finance_schemas_include_provenance_and_run_counters() -> None:
     assert "source_url string" in FINANCIAL_DOCUMENT_SCHEMA
     assert "content_hash string" in FINANCIAL_DOCUMENT_SCHEMA
+    assert "raw_content_path string" in FINANCIAL_DOCUMENT_SCHEMA
     assert "acquisition_status string" in FINANCIAL_DOCUMENT_SCHEMA
     assert "sources_succeeded long" in FINANCE_RUN_AUDIT_SCHEMA
     assert "candidate_observations long" in FINANCE_RUN_AUDIT_SCHEMA

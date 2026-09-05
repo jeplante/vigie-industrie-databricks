@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import requests
+from databricks.sdk.core import Config
 from typing import Any
 
 from vigie_databricks.insurer_contract import InsurerContract, parse_finance_observation_candidate
@@ -55,4 +57,19 @@ def invoke_finance_ai(
     content = message.get("content") if isinstance(message, dict) else None
     if not isinstance(content, str):
         raise ValueError("invalid_finance_ai_response")
-    return parse_finance_ai_output(content, contract)
+    parsed = parse_finance_ai_output(content, contract)
+    if parsed["source_excerpt"].strip() not in source_text:
+        raise ValueError("invalid_finance_ai_excerpt_provenance")
+    return parsed
+
+
+def call_finance_model(payload: dict[str, Any], model_name: str) -> dict[str, Any]:
+    config = Config()
+    response = requests.post(
+        f"{config.host.rstrip('/')}/serving-endpoints/{model_name}/invocations",
+        headers={**config.authenticate(), "Content-Type": "application/json"},
+        json=payload,
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()

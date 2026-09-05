@@ -1,0 +1,50 @@
+{
+  "job_id": 319208446632488,
+  "new_settings": {
+    "name": "vigie-finance-live",
+    "max_concurrent_runs": 1,
+    "schedule": {
+      "quartz_cron_expression": "0 15 6 * * ?",
+      "timezone_id": "America/Toronto",
+      "pause_status": "UNPAUSED"
+    },
+    "parameters": [
+      {"name": "bronze_object", "default": "workspace.vigie.bronze_observations"},
+      {"name": "silver_object", "default": "workspace.vigie.silver_observations"},
+      {"name": "gold_object", "default": "workspace.vigie.gold_observations"},
+      {"name": "finance_audit_object", "default": "workspace.vigie.finance_run_audit"},
+      {"name": "financial_documents_object", "default": "workspace.vigie.financial_documents"},
+      {"name": "dry_run", "default": "false"},
+      {"name": "ai_fallback", "default": "true"},
+      {"name": "ai_model", "default": "databricks-gpt-oss-20b"},
+      {"name": "config_directory", "default": "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/config"}
+    ],
+    "environments": [{
+      "environment_key": "Default",
+      "spec": {
+        "environment_version": "5",
+        "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/vigie_databricks_foundation-0.6.4-py3-none-any.whl"]
+      }
+    }],
+    "tasks": [{
+      "task_key": "finance_live",
+      "environment_key": "Default",
+      "python_wheel_task": {
+        "package_name": "vigie_databricks_foundation",
+        "entry_point": "finance_live",
+        "parameters": [
+          "--config-directory", "{{job.parameters.config_directory}}",
+          "--documents-object", "{{job.parameters.financial_documents_object}}",
+          "--dry-run", "{{job.parameters.dry_run}}",
+          "--ai-fallback", "{{job.parameters.ai_fallback}}",
+          "--ai-model", "{{job.parameters.ai_model}}",
+          "--bronze-object", "{{job.parameters.bronze_object}}",
+          "--silver-object", "{{job.parameters.silver_object}}",
+          "--gold-object", "{{job.parameters.gold_object}}",
+          "--audit-object", "{{job.parameters.finance_audit_object}}",
+          "--run-id", "{{job.run_id}}"
+        ]
+      }
+    }]
+  }
+}

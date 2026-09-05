@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import html as html_module
 from html.parser import HTMLParser
 import re
 from urllib.parse import urljoin, urlparse
@@ -10,7 +11,7 @@ from urllib.parse import urljoin, urlparse
 from vigie_databricks.insurer_contract import FinancialSource
 
 
-QUARTERLY_PATTERN = re.compile(r"\b(q[1-4]|quarter|quarterly|trimestre)\b", re.IGNORECASE)
+QUARTERLY_PATTERN = re.compile(r"\b(q[1-4](?:\d{2})?|[1-4]q\d{2}|quarter|quarterly|trimestre)\b", re.IGNORECASE)
 ANNUAL_PATTERN = re.compile(r"\b(annual|year[ -]?end|annuel)\b", re.IGNORECASE)
 
 
@@ -18,6 +19,7 @@ ANNUAL_PATTERN = re.compile(r"\b(annual|year[ -]?end|annuel)\b", re.IGNORECASE)
 class DiscoveredFinancialDocument:
     document_type: str
     source_url: str
+    title: str
 
 
 class _LinkCollector(HTMLParser):
@@ -47,8 +49,17 @@ class _LinkCollector(HTMLParser):
 def discover_financial_documents(html: str, source: FinancialSource) -> list[DiscoveredFinancialDocument]:
     collector = _LinkCollector()
     collector.feed(html)
+    decoded = html_module.unescape(html)
+    embedded = [
+        (match.group("href"), match.group("title"))
+        for match in re.finditer(
+            r'"title"\s*:\s*"(?P<title>[^"]+)"\s*,\s*"href"\s*:\s*"(?P<href>[^"]+)"',
+            decoded,
+            re.IGNORECASE,
+        )
+    ]
     documents: dict[tuple[str, str], DiscoveredFinancialDocument] = {}
-    for href, text in collector.links:
+    for href, text in [*collector.links, *embedded]:
         url = urljoin(source.url, href)
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in source.allowed_hosts:
@@ -58,7 +69,8 @@ def discover_financial_documents(html: str, source: FinancialSource) -> list[Dis
         material = f"{text} {parsed.path}"
         document_type = _document_type(material)
         if document_type and document_type in source.document_types:
-            documents[(document_type, url)] = DiscoveredFinancialDocument(document_type, url)
+            title = re.sub(r"\s+", " ", text).strip()
+            documents[(document_type, url)] = DiscoveredFinancialDocument(document_type, url, title)
     return [documents[key] for key in sorted(documents)]
 
 

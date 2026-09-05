@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.error import HTTPError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from vigie_databricks.finance_documents import FinancialDocument, create_financial_document
@@ -12,6 +13,23 @@ from vigie_databricks.insurer_contract import InsurerContract
 
 
 ALLOWED_DOCUMENT_CONTENT_TYPES = {"application/pdf", "text/html", "application/xhtml+xml"}
+
+
+def acquire_discovery_page(source, *, timeout_seconds: int = 20, max_response_bytes: int = 2_000_000) -> str:
+    """Fetch one approved landing page without following redirects to an unapproved host."""
+    if not 1 <= timeout_seconds <= 60 or not 1 <= max_response_bytes <= 5_000_000:
+        raise ValueError("invalid discovery page limits")
+    request = Request(source.url, headers={"User-Agent": "VigieDatabricks/1.0", "Accept": "text/html"})
+    with urlopen(request, timeout=timeout_seconds) as response:
+        final_host = urlparse(response.geturl()).hostname
+        if final_host not in source.allowed_hosts:
+            raise ValueError("Discovery redirect host is not approved")
+        if response.headers.get_content_type().lower() not in {"text/html", "application/xhtml+xml"}:
+            raise ValueError("Unsupported discovery page content type")
+        content = response.read(max_response_bytes + 1)
+        if len(content) > max_response_bytes:
+            raise ValueError("Discovery page exceeds the configured size limit")
+        return content.decode(response.headers.get_content_charset() or "utf-8", errors="replace")
 
 
 @dataclass(frozen=True)

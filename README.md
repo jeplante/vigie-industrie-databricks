@@ -39,6 +39,13 @@ Le point d'entrée `finance_publish` valide tout le lot avant la première
 tables Bronze/Silver/Gold existantes. Gold n'est avancé qu'après une
 réconciliation Silver réussie.
 
+Le point d'entrée `finance_live` découvre un seul rapport récent par assureur,
+télécharge chaque document avec des limites strictes et des requêtes
+conditionnelles ETag/Last-Modified, puis conserve le contenu par hash dans
+`/Volumes/workspace/vigie/finance_raw`. L'extraction PDF est déterministe;
+Model Serving n'est appelé que si elle ne produit aucun KPI. Un échec d'une
+source bloque toute publication et toute activation du schedule.
+
 Les périodes assurance utilisent `YYYY-Q1` à `YYYY-Q4` ou `YYYY-AN`. Silver et
 Gold restent compatibles avec les anciens identifiants `YYYYQ1` à `YYYYQ4`.
 
@@ -72,8 +79,8 @@ uv run --extra databricks_connect --python 3.12 pytest -m databricks_connect -q 
 
 ## Déploiement Finance
 
-`databricks_slice4_job.template.json` décrit le Job Finance non planifié utilisant le
-wheel `0.5.0`. Avant son premier run :
+`databricks_slice4_job.template.json` décrit le Job Finance live non planifié utilisant le
+wheel `0.6.4`. Avant son premier run :
 
 1. construire et téléverser le wheel;
 2. téléverser `config/` et la fixture d'acceptation aux chemins configurés;
