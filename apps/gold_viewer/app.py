@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from pathlib import Path
 
 from gold_data import (
     GoldConfig,
@@ -16,7 +17,8 @@ from gold_data import (
 from display import display_number, display_percentage, display_value
 
 
-st.set_page_config(page_title="Gold comparison viewer", layout="wide")
+st.set_page_config(page_title="Vigie de l’industrie", page_icon="📊", layout="wide")
+st.markdown(f"<style>{Path(__file__).with_name('style.css').read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
 @st.cache_resource(show_spinner=False)
@@ -59,8 +61,11 @@ def latest_finance_audit(config: GoldConfig) -> dict | None:
     return fetch_latest_finance_audit(connection(), config)
 
 
-st.title("Gold comparison viewer")
-st.caption("Read-only view of the deterministic Gold comparison mart.")
+st.markdown('''<header class="vigie-header">
+<p class="vigie-eyebrow">Assurance de personnes · Canada</p>
+<h1>Vigie de l’industrie</h1>
+<p>MFC · SLF · GWO · IAG — résultats et actualités</p>
+</header>''', unsafe_allow_html=True)
 
 try:
     config = GoldConfig.from_environment()
@@ -69,7 +74,7 @@ except Exception as exc:
     st.error(f"Gold data is unavailable: {exc}")
     st.stop()
 
-with st.expander("News pipeline health", expanded=False):
+with st.expander("Suivi des actualités · détails techniques", expanded=False):
     try:
         audit = latest_news_ai_audit(config)
     except Exception:
@@ -84,7 +89,7 @@ with st.expander("News pipeline health", expanded=False):
     else:
         st.caption("No Slice 8 AI audit is available yet.")
 
-with st.expander("Finance pipeline health", expanded=False):
+with st.expander("Fraîcheur des données financières", expanded=False):
     try:
         finance_audit = latest_finance_audit(config)
     except Exception:
@@ -92,9 +97,9 @@ with st.expander("Finance pipeline health", expanded=False):
     if finance_audit:
         first, second, third, fourth = st.columns(4)
         first.metric("Sources", f"{finance_audit['sources_succeeded']} / 4")
-        second.metric("Documents unchanged", finance_audit["documents_unchanged"])
-        third.metric("AI calls", finance_audit["ai_model_calls"] or 0)
-        fourth.metric("Quality", finance_audit["quality_status"])
+        second.metric("Documents inchangés", finance_audit["documents_unchanged"])
+        third.metric("Appels IA", finance_audit["ai_model_calls"] or 0)
+        fourth.metric("Qualité", finance_audit["quality_status"])
         st.caption(f"Run {finance_audit['run_id']} | {finance_audit['observed_at']} | expired files: {finance_audit['retention_deleted_files'] or 0}")
     else:
         st.caption("No Finance audit is available yet.")
@@ -103,14 +108,15 @@ if not available_companies:
     st.info("No companies are available in the Gold table.")
     st.stop()
 
-selected_company = st.selectbox("Company", available_companies)
+st.subheader("Résultats par compagnie")
+selected_company = st.selectbox("Assureur", available_companies)
 available_metrics = metrics(config, selected_company)
 
 if not available_metrics:
     st.info("No metrics are available for the selected company.")
     st.stop()
 
-selected_metric = st.selectbox("Metric", available_metrics)
+selected_metric = st.selectbox("Indicateur", available_metrics)
 comparison_rows = comparison(config, selected_company, selected_metric)
 company_comparison_rows = comparison(config, selected_company)
 
@@ -126,23 +132,23 @@ try:
 except Exception:
     provenance = None
 if provenance:
-    st.caption(f"Freshness: {provenance['fetched_at']} | Period: {provenance['reporting_period']} | Status: {provenance['acquisition_status']}")
-    st.link_button("Open official financial report", provenance["source_url"])
+    st.caption(f"Vérifié le {provenance['fetched_at']} · Période : {provenance['reporting_period']} · {provenance['acquisition_status']}")
+    st.link_button("Consulter le rapport officiel ↗", provenance["source_url"])
 else:
     st.caption(f"Period: {row['current_period_id']} | No matching source document is available.")
 
 first, second, third, fourth = st.columns(4)
-first.metric("Current period", display_value(row["current_period_id"]))
-second.metric("Current value", display_number(row["current_value"]))
-third.metric("Previous period", display_value(row["previous_period_id"], "No previous period"))
-fourth.metric("Previous value", display_number(row["previous_value"]))
+first.metric("Période courante", display_value(row["current_period_id"]))
+second.metric("Valeur courante", display_number(row["current_value"]))
+third.metric("Période précédente", display_value(row["previous_period_id"], "Non disponible"))
+fourth.metric("Valeur précédente", display_number(row["previous_value"]))
 
 first, second, third = st.columns(3)
-first.metric("Absolute change", display_number(row["change_value"]))
-second.metric("Percentage change", display_percentage(row["change_pct"]))
-third.metric("Direction", display_value(row["direction"]))
+first.metric("Variation absolue", display_number(row["change_value"]))
+second.metric("Variation relative", display_percentage(row["change_pct"]))
+third.metric("Tendance", display_value(row["direction"]))
 
-st.subheader("Available metrics")
+st.subheader("Tous les indicateurs")
 table_rows = []
 for metric_row in company_comparison_rows:
     table_rows.append(
@@ -160,8 +166,8 @@ for metric_row in company_comparison_rows:
 st.dataframe(table_rows, hide_index=True, width="stretch")
 
 st.divider()
-st.subheader("News")
-st.caption("Read-only latest enriched news. Company-specific results are shown when deterministic mapping exists; otherwise the latest enriched news is shown globally.")
+st.subheader("Actualités")
+st.caption("Les dernières actualités de l’assureur, ou de l’ensemble du secteur lorsque le rattachement à une compagnie est indisponible.")
 st.caption(
     "Statistique Canada : adapté du Quotidien (Fabrication et Commerce international). "
     "Ceci ne constitue pas un endossement de Statistique Canada."
@@ -177,4 +183,7 @@ for article in news_rows:
     categories = article.get("categories") or []
     if categories:
         st.caption("Categories: " + ", ".join(categories))
-    st.link_button("Open source", article["source_url"])
+    st.link_button("Consulter la source ↗", article["source_url"])
+
+st.divider()
+st.caption("Données issues de sources publiques. Vérifiez toujours les documents officiels avant une décision financière.")

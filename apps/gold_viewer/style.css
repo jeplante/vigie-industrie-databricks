@@ -1,0 +1,16 @@
+:root { color-scheme: light; }
+.stApp { background: #f4f7f9; color: #0f2433; }
+.stMainBlockContainer { max-width: 1240px; padding-top: 2rem; }
+.vigie-header { background: linear-gradient(120deg,#123b4a,#146c7e); color: white; padding: 2.1rem 2rem; border-radius: .8rem; margin-bottom: 1.5rem; }
+.vigie-header h1 { color: white; font-size: clamp(1.8rem,4vw,2.65rem); letter-spacing: -.03em; padding: 0; margin-bottom: .3rem; }
+.vigie-header p { color: #d8ebee; margin: 0; }
+.vigie-header .vigie-eyebrow { color: #efbb3e; font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .4rem; }
+[data-testid="stMetric"] { background: white; border: 1px solid #d7e0e5; border-top: 3px solid #146c7e; border-radius: .65rem; padding: 1rem; box-shadow: 0 10px 30px rgb(15 36 51 / 8%); height: 100%; }
+[data-testid="stMetricLabel"] { color: #5f6f7d; }
+[data-testid="stMetricValue"] { font-size: clamp(1.3rem,2.6vw,2.15rem); font-weight: 800; letter-spacing: -.04em; }
+[data-testid="stExpander"], [data-testid="stDataFrame"] { background: white; border-radius: .7rem; }
+h2,h3 { color: #123b4a; letter-spacing: -.02em; }
+[data-testid="stCaptionContainer"] { color: #5f6f7d; }
+[data-testid="stLinkButton"] a { background: white; color: #146c7e; border: 1px solid #d7e0e5; border-radius: .55rem; font-weight: 700; }
+a:focus-visible, button:focus-visible { outline: 3px solid #f2b84b !important; outline-offset: 3px; }
+@media(max-width:620px) { .vigie-header { padding: 1.4rem 1rem; } .stMainBlockContainer { padding: 1rem; } }
