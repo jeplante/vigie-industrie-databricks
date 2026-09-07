@@ -10,7 +10,7 @@ env:
   - name: "GOLD_TABLE"
     value: "gold_observations"
   - name: "GOLD_NEWS_TABLE"
-    value: "gold_news"
+    value: "official_news"
   - name: "NEWS_AI_AUDIT_TABLE"
     value: "news_ai_run_audit"
   - name: "FINANCE_DOCUMENTS_TABLE"

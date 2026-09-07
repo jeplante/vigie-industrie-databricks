@@ -4,12 +4,12 @@
   "schedule": {
     "quartz_cron_expression": "0 0 0/6 * * ?",
     "timezone_id": "America/Toronto",
-    "pause_status": "UNPAUSED"
+    "pause_status": "PAUSED"
   },
   "parameters": [
     {"name": "source_mode", "default": "live"},
     {"name": "source_url", "default": ""},
-    {"name": "sources_json", "default": "[{\"source_id\":\"statcan_manufacturing\",\"url\":\"https://www150.statcan.gc.ca/n1/rss/dai-quo/16-eng.atom\",\"enabled\":true},{\"source_id\":\"statcan_international_trade\",\"url\":\"https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom\",\"enabled\":true}]"},
+    {"name": "sources_json", "default": "[]"},
     {"name": "max_articles", "default": "25"},
     {"name": "fixture_path", "default": "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_slice6/slice6_news_rss.xml"},
     {"name": "bronze_object", "default": "workspace.vigie.bronze_news"},

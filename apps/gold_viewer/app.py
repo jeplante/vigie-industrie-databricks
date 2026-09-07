@@ -10,7 +10,7 @@ from gold_data import (
     fetch_company_metrics,
     fetch_comparison,
     fetch_news,
-    fetch_latest_news_ai_audit,
+    fetch_official_news_audit,
     fetch_finance_provenance,
     fetch_latest_finance_audit,
 )
@@ -48,7 +48,7 @@ def news(config: GoldConfig, company_id: str) -> list[dict]:
 
 @st.cache_data(ttl=60, show_spinner=False)
 def latest_news_ai_audit(config: GoldConfig) -> dict | None:
-    return fetch_latest_news_ai_audit(connection(), config)
+    return fetch_official_news_audit(connection(), config)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -74,20 +74,20 @@ except Exception as exc:
     st.error(f"Gold data is unavailable: {exc}")
     st.stop()
 
-with st.expander("Suivi des actualités · détails techniques", expanded=False):
+with st.expander("Suivi des communiqués officiels", expanded=False):
     try:
         audit = latest_news_ai_audit(config)
     except Exception:
         audit = None
     if audit:
         first, second, third, fourth = st.columns(4)
-        first.metric("Model calls", f"{audit['model_calls']} / {audit['max_model_calls']}")
-        second.metric("Succeeded", audit["succeeded_rows"])
-        third.metric("Deferred", audit["deferred_rows"])
-        fourth.metric("Invalid / failed", audit["invalid_output_rows"] + audit["failed_rows"])
-        st.caption(f"Run {audit['run_id']} | {audit['observed_at']} | {audit['model_name']} | {audit['prompt_version']}")
+        first.metric("Sources", f"{audit['sources_succeeded']} / 4")
+        second.metric("Communiqués vérifiés", audit["articles"])
+        third.metric("Nouveaux / modifiés", f"{audit['inserted_rows']} / {audit['updated_rows']}")
+        fourth.metric("Appels IA", audit['model_calls'])
+        st.caption(f"Dernière vérification : {audit['observed_at']}")
     else:
-        st.caption("No Slice 8 AI audit is available yet.")
+        st.caption("Le premier audit des communiqués officiels n’est pas encore disponible.")
 
 with st.expander("Fraîcheur des données financières", expanded=False):
     try:
@@ -126,6 +126,8 @@ if not comparison_rows:
 
 row = comparison_rows[0]
 st.subheader(f"{selected_company} / {selected_metric}")
+if row["previous_value"] is None:
+    st.info("La valeur courante est disponible. Aucune valeur antérieure comparable n’est encore publiée : les variations ne peuvent pas être calculées.")
 
 try:
     provenance = finance_provenance(config, selected_company, row["current_period_id"])
@@ -167,19 +169,23 @@ st.dataframe(table_rows, hide_index=True, width="stretch")
 
 st.divider()
 st.subheader("Actualités")
+st.caption("Relations investisseurs · Extraits officiels, sans résumé IA. Manuvie : communiqués trimestriels PDF. Les dates non fournies par la source ne sont pas estimées.")
 st.caption("Les dernières actualités de l’assureur, ou de l’ensemble du secteur lorsque le rattachement à une compagnie est indisponible.")
-st.caption(
-    "Statistique Canada : adapté du Quotidien (Fabrication et Commerce international). "
-    "Ceci ne constitue pas un endossement de Statistique Canada."
-)
-news_rows = news(config, selected_company)
-if not news_rows:
-    news_rows = fetch_news(connection(), config)
-    st.caption("No deterministic company mapping was available; showing latest enriched news globally.")
+try:
+    news_rows = news(config, selected_company)
+    if not news_rows:
+        news_rows = fetch_news(connection(), config)
+        st.caption("Aucune actualité rattachée à cet assureur : affichage des actualités du secteur.")
+except Exception:
+    import logging
+    logging.getLogger(__name__).exception("News query failed")
+    news_rows = []
+    st.warning("Les actualités sont temporairement indisponibles. Les résultats financiers restent consultables.")
 for article in news_rows:
-    published = display_value(article["published_at"])
+    published = display_value(article["published_at"], "Date non fournie")
     st.markdown(f"**{article['title']}**  \n{article['source']} · {published}")
-    st.write(article["summary"] or "N/A")
+    if article["summary"]:
+        st.write(article["summary"])
     categories = article.get("categories") or []
     if categories:
         st.caption("Categories: " + ", ".join(categories))

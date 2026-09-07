@@ -82,7 +82,7 @@ def fetch_companies(connection: Any, config: GoldConfig) -> list[str]:
         f"""
         SELECT DISTINCT company_id
         FROM {config.qualified_table}
-        WHERE company_id IS NOT NULL
+        WHERE company_id IN ('MFC', 'SLF', 'GWO', 'IAG')
         ORDER BY company_id
         """,
     )
@@ -129,15 +129,15 @@ def fetch_comparison(
 
 
 def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
-    filters = ["enrichment_status = 'succeeded'"]
+    filters = ["enrichment_status = 'succeeded'", "parse_url(source_url, 'HOST') IN ('www.manulife.com', 'www.sunlife.com', 'www.greatwestlifeco.com', 'ia.ca')"]
     parameters: list[Any] = []
     if company_id:
-        filters.append("(company_id = ? OR array_contains(relevant_company_ids, ?))")
-        parameters.extend([company_id, company_id])
+        filters.append("array_contains(relevant_company_ids, ?)")
+        parameters.append(company_id)
     return _query(
         connection,
         f"""
-        SELECT article_id, source, source_type, company_id, source_url, title, published_at,
+        SELECT article_id, source, source_url, title, published_at,
                summary, categories, relevant_company_ids
         FROM {".".join(f"`{part}`" for part in (config.catalog, config.schema, config.news_table))}
         WHERE {' AND '.join(filters)}
@@ -163,6 +163,12 @@ def fetch_latest_news_ai_audit(connection: Any, config: GoldConfig) -> dict[str,
         LIMIT 1
         """,
     )
+    return rows[0] if rows else None
+
+
+def fetch_official_news_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
+    table = f'`{config.catalog}`.`{config.schema}`.`official_news_audit`'
+    rows = _query(connection, f'SELECT run_id, observed_at, sources_succeeded, articles, inserted_rows, updated_rows, model_calls FROM {table} ORDER BY observed_at DESC LIMIT 1')
     return rows[0] if rows else None
 
 

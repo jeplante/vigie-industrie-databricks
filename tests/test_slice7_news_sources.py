@@ -124,14 +124,11 @@ def test_multi_source_failure_is_isolated(monkeypatch):
         acquire_sources([NewsSource("failed", "https://www150.statcan.gc.ca/failed.atom")])
 
 
-def test_job_template_has_approved_sources_and_active_schedule():
+def test_legacy_statcan_job_is_decommissioned():
     template = json.loads(Path("databricks_slice6_news_job.template.json").read_text(encoding="utf-8"))
     parameters = {item["name"]: item["default"] for item in template["parameters"]}
     sources = json.loads(parameters["sources_json"])
-    assert [source["source_id"] for source in sources] == [
-        "statcan_manufacturing",
-        "statcan_international_trade",
-    ]
+    assert sources == []
     assert parameters["source_mode"] == "live"
     assert parameters["max_articles"] == "25"
     assert parameters["max_model_calls"] == "10"
@@ -139,7 +136,7 @@ def test_job_template_has_approved_sources_and_active_schedule():
     assert template["schedule"] == {
         "quartz_cron_expression": "0 0 0/6 * * ?",
         "timezone_id": "America/Toronto",
-        "pause_status": "UNPAUSED",
+        "pause_status": "PAUSED",
     }
     ai_task = next(task for task in template["tasks"] if task["task_key"] == "news_ai_enrichment")
     task_parameters = ai_task["python_wheel_task"]["parameters"]

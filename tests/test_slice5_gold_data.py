@@ -114,9 +114,9 @@ def test_fetch_latest_news_ai_audit_is_read_only():
 def test_fetch_news_uses_deterministic_and_model_company_provenance():
     connection = FakeConnection([], [])
     fetch_news(connection, config(), "MFC")
-    assert connection.cursor_instance.parameters == ["MFC", "MFC"]
-    assert "company_id = ? OR array_contains" in connection.cursor_instance.statement
-    assert "source_type" in connection.cursor_instance.statement
+    assert connection.cursor_instance.parameters == ["MFC"]
+    assert "array_contains(relevant_company_ids, ?)" in connection.cursor_instance.statement
+    assert "source_type" not in connection.cursor_instance.statement
 
 
 def test_fetch_finance_provenance_binds_company_and_period():
