@@ -1,228 +1,107 @@
 from __future__ import annotations
 
-import streamlit as st
 from pathlib import Path
 import pandas as pd
-
-from gold_data import (
-    GoldConfig,
-    connect_to_warehouse,
-    fetch_companies,
-    fetch_company_metrics,
-    fetch_comparison,
-    fetch_metric_history,
-    fetch_news,
-    fetch_official_news_audit,
-    fetch_finance_provenance,
-    fetch_latest_finance_audit,
-)
+import streamlit as st
 from display import display_number, display_percentage, display_value
-from vigie_databricks.finance_history import history_basis
+from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_metric_history, fetch_news, fetch_official_news_audit
 
+ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 
-st.set_page_config(page_title="Vigie de l’industrie", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Vigie de l'industrie", page_icon="📊", layout="wide")
 st.markdown(f"<style>{Path(__file__).with_name('style.css').read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
-
 @st.cache_resource(show_spinner=False)
-def connection():
-    return connect_to_warehouse()
-
-
+def connection(): return connect_to_warehouse()
 @st.cache_data(ttl=60, show_spinner=False)
-def companies(config: GoldConfig) -> list[str]:
-    return fetch_companies(connection(), config)
-
-
+def companies(config): return fetch_companies(connection(), config)
 @st.cache_data(ttl=60, show_spinner=False)
-def metrics(config: GoldConfig, company_id: str) -> list[str]:
-    return fetch_company_metrics(connection(), config, company_id)
-
-
+def company_rows(config, company): return fetch_comparison(connection(), config, company)
 @st.cache_data(ttl=60, show_spinner=False)
-def comparison(config: GoldConfig, company_id: str, metric_id: str | None = None) -> list[dict]:
-    return fetch_comparison(connection(), config, company_id, metric_id)
-
-
+def history(config, metric): return fetch_metric_history(connection(), config, metric)
 @st.cache_data(ttl=60, show_spinner=False)
-def metric_history(config: GoldConfig, metric_id: str) -> list[dict]:
-    return fetch_metric_history(connection(), config, metric_id)
+def company_news(config, company): return fetch_news(connection(), config, company)
 
-
-@st.cache_data(ttl=60, show_spinner=False)
-def news(config: GoldConfig, company_id: str) -> list[dict]:
-    return fetch_news(connection(), config, company_id)
-
-
-@st.cache_data(ttl=60, show_spinner=False)
-def latest_news_ai_audit(config: GoldConfig) -> dict | None:
-    return fetch_official_news_audit(connection(), config)
-
-
-@st.cache_data(ttl=60, show_spinner=False)
-def finance_provenance(config: GoldConfig, company_id: str, period_id: str) -> dict | None:
-    return fetch_finance_provenance(connection(), config, company_id, period_id)
-
-
-@st.cache_data(ttl=60, show_spinner=False)
-def latest_finance_audit(config: GoldConfig) -> dict | None:
-    return fetch_latest_finance_audit(connection(), config)
-
-
-st.markdown('''<header class="vigie-header">
-<p class="vigie-eyebrow">Assurance de personnes · Canada</p>
-<h1>Vigie de l’industrie</h1>
-<p>MFC · SLF · GWO · IAG — résultats et actualités</p>
-</header>''', unsafe_allow_html=True)
-
+st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)
 try:
     config = GoldConfig.from_environment()
     available_companies = companies(config)
 except Exception as exc:
-    st.error(f"Gold data is unavailable: {exc}")
+    st.error(f"Les données sont indisponibles : {exc}")
     st.stop()
-
-with st.expander("Suivi des communiqués officiels", expanded=False):
-    try:
-        audit = latest_news_ai_audit(config)
-    except Exception:
-        audit = None
-    if audit:
-        first, second, third, fourth = st.columns(4)
-        first.metric("Sources", f"{audit['sources_succeeded']} / 4")
-        second.metric("Communiqués vérifiés", audit["articles"])
-        third.metric("Nouveaux / modifiés", f"{audit['inserted_rows']} / {audit['updated_rows']}")
-        fourth.metric("Appels IA", audit['model_calls'])
-        st.caption(f"Dernière vérification : {audit['observed_at']}")
-    else:
-        st.caption("Le premier audit des communiqués officiels n’est pas encore disponible.")
-
-with st.expander("Fraîcheur des données financières", expanded=False):
-    try:
-        finance_audit = latest_finance_audit(config)
-    except Exception:
-        finance_audit = None
-    if finance_audit:
-        first, second, third, fourth = st.columns(4)
-        first.metric("Sources", f"{finance_audit['sources_succeeded']} / 4")
-        second.metric("Documents inchangés", finance_audit["documents_unchanged"])
-        third.metric("Appels IA", finance_audit["ai_model_calls"] or 0)
-        fourth.metric("Qualité", finance_audit["quality_status"])
-        st.caption(f"Run {finance_audit['run_id']} | {finance_audit['observed_at']} | expired files: {finance_audit['retention_deleted_files'] or 0}")
-    else:
-        st.caption("No Finance audit is available yet.")
-
 if not available_companies:
-    st.info("No companies are available in the Gold table.")
+    st.info("Aucune compagnie n'est disponible dans les données publiées.")
     st.stop()
 
-st.subheader("Résultats par compagnie")
-selected_company = st.selectbox("Assureur", available_companies)
-available_metrics = metrics(config, selected_company)
+all_rows = {company: company_rows(config, company) for company in available_companies}
+metrics = sorted({r["metric_id"] for rows in all_rows.values() for r in rows if r.get("metric_id")})
+with st.sidebar:
+    st.caption("État des sources")
+    try:
+        finance_audit = fetch_latest_finance_audit(connection(), config)
+        news_audit = fetch_official_news_audit(connection(), config)
+    except Exception:
+        finance_audit = news_audit = None
+    if finance_audit:
+        st.metric("Finance", f"{finance_audit['sources_succeeded']} / 4")
+        st.caption(f"Vérifié : {finance_audit['observed_at']}")
+    if news_audit:
+        st.metric("Actualités officielles", f"{news_audit['sources_succeeded']} / 4")
 
-if not available_metrics:
-    st.info("No metrics are available for the selected company.")
-    st.stop()
+summary_tab, company_tab = st.tabs(["Synthèse", "Par compagnie"])
+with summary_tab:
+    st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
+    st.subheader("Résultats des quatre compagnies")
+    st.caption("Une rangée par assureur, à partir des dernières données publiées.")
+    summary = []
+    for company, rows in all_rows.items():
+        period = next((r["current_period_id"] for r in rows if r.get("current_period_id")), None)
+        summary.append({"Compagnie": company, "Période": display_value(period, "Non disponible"), "Indicateurs publiés": len(rows), "Variations disponibles": sum(r.get("previous_value") is not None for r in rows)})
+    st.dataframe(pd.DataFrame(summary), hide_index=True, width="stretch")
+    st.markdown("<p class='section-eyebrow'>Comparaison multi-assureurs</p>", unsafe_allow_html=True)
+    st.subheader("Évolution historique")
+    if metrics:
+        left, right = st.columns([2, 1])
+        with left: selected_metric = st.selectbox("Indicateur", metrics, key="history_metric")
+        with right:
+            additive = selected_metric in ADDITIVE_METRICS
+            basis = st.selectbox("Base", ["Trimestre", "Cumul annuel"], disabled=not additive, key="history_basis")
+        try: rows = history(config, selected_metric)
+        except Exception: rows = []
+        if rows:
+            frame = pd.DataFrame(rows).sort_values(["company_id", "period_id"])
+            if basis == "Cumul annuel" and additive:
+                frame["year"] = frame["period_id"].str[:4]
+                frame["value"] = frame.groupby(["company_id", "year"])["value"].cumsum()
+                st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année.")
+            else: st.caption("Valeurs trimestrielles validées. Les ratios et actifs restent des valeurs de fin de trimestre.")
+            st.line_chart(frame.pivot(index="period_id", columns="company_id", values="value"), use_container_width=True)
+        else: st.info("Aucune série historique validée n'est encore disponible pour cet indicateur.")
 
-selected_metric = st.selectbox("Indicateur", available_metrics)
-comparison_rows = comparison(config, selected_company, selected_metric)
-company_comparison_rows = comparison(config, selected_company)
-
-if not comparison_rows:
-    st.info("No comparison row is available for the selected company and metric.")
-    st.stop()
-
-row = comparison_rows[0]
-st.subheader(f"{selected_company} / {selected_metric}")
-if row["previous_value"] is None:
-    st.info("La valeur courante est disponible. Aucune valeur antérieure comparable n’est encore publiée : les variations ne peuvent pas être calculées.")
-
-try:
-    provenance = finance_provenance(config, selected_company, row["current_period_id"])
-except Exception:
-    provenance = None
-if provenance:
-    st.caption(f"Vérifié le {provenance['fetched_at']} · Période : {provenance['reporting_period']} · {provenance['acquisition_status']}")
-    st.link_button("Consulter le rapport officiel ↗", provenance["source_url"])
-else:
-    st.caption(f"Period: {row['current_period_id']} | No matching source document is available.")
-
-first, second, third, fourth = st.columns(4)
-first.metric("Période courante", display_value(row["current_period_id"]))
-second.metric("Valeur courante", display_number(row["current_value"]))
-third.metric("Période précédente", display_value(row["previous_period_id"], "Non disponible"))
-fourth.metric("Valeur précédente", display_number(row["previous_value"]))
-
-first, second, third = st.columns(3)
-first.metric("Variation absolue", display_number(row["change_value"]))
-second.metric("Variation relative", display_percentage(row["change_pct"]))
-third.metric("Tendance", display_value(row["direction"]))
-
-st.subheader("Tous les indicateurs")
-table_rows = []
-for metric_row in company_comparison_rows:
-    table_rows.append(
-        {
-            "Metric": metric_row["metric_id"],
-            "Current period": display_value(metric_row["current_period_id"]),
-            "Current value": display_number(metric_row["current_value"]),
-            "Previous period": display_value(metric_row["previous_period_id"], "No previous period"),
-            "Previous value": display_number(metric_row["previous_value"]),
-            "Absolute change": display_number(metric_row["change_value"]),
-            "Percentage change": display_percentage(metric_row["change_pct"]),
-            "Direction": display_value(metric_row["direction"]),
-        }
-    )
-st.dataframe(table_rows, hide_index=True, width="stretch")
-
-st.subheader("Évolution historique")
-history_mode = st.radio(
-    "Base de comparaison",
-    ("Trimestre", "Cumul annuel"),
-    horizontal=True,
-    disabled=history_basis(selected_metric) != "additive",
-    help="Le cumul annuel est disponible seulement pour les mesures additives. Les ratios et actifs restent des valeurs de fin de trimestre.",
-)
-try:
-    history_rows = metric_history(config, selected_metric)
-except Exception:
-    history_rows = []
-if history_rows:
-    history_frame = pd.DataFrame(history_rows)
-    if history_mode == "Cumul annuel" and history_basis(selected_metric) == "additive":
-        history_frame["year"] = history_frame["period_id"].str[:4]
-        history_frame = history_frame.sort_values(["company_id", "period_id"])
-        history_frame["value"] = history_frame.groupby(["company_id", "year"])["value"].cumsum()
-        st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année.")
-    else:
-        st.caption("Valeurs trimestrielles validées. Les ratios et actifs sont affichés à la fin de chaque trimestre.")
-    st.line_chart(history_frame.pivot(index="period_id", columns="company_id", values="value"), use_container_width=True)
-else:
-    st.info("Aucune série historique validée n’est encore disponible pour cet indicateur.")
-
-st.divider()
-st.subheader("Actualités")
-st.caption("Relations investisseurs · Extraits officiels, sans résumé IA. Manuvie : communiqués trimestriels PDF. Les dates non fournies par la source ne sont pas estimées.")
-st.caption("Les dernières actualités de l’assureur, ou de l’ensemble du secteur lorsque le rattachement à une compagnie est indisponible.")
-try:
-    news_rows = news(config, selected_company)
-    if not news_rows:
-        news_rows = fetch_news(connection(), config)
-        st.caption("Aucune actualité rattachée à cet assureur : affichage des actualités du secteur.")
-except Exception:
-    import logging
-    logging.getLogger(__name__).exception("News query failed")
-    news_rows = []
-    st.warning("Les actualités sont temporairement indisponibles. Les résultats financiers restent consultables.")
-for article in news_rows:
-    published = display_value(article["published_at"], "Date non fournie")
-    st.markdown(f"**{article['title']}**  \n{article['source']} · {published}")
-    if article["summary"]:
-        st.write(article["summary"])
-    categories = article.get("categories") or []
-    if categories:
-        st.caption("Categories: " + ", ".join(categories))
-    st.link_button("Consulter la source ↗", article["source_url"])
-
-st.divider()
+with company_tab:
+    st.caption("Consultez tous les indicateurs, la provenance et les communiqués pour chaque assureur.")
+    panels = st.tabs(available_companies)
+    for company, panel in zip(available_companies, panels):
+        with panel:
+            rows = all_rows[company]
+            st.subheader(company)
+            if not rows:
+                st.info("Aucun indicateur publié.")
+                continue
+            period = next((r["current_period_id"] for r in rows if r.get("current_period_id")), None)
+            try: document = fetch_finance_provenance(connection(), config, company, period) if period else None
+            except Exception: document = None
+            if document:
+                st.caption(f"Période : {document['reporting_period']} · Vérifié le {document['fetched_at']}")
+                st.link_button("Consulter le rapport officiel ↗", document["source_url"], key=f"report-{company}")
+            table = [{"Indicateur": r["metric_id"], "Période": display_value(r["current_period_id"]), "Valeur": display_number(r["current_value"]), "Variation": display_percentage(r["change_pct"]), "Tendance": display_value(r["direction"])} for r in rows]
+            st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
+            st.markdown("#### Actualités")
+            try: articles = company_news(config, company)
+            except Exception: articles = []
+            if not articles: st.caption("Aucune actualité officielle n'est disponible pour cette compagnie.")
+            for article in articles:
+                st.markdown(f"**{article['title']}**  \n{article['source']} · {display_value(article['published_at'], 'Date non fournie')}")
+                if article["summary"]: st.write(article["summary"])
+                st.link_button("Consulter la source ↗", article["source_url"], key=article["article_id"])
 st.caption("Données issues de sources publiques. Vérifiez toujours les documents officiels avant une décision financière.")
