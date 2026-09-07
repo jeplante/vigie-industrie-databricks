@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
-from chat_service import ask
+from chat_service import ask, compact_context
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
@@ -130,11 +130,11 @@ if question:
     st.session_state.chat_messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.write(question)
-    context = {
-        "comparisons": [row for rows in all_rows.values() for row in rows],
-        "news": [article for company in available_companies for article in company_news(config, company)][:20],
-        "documents": [doc for company in available_companies if (doc := fetch_finance_provenance(connection(), config, company, current_period))],
-    }
+    context = compact_context(
+        [row for rows in all_rows.values() for row in rows],
+        [article for company in available_companies for article in company_news(config, company)],
+        [doc for company in available_companies if (doc := fetch_finance_provenance(connection(), config, company, current_period))],
+    )
     with st.chat_message("assistant"):
         with st.spinner("Analyse des données publiées..."):
             try:

@@ -97,3 +97,17 @@ def test_ask_serializes_array_like_context(monkeypatch):
 
     assert chat.ask("Montre les valeurs", {"values": ArrayLike(), "news": [], "documents": []}, []) ["answer"] == "ok"
     assert '"values": [1.2, 3.4]' in captured["json"]["messages"][0]["content"]
+
+
+def test_compact_context_removes_unneeded_fields_and_bounds_news():
+    chat = _chat_service()
+    context = chat.compact_context(
+        [{"company_id": "IAG", "metric_id": "net_income", "current_value": 123, "internal": "omit"}],
+        [{"title": "A" * 500, "summary": "B" * 500, "source_url": "https://official.example/a"}] * 9,
+        [{"company_id": "IAG", "reporting_period": "2026-Q2", "source_url": "https://official.example/q2", "hash": "omit"}],
+    )
+
+    assert context["comparisons"] == [{"company_id": "IAG", "metric_id": "net_income", "current_value": 123}]
+    assert len(context["news"]) == 8
+    assert len(context["news"][0]["summary"]) == 360
+    assert context["documents"] == [{"company_id": "IAG", "reporting_period": "2026-Q2", "source_url": "https://official.example/q2"}]
