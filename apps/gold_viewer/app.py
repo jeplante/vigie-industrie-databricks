@@ -17,7 +17,11 @@ from gold_data import (
     fetch_latest_finance_audit,
 )
 from display import display_number, display_percentage, display_value
-from vigie_databricks.finance_history import history_basis
+
+
+def history_basis(metric_id: str) -> str:
+    """Keep the App self-contained; only additive metrics may be summed YTD."""
+    return "additive" if metric_id in {"core_earnings", "net_income", "new_business_value", "ape_sales"} else "point_in_time"
 
 
 st.set_page_config(page_title="Vigie de l’industrie", page_icon="📊", layout="wide")
