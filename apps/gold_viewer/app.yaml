@@ -9,6 +9,8 @@ env:
     value: "vigie"
   - name: "GOLD_TABLE"
     value: "gold_observations"
+  - name: "SILVER_TABLE"
+    value: "silver_observations"
   - name: "GOLD_NEWS_TABLE"
     value: "official_news"
   - name: "NEWS_AI_AUDIT_TABLE"
