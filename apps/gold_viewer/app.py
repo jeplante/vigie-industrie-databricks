@@ -35,6 +35,10 @@ if not available_companies:
 
 all_rows = {company: company_rows(config, company) for company in available_companies}
 metrics = sorted({r["metric_id"] for rows in all_rows.values() for r in rows if r.get("metric_id")})
+current_period = max(
+    (r["current_period_id"] for rows in all_rows.values() for r in rows if r.get("current_period_id")),
+    default=None,
+)
 with st.sidebar:
     st.caption("État des sources")
     try:
@@ -87,12 +91,12 @@ with company_tab:
     panels = st.tabs(available_companies)
     for company, panel in zip(available_companies, panels):
         with panel:
-            rows = all_rows[company]
+            rows = [r for r in all_rows[company] if r.get("current_period_id") == current_period]
             st.subheader(company)
             if not rows:
-                st.info("Aucun indicateur publié.")
+                st.info(f"Aucun indicateur n'est encore publié pour la période courante ({current_period}).")
                 continue
-            period = next((r["current_period_id"] for r in rows if r.get("current_period_id")), None)
+            period = current_period
             try: document = fetch_finance_provenance(connection(), config, company, period) if period else None
             except Exception: document = None
             if document:
