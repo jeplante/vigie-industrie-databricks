@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 from pathlib import Path
+import pandas as pd
 
 from gold_data import (
     GoldConfig,
@@ -9,12 +10,14 @@ from gold_data import (
     fetch_companies,
     fetch_company_metrics,
     fetch_comparison,
+    fetch_metric_history,
     fetch_news,
     fetch_official_news_audit,
     fetch_finance_provenance,
     fetch_latest_finance_audit,
 )
 from display import display_number, display_percentage, display_value
+from vigie_databricks.finance_history import history_basis
 
 
 st.set_page_config(page_title="Vigie de l’industrie", page_icon="📊", layout="wide")
@@ -39,6 +42,11 @@ def metrics(config: GoldConfig, company_id: str) -> list[str]:
 @st.cache_data(ttl=60, show_spinner=False)
 def comparison(config: GoldConfig, company_id: str, metric_id: str | None = None) -> list[dict]:
     return fetch_comparison(connection(), config, company_id, metric_id)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def metric_history(config: GoldConfig, metric_id: str) -> list[dict]:
+    return fetch_metric_history(connection(), config, metric_id)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -166,6 +174,31 @@ for metric_row in company_comparison_rows:
         }
     )
 st.dataframe(table_rows, hide_index=True, width="stretch")
+
+st.subheader("Évolution historique")
+history_mode = st.radio(
+    "Base de comparaison",
+    ("Trimestre", "Cumul annuel"),
+    horizontal=True,
+    disabled=history_basis(selected_metric) != "additive",
+    help="Le cumul annuel est disponible seulement pour les mesures additives. Les ratios et actifs restent des valeurs de fin de trimestre.",
+)
+try:
+    history_rows = metric_history(config, selected_metric)
+except Exception:
+    history_rows = []
+if history_rows:
+    history_frame = pd.DataFrame(history_rows)
+    if history_mode == "Cumul annuel" and history_basis(selected_metric) == "additive":
+        history_frame["year"] = history_frame["period_id"].str[:4]
+        history_frame = history_frame.sort_values(["company_id", "period_id"])
+        history_frame["value"] = history_frame.groupby(["company_id", "year"])["value"].cumsum()
+        st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année.")
+    else:
+        st.caption("Valeurs trimestrielles validées. Les ratios et actifs sont affichés à la fin de chaque trimestre.")
+    st.line_chart(history_frame.pivot(index="period_id", columns="company_id", values="value"), use_container_width=True)
+else:
+    st.info("Aucune série historique validée n’est encore disponible pour cet indicateur.")
 
 st.divider()
 st.subheader("Actualités")

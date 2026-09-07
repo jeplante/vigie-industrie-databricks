@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_news_ai_audit, fetch_news
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
 
 
 class FakeCursor:
@@ -98,6 +98,17 @@ def test_fetch_comparison_binds_company_and_metric_and_excludes_audit_fields():
     assert connection.cursor_instance.parameters == ["C1", "revenue"]
     assert "gold_record_hash" not in connection.cursor_instance.statement
     assert "computed_at" not in connection.cursor_instance.statement
+
+
+def test_fetch_metric_history_is_quarterly_read_only():
+    connection = FakeConnection([("MFC", "core_earnings", "2024-Q2", 1.2)], ["company_id", "metric_id", "period_id", "value"])
+
+    rows = fetch_metric_history(connection, config(), "core_earnings")
+
+    assert rows[0]["period_id"] == "2024-Q2"
+    assert connection.cursor_instance.parameters == ("core_earnings",)
+    assert "RLIKE" in connection.cursor_instance.statement
+    assert connection.cursor_instance.statement.lstrip().startswith("SELECT")
 
 
 def test_fetch_latest_news_ai_audit_is_read_only():

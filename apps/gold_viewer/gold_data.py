@@ -24,6 +24,7 @@ class GoldConfig:
     catalog: str
     schema: str
     gold_table: str
+    silver_table: str = "silver_observations"
     news_table: str = "gold_news"
     news_ai_audit_table: str = "news_ai_run_audit"
     finance_documents_table: str = "financial_documents"
@@ -35,6 +36,7 @@ class GoldConfig:
             "catalog": os.environ.get("GOLD_CATALOG", ""),
             "schema": os.environ.get("GOLD_SCHEMA", ""),
             "gold_table": os.environ.get("GOLD_TABLE", ""),
+            "silver_table": os.environ.get("SILVER_TABLE", "silver_observations"),
             "news_table": os.environ.get("GOLD_NEWS_TABLE", "gold_news"),
             "news_ai_audit_table": os.environ.get("NEWS_AI_AUDIT_TABLE", "news_ai_run_audit"),
             "finance_documents_table": os.environ.get("FINANCE_DOCUMENTS_TABLE", "financial_documents"),
@@ -125,6 +127,22 @@ def fetch_comparison(
         ORDER BY metric_id
         """,
         parameters,
+    )
+
+
+def fetch_metric_history(connection: Any, config: GoldConfig, metric_id: str) -> list[dict[str, Any]]:
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.silver_table))
+    return _query(
+        connection,
+        f"""
+        SELECT company_id, metric_id, period_id, value
+        FROM {table}
+        WHERE metric_id = ?
+          AND company_id IN ('MFC', 'SLF', 'GWO', 'IAG')
+          AND period_id RLIKE '^20[0-9]{{2}}-Q[1-4]$'
+        ORDER BY period_id, company_id
+        """,
+        (metric_id,),
     )
 
 
