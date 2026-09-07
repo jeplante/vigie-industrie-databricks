@@ -62,7 +62,11 @@ with summary_tab:
     st.subheader("Évolution historique")
     if metrics:
         left, right = st.columns([2, 1])
-        with left: selected_metric = st.selectbox("Indicateur", metrics, key="history_metric")
+        default_metric = "core_earnings" if "core_earnings" in metrics else metrics[0]
+        with left:
+            selected_metric = st.selectbox(
+                "Indicateur", metrics, index=metrics.index(default_metric), key="history_metric"
+            )
         with right:
             additive = selected_metric in ADDITIVE_METRICS
             basis = st.selectbox("Base", ["Trimestre", "Cumul annuel"], disabled=not additive, key="history_basis")
