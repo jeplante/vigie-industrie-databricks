@@ -15,11 +15,23 @@ Never invent values, dates, or sources; do not provide investment advice. Return
 Citations must use only URLs from CONTEXT. Cite at least one URL for factual answers."""
 
 
+def _json_default(value: Any) -> Any:
+    """Convert scalar and array values returned by the SQL/Pandas layer."""
+    if hasattr(value, "tolist"):
+        return value.tolist()
+    if hasattr(value, "item"):
+        return value.item()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    raise TypeError(f"Unsupported context value: {type(value).__name__}")
+
+
 def ask(question: str, context: dict[str, Any], history: list[dict[str, str]]) -> dict[str, Any]:
     if not 3 <= len(question.strip()) <= 600:
         raise ValueError("La question doit contenir entre 3 et 600 caractères.")
     config = Config()
-    messages = [{"role": "system", "content": SYSTEM + "\nCONTEXT:\n" + json.dumps(context, ensure_ascii=False)}]
+    context_json = json.dumps(context, ensure_ascii=False, default=_json_default)
+    messages = [{"role": "system", "content": SYSTEM + "\nCONTEXT:\n" + context_json}]
     messages.extend({"role": item["role"], "content": item["content"][:1200]} for item in history[-6:])
     messages.append({"role": "user", "content": question.strip()})
     response = requests.post(
