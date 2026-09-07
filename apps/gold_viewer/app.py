@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
@@ -145,4 +146,5 @@ if question:
                     st.caption(answer["caveat"])
                 st.session_state.chat_messages.append({"role": "assistant", "content": answer["answer"]})
             except Exception:
+                logging.getLogger(__name__).exception("Chat query failed")
                 st.error("Le chat est temporairement indisponible. Les données financières restent consultables.")

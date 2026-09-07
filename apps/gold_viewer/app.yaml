@@ -3,6 +3,8 @@ command: ["streamlit", "run", "app.py"]
 env:
   - name: "DATABRICKS_WAREHOUSE_ID"
     valueFrom: "sql_warehouse"
+  - name: "VIGIE_CHAT_ENDPOINT"
+    valueFrom: "vigie_chat_endpoint"
   - name: "GOLD_CATALOG"
     value: "workspace"
   - name: "GOLD_SCHEMA"
