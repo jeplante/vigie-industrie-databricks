@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_insurer_contract_loads_the_four_target_companies_and_sources() -> None:
     contract = load_insurer_contract(ROOT / "config")
     assert contract.finance_policy.raw_content_retention_days == 365
+    assert contract.finance_policy.failed_document_retention_days == 30
+    assert contract.finance_policy.stale_audit_retention_days == 90
     assert contract.finance_policy.raw_content_volume == "/Volumes/workspace/vigie/finance_raw"
     assert contract.finance_policy.ai_provider == "databricks_model_serving"
     assert contract.finance_policy.publication_destination == "databricks_app"

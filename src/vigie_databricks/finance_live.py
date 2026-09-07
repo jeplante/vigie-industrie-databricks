@@ -122,7 +122,7 @@ def acquire_live_finance(
             if fetched is None or selected is None:
                 raise ValueError("no_accessible_official_report")
             period_id = infer_reporting_period(f"{selected.title} {selected.source_url}")
-            document = fetched.document
+            document = replace(fetched.document, reporting_period=period_id)
             if fetched.content is None:
                 unchanged_count += 1
                 raw_path = prior.get("raw_content_path")

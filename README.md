@@ -53,7 +53,8 @@ Gold restent compatibles avec les anciens identifiants `YYYYQ1` à `YYYYQ4`.
 
 La politique versionnée dans `config/finance_policy.yaml` fixe :
 
-- rétention du contenu brut : 365 jours;
+- rétention effective du contenu brut : 365 jours, appliquée à chaque run persistant;
+- purge des documents en échec après 30 jours et des audits `stale` après 90 jours;
 - volume cible : `/Volumes/workspace/vigie/finance_raw`;
 - secours IA : Databricks Model Serving, maximum 10 appels par run;
 - destination : App Databricks;
@@ -79,8 +80,10 @@ uv run --extra databricks_connect --python 3.12 pytest -m databricks_connect -q 
 
 ## Déploiement Finance
 
-`databricks_slice4_job.template.json` décrit le Job Finance live non planifié utilisant le
-wheel `0.6.4`. Avant son premier run :
+`databricks_slice4_job.template.json` décrit le Job Finance live quotidien utilisant le
+wheel `0.7.0`. Le Job s'exécute à 06:15 `America/Toronto`, avec `dry_run=false`,
+et notifie le propriétaire par courriel en cas d'échec. Une source absente fait
+échouer le run et déclenche donc la même alerte.
 
 1. construire et téléverser le wheel;
 2. téléverser `config/` et la fixture d'acceptation aux chemins configurés;
@@ -88,8 +91,12 @@ wheel `0.6.4`. Avant son premier run :
 4. lancer les tests Databricks Connect;
 5. exécuter un run fixture borné, puis un rerun identique;
 6. vérifier l'audit, la réconciliation et les droits read-only de l'App;
-7. garder le Job Finance sans schedule tant que l'acquisition live n'a pas passé
-   son propre gate.
+7. après chaque changement de source, refaire un dry-run 4/4 puis deux runs
+   persistants idempotents avant de conserver le schedule actif.
+
+L'App affiche pour chaque KPI Finance la période, la fraîcheur et le lien du
+document officiel. Son panneau de santé expose aussi les quatre sources, les
+compteurs d'idempotence, les appels IA et les suppressions de rétention.
 
 La feuille de route détaillée est dans `docs/INSURER_VIGIE_ROADMAP.md` et la
 reprise opérationnelle dans `docs/PROJECT_HANDOFF.md`.

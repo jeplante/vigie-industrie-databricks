@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_latest_news_ai_audit, fetch_news
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_news_ai_audit, fetch_news
 
 
 class FakeCursor:
@@ -114,6 +114,23 @@ def test_fetch_latest_news_ai_audit_is_read_only():
 def test_fetch_news_uses_deterministic_and_model_company_provenance():
     connection = FakeConnection([], [])
     fetch_news(connection, config(), "MFC")
-    assert connection.cursor_instance.parameters == ["MFC", "MFC"]
-    assert "company_id = ? OR array_contains" in connection.cursor_instance.statement
-    assert "source_type" in connection.cursor_instance.statement
+    assert connection.cursor_instance.parameters == ["MFC"]
+    assert "array_contains(relevant_company_ids, ?)" in connection.cursor_instance.statement
+    assert "source_type" not in connection.cursor_instance.statement
+
+
+def test_fetch_finance_provenance_binds_company_and_period():
+    columns = ["company_id", "reporting_period", "source_url", "fetched_at"]
+    connection = FakeConnection([("MFC", "2026-Q2", "https://www.manulife.com/report.pdf", "now")], columns)
+    row = fetch_finance_provenance(connection, config(), "MFC", "2026-Q2")
+    assert row["reporting_period"] == "2026-Q2"
+    assert connection.cursor_instance.parameters == ("MFC", "2026-Q2")
+    assert "acquisition_status IN" in connection.cursor_instance.statement
+
+
+def test_fetch_latest_finance_audit_exposes_ai_and_retention_counters():
+    columns = ["run_id", "ai_model_calls", "retention_deleted_files"]
+    connection = FakeConnection([("run-2", 0, 1)], columns)
+    row = fetch_latest_finance_audit(connection, config())
+    assert row == {"run_id": "run-2", "ai_model_calls": 0, "retention_deleted_files": 1}
+    assert "ORDER BY observed_at DESC" in connection.cursor_instance.statement

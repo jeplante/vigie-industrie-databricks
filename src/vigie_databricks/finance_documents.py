@@ -13,13 +13,13 @@ from vigie_databricks.insurer_contract import FinancialSource, InsurerContract
 FINANCIAL_DOCUMENT_SCHEMA = (
     "document_id string,company_id string,source_id string,document_type string,"
     "source_url string,content_hash string,etag string,last_modified string,"
-    "content_type string,content_length long,raw_content_path string,published_at timestamp,fetched_at timestamp,"
+    "content_type string,content_length long,raw_content_path string,reporting_period string,published_at timestamp,fetched_at timestamp,"
     "acquisition_status string,error_code string"
 )
 FINANCE_RUN_AUDIT_SCHEMA = (
     "run_id string,observed_at timestamp,source_mode string,sources_succeeded long,"
     "sources_failed long,documents_discovered long,documents_fetched long,"
-    "documents_unchanged long,candidate_observations long,quality_status string"
+    "documents_unchanged long,candidate_observations long,ai_model_calls long,retention_deleted_files long,quality_status string"
 )
 VALID_ACQUISITION_STATUSES = {"discovered", "fetched", "unchanged", "failed"}
 
@@ -37,6 +37,7 @@ class FinancialDocument:
     content_type: str | None
     content_length: int | None
     raw_content_path: str | None
+    reporting_period: str | None
     published_at: datetime | None
     fetched_at: datetime
     acquisition_status: str
@@ -61,6 +62,7 @@ def create_financial_document(
     last_modified: str | None = None,
     content_type: str | None = None,
     raw_content_path: str | None = None,
+    reporting_period: str | None = None,
     published_at: datetime | None = None,
     error_code: str | None = None,
     fetched_at: datetime | None = None,
@@ -92,6 +94,7 @@ def create_financial_document(
         content_type,
         len(content) if content is not None else None,
         raw_content_path,
+        reporting_period,
         published_at,
         fetched_at or datetime.now(UTC),
         acquisition_status,

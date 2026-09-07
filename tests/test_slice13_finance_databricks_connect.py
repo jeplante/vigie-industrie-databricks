@@ -69,6 +69,8 @@ def test_finance_documents_and_audit_are_idempotent_delta_upserts(connect_spark)
         "documents_fetched": 1,
         "documents_unchanged": 0,
         "candidate_observations": 1,
+        "ai_model_calls": 0,
+        "retention_deleted_files": 0,
         "quality_status": "current",
     }
 

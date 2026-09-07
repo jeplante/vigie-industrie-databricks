@@ -14,7 +14,7 @@ from vigie_databricks.bronze import load_bronze_observations
 from vigie_databricks.finance_live import acquire_live_finance
 from vigie_databricks.finance_ai import call_finance_model, invoke_finance_ai
 from vigie_databricks.finance_publication import publish_finance_candidates
-from vigie_databricks.finance_storage import load_financial_document_index, upsert_finance_run_audit, upsert_financial_documents
+from vigie_databricks.finance_storage import enforce_finance_retention, load_financial_document_index, upsert_finance_run_audit, upsert_financial_documents
 from vigie_databricks.gold import load_gold_observations
 from vigie_databricks.insurer_contract import load_insurer_contract
 from vigie_databricks.silver import load_silver_observations
@@ -39,6 +39,15 @@ def main() -> None:
     args = _arguments(); dry_run = args.dry_run == "true"
     spark = SparkSession.builder.getOrCreate()
     contract = load_insurer_contract(Path(args.config_directory))
+    retention_deleted = 0
+    if not dry_run:
+        retention_deleted = enforce_finance_retention(
+            spark, args.documents_object, args.audit_object,
+            contract.finance_policy.raw_content_volume,
+            raw_days=contract.finance_policy.raw_content_retention_days,
+            failed_days=contract.finance_policy.failed_document_retention_days,
+            stale_audit_days=contract.finance_policy.stale_audit_retention_days,
+        )
     prior = load_financial_document_index(spark, args.documents_object)
     remaining_calls = contract.finance_policy.ai_max_calls_per_run
 
@@ -71,6 +80,8 @@ def main() -> None:
         "documents_fetched": result.documents_fetched,
         "documents_unchanged": result.documents_unchanged,
         "candidate_observations": len(result.candidates),
+        "ai_model_calls": contract.finance_policy.ai_max_calls_per_run - remaining_calls,
+        "retention_deleted_files": retention_deleted,
         "quality_status": "validated" if all_sources else "stale",
     }
     if dry_run:
