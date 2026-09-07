@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
+from chat_service import ask
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
@@ -113,3 +114,35 @@ with company_tab:
                 if article["summary"]: st.write(article["summary"])
                 st.link_button("Consulter la source ↗", article["source_url"], key=article["article_id"])
 st.caption("Données issues de sources publiques. Vérifiez toujours les documents officiels avant une décision financière.")
+
+st.divider()
+st.markdown("<p class='section-eyebrow'>Assistant fondé sur les données publiées</p>", unsafe_allow_html=True)
+st.subheader("Questionner la Vigie")
+st.caption("Les réponses sont limitées aux KPI publiés et aux documents officiels cités. Ce n'est pas un conseil financier.")
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
+for message in st.session_state.chat_messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+question = st.chat_input("Ex. Compare les bénéfices de base des quatre assureurs.")
+if question:
+    st.session_state.chat_messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.write(question)
+    context = {
+        "comparisons": [row for rows in all_rows.values() for row in rows],
+        "news": [article for company in available_companies for article in company_news(config, company)][:20],
+        "documents": [doc for company in available_companies if (doc := fetch_finance_provenance(connection(), config, company, current_period))],
+    }
+    with st.chat_message("assistant"):
+        with st.spinner("Analyse des données publiées..."):
+            try:
+                answer = ask(question, context, st.session_state.chat_messages[:-1])
+                st.write(answer["answer"])
+                for citation in answer.get("citations", []):
+                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-{citation['url']}")
+                if answer.get("caveat"):
+                    st.caption(answer["caveat"])
+                st.session_state.chat_messages.append({"role": "assistant", "content": answer["answer"]})
+            except Exception:
+                st.error("Le chat est temporairement indisponible. Les données financières restent consultables.")

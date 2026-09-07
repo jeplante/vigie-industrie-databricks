@@ -1,3 +1,4 @@
 streamlit>=1.46,<2
 databricks-sql-connector>=3.4,<4
 databricks-sdk>=0.32,<1
+requests>=2.32,<3
