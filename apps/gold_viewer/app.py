@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context
+from comparison_table import comparison_html
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
@@ -58,12 +59,8 @@ summary_tab, company_tab = st.tabs(["Synthèse", "Par compagnie"])
 with summary_tab:
     st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
     st.subheader("Résultats des quatre compagnies")
-    st.caption("Une rangée par assureur, à partir des dernières données publiées.")
-    summary = []
-    for company, rows in all_rows.items():
-        period = next((r["current_period_id"] for r in rows if r.get("current_period_id")), None)
-        summary.append({"Compagnie": company, "Période": display_value(period, "Non disponible"), "Indicateurs publiés": len(rows), "Variations disponibles": sum(r.get("previous_value") is not None for r in rows)})
-    st.dataframe(pd.DataFrame(summary), hide_index=True, width="stretch")
+    st.caption("Une rangée par assureur. Chaque valeur conserve sa période de publication; les KPI absents restent vides.")
+    st.markdown(comparison_html(all_rows), unsafe_allow_html=True)
     st.markdown("<p class='section-eyebrow'>Comparaison multi-assureurs</p>", unsafe_allow_html=True)
     st.subheader("Évolution historique")
     if metrics:
