@@ -38,15 +38,16 @@ def _metric_row(rows: list[dict[str, Any]], selector: str | tuple[str, ...]) -> 
     return next((row for metric_id in metric_ids for row in rows if row.get("metric_id") == metric_id), None)
 
 
-def _delta(row: dict[str, Any], kind: str) -> tuple[str, str]:
+def _delta(row: dict[str, Any], kind: str) -> tuple[str, str, str]:
     direction = row.get("direction")
-    if not direction: return "", ""
+    if not direction: return "", "", ""
     change = row.get("change_value") if kind == "percent" else row.get("change_pct")
-    if change is None: return "", ""
+    if change is None: return "", "", ""
     text = f"{float(change):+.1f} pp" if kind == "percent" else f"{float(change) * 100:+.1f} %"
     symbol = "▲" if direction == "up" else "▼" if direction == "down" else "•"
     tone = "up" if direction == "up" else "down" if direction == "down" else "flat"
-    return f"{symbol} {text}", tone
+    previous_period = row.get("previous_period_id")
+    return f"{symbol} {text}", tone, f"vs {previous_period}" if previous_period else ""
 
 
 def comparison_html(all_rows: dict[str, list[dict[str, Any]]]) -> str:
@@ -63,8 +64,8 @@ def comparison_html(all_rows: dict[str, list[dict[str, Any]]]) -> str:
             if not row:
                 cells.append("<td class='comparison-empty'>—</td>")
                 continue
-            delta, tone = _delta(row, kind)
+            delta, tone, delta_period = _delta(row, kind)
             value = _format_value(row.get("current_value"), kind, row.get("metric_id", ""))
-            cells.append("<td><strong>" + escape(value) + "</strong>" + (f"<span class='comparison-period'>{escape(str(row.get('current_period_id') or ''))}</span>" if row.get("current_period_id") else "") + (f"<span class='comparison-delta {tone}'>{escape(delta)}</span>" if delta else "") + "</td>")
+            cells.append("<td><strong>" + escape(value) + "</strong>" + (f"<span class='comparison-period'>{escape(str(row.get('current_period_id') or ''))}</span>" if row.get("current_period_id") else "") + (f"<span class='comparison-delta {tone}'>{escape(delta)}</span>" if delta else "") + (f"<span class='comparison-delta-period'>{escape(delta_period)}</span>" if delta_period else "") + "</td>")
         body.append(f"<tr style='--company-colour:{escape(colour)}'><th scope='row'><strong>{escape(name)}</strong><span class='comparison-ticker'>{escape(company_id)}{'.' + escape(str(period)) if period else ''}</span></th>" + "".join(cells) + "</tr>")
     return "<div class='comparison-wrap'><table class='comparison-table'><thead><tr><th scope='col'>Compagnie</th>" + header + "</tr></thead><tbody>" + "".join(body) + "</tbody></table></div>"

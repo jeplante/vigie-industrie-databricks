@@ -98,6 +98,7 @@ with summary_tab:
         if len(periods) > 1:
             st.info("Les périodes de publication diffèrent selon l’assureur. La période est affichée sous chaque valeur.")
     st.caption("Une rangée par assureur. Chaque valeur conserve sa période de publication; les KPI absents restent vides.")
+    st.caption("Les badges de variation comparent chaque KPI à la période indiquée sous le badge.")
     st.markdown(comparison_html(display_rows if comparison_mode == "Dernière période commune" and common_periods else all_rows), unsafe_allow_html=True)
     st.markdown("<p class='section-eyebrow'>Comparaison multi-assureurs</p>", unsafe_allow_html=True)
     st.subheader("Évolution historique")
