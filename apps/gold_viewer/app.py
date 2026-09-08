@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 import logging
+import altair as alt
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer
 from comparison_table import comparison_html
 from history_quality import flag_suspicious_history
-from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
+from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 
@@ -27,6 +28,8 @@ def history(config, metric): return fetch_metric_history(connection(), config, m
 def company_news(config, company): return fetch_news(connection(), config, company)
 @st.cache_data(ttl=60, show_spinner=False)
 def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
+@st.cache_data(ttl=60, show_spinner=False)
+def document_periods(config): return fetch_finance_document_periods(connection(), config)
 
 st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)
 try:
@@ -46,6 +49,7 @@ current_period = max(
     default=None,
 )
 latest_documents = {company: company_document(config, company) for company in available_companies}
+available_document_periods = document_periods(config)
 with st.sidebar:
     st.caption("État des sources")
     try:
@@ -121,8 +125,22 @@ with summary_tab:
                 frame["display_value"] = frame.groupby(["company_id", "year"])["display_value"].cumsum()
                 st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année.")
             else: st.caption("Valeurs trimestrielles validées. Les ratios et actifs restent des valeurs de fin de trimestre.")
-            st.caption("Les ruptures dans une ligne indiquent une donnée absente, non publiée ou en attente de validation.")
-            st.line_chart(frame.pivot(index="period_id", columns="company_id", values="display_value"), use_container_width=True)
+            source_urls = {(document["company_id"], document["reporting_period"]): document["source_url"] for document in available_document_periods}
+            frame["source_url"] = [source_urls.get((row.company_id, row.period_id)) for row in frame.itertuples()]
+            documented = {(document["company_id"], document["reporting_period"]) for document in available_document_periods}
+            observed = {(row.company_id, row.period_id) for row in frame.itertuples() if row.display_value is not None}
+            pending = documented - observed
+            st.caption(f"Ruptures : {len(pending)} période(s) avec rapport officiel mais KPI en attente de validation; les autres absences correspondent à une source non collectée ou non publiée.")
+            lines = alt.Chart(frame).mark_line(point=False).encode(
+                x=alt.X("period_id:N", title="Période"), y=alt.Y("display_value:Q", title="Valeur"), color=alt.Color("company_id:N", title="Assureur")
+            )
+            points = alt.Chart(frame.dropna(subset=["display_value"])).mark_circle(size=60).encode(
+                x="period_id:N", y="display_value:Q", color="company_id:N",
+                tooltip=["company_id:N", "period_id:N", alt.Tooltip("display_value:Q", format=",.3f"), alt.Tooltip("source_url:N", title="Rapport officiel")],
+                href="source_url:N",
+            )
+            st.altair_chart((lines + points).interactive(), use_container_width=True)
+            st.caption("Survolez un point pour voir son rapport officiel; cliquez sur un point lorsqu’un lien est disponible.")
             source_company = st.selectbox("Rapport source du graphique", selected_companies or available_companies, key="history_source_company")
             source_period = frame.loc[frame["company_id"] == source_company, "period_id"].max() if not frame.empty else None
             source_document = fetch_finance_provenance(connection(), config, source_company, source_period) if source_period else None

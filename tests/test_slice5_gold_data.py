@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
 
 
 class FakeCursor:
@@ -146,6 +146,14 @@ def test_fetch_latest_finance_provenance_binds_company_only():
     assert row["reporting_period"] == "2026-Q2"
     assert connection.cursor_instance.parameters == ("MFC",)
     assert "ORDER BY reporting_period DESC" in connection.cursor_instance.statement
+
+
+def test_fetch_finance_document_periods_is_traceable_and_quarterly():
+    connection = FakeConnection([], [])
+    fetch_finance_document_periods(connection, config())
+    assert "source_url" in connection.cursor_instance.statement
+    assert "reporting_period RLIKE" in connection.cursor_instance.statement
+    assert connection.cursor_instance.statement.lstrip().startswith("SELECT")
 
 
 def test_fetch_latest_finance_audit_exposes_ai_and_retention_counters():

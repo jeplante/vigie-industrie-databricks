@@ -220,6 +220,19 @@ def fetch_latest_finance_provenance(
     return rows[0] if rows else None
 
 
+def fetch_finance_document_periods(connection: Any, config: GoldConfig) -> list[dict[str, Any]]:
+    """Return traceable quarterly documents for chart completeness indicators."""
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    return _query(connection, f"""
+        SELECT company_id, reporting_period, source_url
+        FROM {table}
+        WHERE company_id IN ('MFC', 'SLF', 'GWO', 'IAG')
+          AND acquisition_status IN ('fetched', 'unchanged')
+          AND reporting_period RLIKE '^20[0-9]{{2}}-Q[1-4]$'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY company_id, reporting_period ORDER BY fetched_at DESC, document_id DESC) = 1
+        """)
+
+
 def fetch_latest_finance_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
     table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_audit_table))
     rows = _query(connection, f"""
