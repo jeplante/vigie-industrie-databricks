@@ -5,9 +5,10 @@ import logging
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
-from chat_service import ask, compact_context
+from chat_service import ask, compact_context, deterministic_answer
 from comparison_table import comparison_html
-from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_metric_history, fetch_news, fetch_official_news_audit
+from history_quality import flag_suspicious_history
+from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 
@@ -24,6 +25,8 @@ def company_rows(config, company): return fetch_comparison(connection(), config,
 def history(config, metric): return fetch_metric_history(connection(), config, metric)
 @st.cache_data(ttl=60, show_spinner=False)
 def company_news(config, company): return fetch_news(connection(), config, company)
+@st.cache_data(ttl=60, show_spinner=False)
+def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
 
 st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)
 try:
@@ -42,6 +45,7 @@ current_period = max(
     (r["current_period_id"] for rows in all_rows.values() for r in rows if r.get("current_period_id")),
     default=None,
 )
+latest_documents = {company: company_document(config, company) for company in available_companies}
 with st.sidebar:
     st.caption("État des sources")
     try:
@@ -57,10 +61,40 @@ with st.sidebar:
 
 summary_tab, company_tab = st.tabs(["Synthèse", "Par compagnie"])
 with summary_tab:
+    st.markdown("<p class='section-eyebrow'>Fraîcheur des sources</p>", unsafe_allow_html=True)
+    freshness_cards = st.columns(4)
+    for card, company in zip(freshness_cards, ("MFC", "SLF", "GWO", "IAG")):
+        document = latest_documents.get(company)
+        period = document.get("reporting_period") if document else None
+        is_current = bool(period and period == current_period)
+        card.metric(company, display_value(period, "Source absente"), "À jour" if is_current else "À vérifier", delta_color="normal" if is_current else "off")
+        card.caption(f"Collecté : {display_value(document.get('fetched_at') if document else None, '—')}")
+    with st.expander("À surveiller", expanded=False):
+        stale_companies = [company for company, document in latest_documents.items() if not document or document.get("reporting_period") != current_period]
+        if stale_companies:
+            st.warning("Sources hors de la période la plus récente : " + ", ".join(stale_companies) + ".")
+        if finance_audit and finance_audit.get("quality_status") != "current":
+            st.warning("La dernière validation Finance n’est pas `current`; la dernière publication fiable reste affichée.")
+        if not stale_companies and (not finance_audit or finance_audit.get("quality_status") == "current"):
+            st.success("Aucune alerte de fraîcheur ou de publication détectée.")
     st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
     st.subheader("Résultats des quatre compagnies")
+    comparison_mode = st.radio("Période de comparaison", ["Dernière valeur disponible", "Dernière période commune"], horizontal=True, label_visibility="collapsed")
+    company_periods = {company: {row.get("current_period_id") for row in rows if row.get("current_period_id")} for company, rows in all_rows.items()}
+    common_periods = set.intersection(*company_periods.values()) if company_periods and all(company_periods.values()) else set()
+    if comparison_mode == "Dernière période commune" and not common_periods:
+        st.warning("Aucune période commune n’est actuellement publiée pour les quatre assureurs. Le comparatif reste en dernière valeur disponible afin de ne pas masquer les sources.")
+    elif comparison_mode == "Dernière période commune":
+        selected_period = max(common_periods)
+        display_rows = {company: [row for row in rows if row.get("current_period_id") == selected_period] for company, rows in all_rows.items()}
+        st.caption(f"Période commune : {selected_period}.")
+    else:
+        display_rows = all_rows
+        periods = sorted({period for periods in company_periods.values() for period in periods})
+        if len(periods) > 1:
+            st.info("Les périodes de publication diffèrent selon l’assureur. La période est affichée sous chaque valeur.")
     st.caption("Une rangée par assureur. Chaque valeur conserve sa période de publication; les KPI absents restent vides.")
-    st.markdown(comparison_html(all_rows), unsafe_allow_html=True)
+    st.markdown(comparison_html(display_rows if comparison_mode == "Dernière période commune" and common_periods else all_rows), unsafe_allow_html=True)
     st.markdown("<p class='section-eyebrow'>Comparaison multi-assureurs</p>", unsafe_allow_html=True)
     st.subheader("Évolution historique")
     if metrics:
@@ -76,13 +110,24 @@ with summary_tab:
         try: rows = history(config, selected_metric)
         except Exception: rows = []
         if rows:
-            frame = pd.DataFrame(rows).sort_values(["company_id", "period_id"])
+            selected_companies = st.multiselect("Assureurs affichés", available_companies, default=available_companies, key="history_companies")
+            reviewed_rows = flag_suspicious_history(rows, selected_metric)
+            suspect_count = sum(row["display_quality"] != "accepted" for row in reviewed_rows)
+            frame = pd.DataFrame([row for row in reviewed_rows if row["company_id"] in selected_companies]).sort_values(["company_id", "period_id"])
+            if suspect_count:
+                st.warning(f"{suspect_count} point(s) historique(s) isolé(s) comme potentiellement annuels sont masqués du graphique en attendant validation. Les données sources ne sont pas modifiées.")
             if basis == "Cumul annuel" and additive:
                 frame["year"] = frame["period_id"].str[:4]
-                frame["value"] = frame.groupby(["company_id", "year"])["value"].cumsum()
+                frame["display_value"] = frame.groupby(["company_id", "year"])["display_value"].cumsum()
                 st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année.")
             else: st.caption("Valeurs trimestrielles validées. Les ratios et actifs restent des valeurs de fin de trimestre.")
-            st.line_chart(frame.pivot(index="period_id", columns="company_id", values="value"), use_container_width=True)
+            st.caption("Les ruptures dans une ligne indiquent une donnée absente, non publiée ou en attente de validation.")
+            st.line_chart(frame.pivot(index="period_id", columns="company_id", values="display_value"), use_container_width=True)
+            source_company = st.selectbox("Rapport source du graphique", selected_companies or available_companies, key="history_source_company")
+            source_period = frame.loc[frame["company_id"] == source_company, "period_id"].max() if not frame.empty else None
+            source_document = fetch_finance_provenance(connection(), config, source_company, source_period) if source_period else None
+            if source_document:
+                st.link_button("Voir le rapport officiel du dernier point affiché ↗", source_document["source_url"], key="history-source")
         else: st.info("Aucune série historique validée n'est encore disponible pour cet indicateur.")
 
 with company_tab:
@@ -90,17 +135,26 @@ with company_tab:
     panels = st.tabs(available_companies)
     for company, panel in zip(available_companies, panels):
         with panel:
-            rows = [r for r in all_rows[company] if r.get("current_period_id") == current_period]
+            rows = all_rows[company]
             st.subheader(company)
             if not rows:
-                st.info(f"Aucun indicateur n'est encore publié pour la période courante ({current_period}).")
+                st.info("Aucun indicateur publié n’est disponible pour cet assureur.")
                 continue
-            period = current_period
-            try: document = fetch_finance_provenance(connection(), config, company, period) if period else None
-            except Exception: document = None
+            period = next((row.get("current_period_id") for row in rows if row.get("current_period_id")), None)
+            document = latest_documents.get(company)
             if document:
                 st.caption(f"Période : {document['reporting_period']} · Vérifié le {document['fetched_at']}")
                 st.link_button("Consulter le rapport officiel ↗", document["source_url"], key=f"report-{company}")
+            headline = next((row for row in rows if row.get("metric_id") == "core_earnings"), None)
+            solvency = next((row for row in rows if row.get("metric_id") in {"licat_ratio", "solvency_ratio"}), None)
+            narrative = []
+            if headline:
+                variation = display_percentage(headline.get("change_pct")) if headline.get("change_pct") is not None else "variation non disponible"
+                narrative.append(f"Résultat des activités de base : {display_number(headline.get('current_value'))} ({variation} vs période précédente).")
+            if solvency:
+                narrative.append(f"Solvabilité : {display_number(solvency.get('current_value'))} %.")
+            if narrative:
+                st.info(" ".join(narrative))
             table = [{"Indicateur": r["metric_id"], "Période": display_value(r["current_period_id"]), "Valeur": display_number(r["current_value"]), "Variation": display_percentage(r["change_pct"]), "Tendance": display_value(r["direction"])} for r in rows]
             st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
             st.markdown("#### Actualités")
@@ -130,13 +184,15 @@ if question:
     context = compact_context(
         [row for rows in all_rows.values() for row in rows],
         [article for company in available_companies for article in company_news(config, company)],
-        [doc for company in available_companies if (doc := fetch_finance_provenance(connection(), config, company, current_period))],
+        [document for document in latest_documents.values() if document],
     )
     with st.chat_message("assistant"):
         with st.spinner("Analyse des données publiées..."):
             try:
-                answer = ask(question, context, st.session_state.chat_messages[:-1])
+                answer = deterministic_answer(question, context) or ask(question, context, st.session_state.chat_messages[:-1])
                 st.write(answer["answer"])
+                used_kpis = sorted({row.get("metric_id") for row in context["comparisons"] if row.get("metric_id")})
+                st.caption("KPI disponibles pour la réponse : " + ", ".join(used_kpis))
                 for citation in answer.get("citations", []):
                     st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-{citation['url']}")
                 if answer.get("caveat"):

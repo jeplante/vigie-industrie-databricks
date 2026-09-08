@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
 
 
 class FakeCursor:
@@ -137,6 +137,15 @@ def test_fetch_finance_provenance_binds_company_and_period():
     assert row["reporting_period"] == "2026-Q2"
     assert connection.cursor_instance.parameters == ("MFC", "2026-Q2")
     assert "acquisition_status IN" in connection.cursor_instance.statement
+
+
+def test_fetch_latest_finance_provenance_binds_company_only():
+    columns = ["company_id", "reporting_period", "source_url", "fetched_at"]
+    connection = FakeConnection([("MFC", "2026-Q2", "https://www.manulife.com/report.pdf", "now")], columns)
+    row = fetch_latest_finance_provenance(connection, config(), "MFC")
+    assert row["reporting_period"] == "2026-Q2"
+    assert connection.cursor_instance.parameters == ("MFC",)
+    assert "ORDER BY reporting_period DESC" in connection.cursor_instance.statement
 
 
 def test_fetch_latest_finance_audit_exposes_ai_and_retention_counters():

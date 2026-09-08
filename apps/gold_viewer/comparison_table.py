@@ -13,6 +13,14 @@ METRICS = (
     (("assets_under_management", "assets_under_administration", "total_client_assets"), "Actifs gérés / administrés", "assets"),
     ("core_roe", "Rendement des capitaux propres de base", "percent"),
 )
+HELP = {
+    "BPA activités de base": "Bénéfice de base par action, en dollars canadiens.",
+    "Résultat des activités de base": "Résultat des activités de base, en milliards de dollars canadiens.",
+    "Résultat net": "Résultat net attribuable aux actionnaires, en milliards de dollars canadiens.",
+    "Ratio LICAT / solvabilité": "Ratio de capital ou de solvabilité déclaré par l’assureur, en pourcentage.",
+    "Actifs gérés / administrés": "Mesure d’actifs propre à chaque assureur : gestion, administration ou actifs clients.",
+    "Rendement des capitaux propres de base": "Rendement des capitaux propres de base, en pourcentage.",
+}
 
 
 def _format_value(value: Any, kind: str, metric_id: str) -> str:
@@ -43,7 +51,7 @@ def _delta(row: dict[str, Any], kind: str) -> tuple[str, str]:
 
 def comparison_html(all_rows: dict[str, list[dict[str, Any]]]) -> str:
     """Render an accessible, compact table from already published rows."""
-    header = "".join(f"<th scope='col'>{escape(label)}</th>" for _, label, _ in METRICS)
+    header = "".join(f"<th scope='col' title='{escape(HELP[label])}'>{escape(label)}</th>" for _, label, _ in METRICS)
     body: list[str] = []
     for company_id in ("MFC", "SLF", "GWO", "IAG"):
         rows = all_rows.get(company_id, [])

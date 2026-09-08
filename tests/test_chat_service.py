@@ -111,3 +111,13 @@ def test_compact_context_removes_unneeded_fields_and_bounds_news():
     assert len(context["news"]) == 8
     assert len(context["news"][0]["summary"]) == 360
     assert context["documents"] == [{"company_id": "IAG", "reporting_period": "2026-Q2", "source_url": "https://official.example/q2"}]
+
+
+def test_deterministic_answer_handles_simple_published_kpi_lookup():
+    chat = _chat_service()
+    answer = chat.deterministic_answer(
+        "Compare les bénéfices de base des 4 assureurs pour Q2 2026",
+        {"comparisons": [{"company_id": "MFC", "metric_id": "core_earnings", "current_value": 1.923, "current_period_id": "2026-Q2"}], "documents": [{"company_id": "MFC", "source_url": "https://official.example/mfc"}]},
+    )
+    assert answer and "MFC : 1.923 (2026-Q2)" in answer["answer"]
+    assert answer["citations"][0]["url"] == "https://official.example/mfc"

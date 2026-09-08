@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import unicodedata
 from typing import Any
 
 import requests
@@ -46,6 +48,34 @@ def compact_context(
         ],
         "documents": [{field: row.get(field) for field in document_fields if row.get(field) is not None} for row in documents[:4]],
     }
+
+
+def deterministic_answer(question: str, context: dict[str, Any]) -> dict[str, Any] | None:
+    """Answer simple KPI lookups locally, retaining the same citation guardrail."""
+    normalized = unicodedata.normalize("NFKD", question).encode("ascii", "ignore").decode().lower()
+    metric_aliases = {
+        "core_eps": ("bpa", "eps", "benefice par action"),
+        "core_earnings": ("benefice de base", "benefices de base", "core earnings", "resultat des activites de base", "benefices des 4"),
+        "net_income": ("resultat net", "net income", "benefice net"),
+        "licat_ratio": ("licat", "solvabilite"),
+        "core_roe": ("roe", "rendement des capitaux propres"),
+    }
+    metric_id = next((metric for metric, aliases in metric_aliases.items() if any(alias in normalized for alias in aliases)), None)
+    if not metric_id:
+        return None
+    period_match = re.search(r"(?:20\d{2}\s*[- ]?\s*q[1-4]|q[1-4]\s*20\d{2})", normalized)
+    requested_period = None
+    if period_match:
+        digits = re.findall(r"20\d{2}|q[1-4]", period_match.group())
+        requested_period = f"{digits[0]}-{digits[1].upper()}" if digits[0].startswith("20") else f"{digits[1]}-{digits[0].upper()}"
+    rows = [row for row in context.get("comparisons", []) if row.get("metric_id") == metric_id and (not requested_period or row.get("current_period_id") == requested_period)]
+    if not rows:
+        return {"answer": "Aucune valeur publiée ne correspond à cette période et à cet indicateur.", "citations": [], "caveat": "Les périodes disponibles diffèrent selon l’assureur."}
+    labels = {"core_eps": "BPA de base", "core_earnings": "résultat des activités de base", "net_income": "résultat net", "licat_ratio": "ratio de solvabilité", "core_roe": "ROE de base"}
+    values = "; ".join(f"{row['company_id']} : {row.get('current_value')} ({row.get('current_period_id')})" for row in rows)
+    urls = {document.get("company_id"): document.get("source_url") for document in context.get("documents", [])}
+    citations = [{"label": f"Rapport officiel {row['company_id']}", "url": urls[row["company_id"]]} for row in rows if urls.get(row["company_id"])]
+    return {"answer": f"{labels[metric_id].capitalize()} — {values}.", "citations": citations[:4], "caveat": "Réponse déterministe fondée sur les valeurs publiées; ce n’est pas un conseil financier."}
 
 
 def ask(question: str, context: dict[str, Any], history: list[dict[str, str]]) -> dict[str, Any]:

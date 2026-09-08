@@ -206,6 +206,20 @@ def fetch_finance_provenance(
     return rows[0] if rows else None
 
 
+def fetch_latest_finance_provenance(
+    connection: Any, config: GoldConfig, company_id: str
+) -> dict[str, Any] | None:
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    rows = _query(connection, f"""
+        SELECT company_id, reporting_period, source_url, content_hash, fetched_at, acquisition_status
+        FROM {table}
+        WHERE company_id = ? AND acquisition_status IN ('fetched', 'unchanged')
+        ORDER BY reporting_period DESC, fetched_at DESC, document_id DESC
+        LIMIT 1
+        """, (company_id,))
+    return rows[0] if rows else None
+
+
 def fetch_latest_finance_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
     table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_audit_table))
     rows = _query(connection, f"""
