@@ -9,7 +9,7 @@ from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer
 from comparison_table import comparison_html
 from history_quality import flag_suspicious_history
-from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
+from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 
@@ -26,6 +26,8 @@ def company_rows(config, company): return fetch_comparison(connection(), config,
 def history(config, metric): return fetch_metric_history(connection(), config, metric)
 @st.cache_data(ttl=60, show_spinner=False)
 def company_news(config, company): return fetch_news(connection(), config, company)
+@st.cache_data(ttl=300, show_spinner=False)
+def company_editorial_news(config, company): return fetch_editorial_news(connection(), config, company)
 @st.cache_data(ttl=60, show_spinner=False)
 def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
 @st.cache_data(ttl=60, show_spinner=False)
@@ -184,6 +186,17 @@ with company_tab:
                 st.markdown(f"**{article['title']}**  \n{article['source']} · {display_value(article['published_at'], 'Date non fournie')}")
                 if article["summary"]: st.write(article["summary"])
                 st.link_button("Consulter la source ↗", article["source_url"], key=article["article_id"])
+            st.markdown("#### Veille sectorielle")
+            st.caption("Articles éditoriaux : contexte de marché seulement; ils ne modifient jamais les KPI publiés.")
+            try: editorial_articles = company_editorial_news(config, company)
+            except Exception: editorial_articles = []
+            if not editorial_articles:
+                st.caption("Aucun article éditorial pertinent n’est encore disponible pour cet assureur.")
+            for article in editorial_articles:
+                category = ", ".join(article.get("categories") or [])
+                st.markdown(f"**{article['title']}**  \n{article['source']} · {category} · {display_value(article['published_at'], 'Date non fournie')}")
+                if article["summary"]: st.write(article["summary"])
+                st.link_button("Lire l’article ↗", article["source_url"], key=f"editorial-{article['article_id']}")
 st.caption("Données issues de sources publiques. Vérifiez toujours les documents officiels avant une décision financière.")
 
 st.divider()

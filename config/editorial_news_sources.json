@@ -1,0 +1,5 @@
+[
+  {"source_id":"advisor_ca","url":"https://www.advisor.ca/feed/","enabled":false,"source_type":"editorial_wealth"},
+  {"source_id":"investment_executive","url":"https://www.investmentexecutive.com/feed/","enabled":false,"source_type":"editorial_wealth"},
+  {"source_id":"insurance_journal","url":"https://www.insurancejournal.com/rss/news","enabled":true,"source_type":"editorial_insurance"}
+]

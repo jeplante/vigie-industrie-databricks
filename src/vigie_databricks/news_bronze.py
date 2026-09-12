@@ -22,7 +22,7 @@ BRONZE_COLUMNS = [
     "description_raw", "published_at_raw", "published_at_iso", "fetched_at", "raw_payload", "content_hash",
 ]
 BRONZE_SCHEMA = ",".join(f"{column} string" for column in BRONZE_COLUMNS)
-ALLOWED_LIVE_HOSTS = {"www150.statcan.gc.ca", "www.manulife.com", "www.sunlife.com", "www.greatwestlifeco.com", "ia.ca"}
+ALLOWED_LIVE_HOSTS = {"www150.statcan.gc.ca", "www.manulife.com", "www.sunlife.com", "www.greatwestlifeco.com", "ia.ca", "www.advisor.ca", "www.investmentexecutive.com", "www.insurancejournal.com"}
 ALLOWED_CONTENT_TYPES = {"application/atom+xml", "application/rss+xml", "application/xml", "text/xml"}
 
 
@@ -186,7 +186,7 @@ def parse_sources_json(value: str) -> list[NewsSource]:
             raise ValueError(f"Duplicate source_id: {source_id}")
         if not isinstance(enabled, bool):
             raise ValueError("enabled must be a boolean")
-        if source_type not in {"external_context", "official_insurer"}:
+        if source_type not in {"external_context", "official_insurer", "editorial_insurance", "editorial_wealth"}:
             raise ValueError("source_type is unsupported")
         if source_type == "official_insurer" and company_id not in {"MFC", "SLF", "GWO", "IAG"}:
             raise ValueError("official_insurer sources require a configured company_id")

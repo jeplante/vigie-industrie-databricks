@@ -29,6 +29,7 @@ class GoldConfig:
     news_ai_audit_table: str = "news_ai_run_audit"
     finance_documents_table: str = "financial_documents"
     finance_audit_table: str = "finance_run_audit"
+    editorial_news_table: str = "editorial_news"
 
     @classmethod
     def from_environment(cls) -> "GoldConfig":
@@ -41,6 +42,7 @@ class GoldConfig:
             "news_ai_audit_table": os.environ.get("NEWS_AI_AUDIT_TABLE", "news_ai_run_audit"),
             "finance_documents_table": os.environ.get("FINANCE_DOCUMENTS_TABLE", "financial_documents"),
             "finance_audit_table": os.environ.get("FINANCE_AUDIT_TABLE", "finance_run_audit"),
+            "editorial_news_table": os.environ.get("EDITORIAL_NEWS_TABLE", "editorial_news"),
         }
         missing = [name for name, value in values.items() if not value]
         if missing:
@@ -164,6 +166,22 @@ def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = Non
         """,
         parameters,
     )
+
+
+def fetch_editorial_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
+    filters = ["enrichment_status = 'succeeded'"]
+    parameters: list[Any] = []
+    if company_id:
+        filters.append("array_contains(relevant_company_ids, ?)")
+        parameters.append(company_id)
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.editorial_news_table))
+    return _query(connection, f"""
+        SELECT article_id, source, source_type, source_url, title, summary, published_at, categories, relevant_company_ids
+        FROM {table}
+        WHERE {' AND '.join(filters)}
+        ORDER BY published_at DESC NULLS LAST, article_id
+        LIMIT 20
+        """, parameters)
 
 
 def fetch_latest_news_ai_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
