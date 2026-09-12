@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer
-from comparison_table import comparison_html
+from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
 from history_quality import flag_suspicious_history
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
 
@@ -52,12 +52,13 @@ if not available_companies:
 
 all_rows = {company: company_rows(config, company) for company in available_companies}
 metrics = sorted({r["metric_id"] for rows in all_rows.values() for r in rows if r.get("metric_id")})
-current_period = max(
-    (r["current_period_id"] for rows in all_rows.values() for r in rows if r.get("current_period_id")),
-    default=None,
-)
 latest_documents = {company: company_document(config, company) for company in available_companies}
 available_document_periods = document_periods(config)
+current_period = latest_quarter_period(
+    all_rows,
+    [str(document.get("reporting_period")) for document in available_document_periods],
+)
+current_rows = rows_for_period(all_rows, current_period)
 with st.sidebar:
     st.caption("État des sources")
     try:
@@ -91,23 +92,9 @@ with summary_tab:
             st.success("Aucune alerte de fraîcheur ou de publication détectée.")
     st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
     st.subheader("Résultats des quatre compagnies")
-    comparison_mode = st.radio("Période de comparaison", ["Dernière valeur disponible", "Dernière période commune"], horizontal=True, label_visibility="collapsed")
-    company_periods = {company: {row.get("current_period_id") for row in rows if row.get("current_period_id")} for company, rows in all_rows.items()}
-    common_periods = set.intersection(*company_periods.values()) if company_periods and all(company_periods.values()) else set()
-    if comparison_mode == "Dernière période commune" and not common_periods:
-        st.warning("Aucune période commune n’est actuellement publiée pour les quatre assureurs. Le comparatif reste en dernière valeur disponible afin de ne pas masquer les sources.")
-    elif comparison_mode == "Dernière période commune":
-        selected_period = max(common_periods)
-        display_rows = {company: [row for row in rows if row.get("current_period_id") == selected_period] for company, rows in all_rows.items()}
-        st.caption(f"Période commune : {selected_period}.")
-    else:
-        display_rows = all_rows
-        periods = sorted({period for periods in company_periods.values() for period in periods})
-        if len(periods) > 1:
-            st.info("Les périodes de publication diffèrent selon l’assureur. La période est affichée sous chaque valeur.")
-    st.caption("Une rangée par assureur. Chaque valeur conserve sa période de publication; les KPI absents restent vides.")
-    st.caption("Les badges de variation comparent chaque KPI à la période indiquée sous le badge.")
-    st.markdown(comparison_html(display_rows if comparison_mode == "Dernière période commune" and common_periods else all_rows), unsafe_allow_html=True)
+    st.caption(f"Trimestre affiché : {display_value(current_period, 'indisponible')}. Aucun trimestre antérieur n’est utilisé comme substitut.")
+    st.caption("Les KPI absents sont indiqués N/A. Une variation est affichée uniquement si le même trimestre de l’année précédente est disponible.")
+    st.markdown(comparison_html(current_rows), unsafe_allow_html=True)
     st.markdown("<p class='section-eyebrow'>Comparaison multi-assureurs</p>", unsafe_allow_html=True)
     st.subheader("Évolution historique")
     if metrics:
@@ -162,12 +149,10 @@ with company_tab:
     panels = st.tabs(available_companies)
     for company, panel in zip(available_companies, panels):
         with panel:
-            rows = all_rows[company]
+            rows = current_rows[company]
             st.subheader(company)
             if not rows:
-                st.info("Aucun indicateur publié n’est disponible pour cet assureur.")
-                continue
-            period = next((row.get("current_period_id") for row in rows if row.get("current_period_id")), None)
+                st.info(f"Aucun indicateur validé pour {display_value(current_period)}; les KPI sont indiqués N/A.")
             document = latest_documents.get(company)
             if document:
                 st.caption(f"Période : {document['reporting_period']} · Vérifié le {document['fetched_at']}")
@@ -176,13 +161,27 @@ with company_tab:
             solvency = next((row for row in rows if row.get("metric_id") in {"licat_ratio", "solvency_ratio"}), None)
             narrative = []
             if headline:
-                variation = display_percentage(headline.get("change_pct")) if headline.get("change_pct") is not None else "variation non disponible"
-                narrative.append(f"Résultat des activités de base : {display_number(headline.get('current_value'))} ({variation} vs période précédente).")
+                expected_period = expected_yoy_period(headline.get("current_period_id"))
+                has_yoy = headline.get("previous_period_id") == expected_period and headline.get("change_pct") is not None
+                variation = display_percentage(headline.get("change_pct")) if has_yoy else "variation annuelle N/A"
+                narrative.append(f"Résultat des activités de base : {display_number(headline.get('current_value'))} ({variation}).")
             if solvency:
                 narrative.append(f"Solvabilité : {display_number(solvency.get('current_value'))} %.")
             if narrative:
                 st.info(" ".join(narrative))
-            table = [{"Indicateur": r["metric_id"], "Période": display_value(r["current_period_id"]), "Valeur": display_number(r["current_value"]), "Variation": display_percentage(r["change_pct"]), "Tendance": display_value(r["direction"])} for r in rows]
+            table = []
+            for selector, label, _ in METRICS:
+                metric_ids = (selector,) if isinstance(selector, str) else selector
+                row = next((candidate for metric_id in metric_ids for candidate in rows if candidate.get("metric_id") == metric_id), None)
+                expected_period = expected_yoy_period(current_period)
+                has_yoy = bool(row and row.get("previous_period_id") == expected_period and row.get("change_pct") is not None)
+                table.append({
+                    "Indicateur": label,
+                    "Période": current_period,
+                    "Valeur": display_number(row.get("current_value")) if row else "N/A",
+                    "Variation annuelle": display_percentage(row.get("change_pct")) if has_yoy else "N/A",
+                    "Comparaison": f"vs {expected_period}" if expected_period else "N/A",
+                })
             st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
             st.markdown("#### Actualités")
             st.caption("Communiqués officiels et articles de médias sectoriels pertinents. Les articles externes apportent du contexte et ne modifient jamais les KPI publiés.")
@@ -202,7 +201,7 @@ with company_tab:
                 metadata.append(display_value(article["published_at"], "Date non fournie"))
                 st.markdown(f"**{article['title']}**  \n{' · '.join(metadata)}")
                 if article["summary"]: st.write(article["summary"])
-                st.link_button("Consulter la source ↗", article["source_url"], key=f"news-{article['news_kind']}-{article['article_id']}")
+                st.link_button("Consulter la source ↗", article["source_url"], key=f"news-{company}-{article['news_kind']}-{article['article_id']}")
 st.caption("Données issues de sources publiques. Vérifiez toujours les documents officiels avant une décision financière.")
 
 st.divider()
@@ -220,7 +219,7 @@ if question:
     with st.chat_message("user"):
         st.write(question)
     context = compact_context(
-        [row for rows in all_rows.values() for row in rows],
+        [row for rows in current_rows.values() for row in rows],
         [article for company in available_companies for article in company_news(config, company)],
         [document for document in latest_documents.values() if document],
     )

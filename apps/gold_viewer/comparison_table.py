@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from html import escape
+import re
 from typing import Any
 
 COMPANIES = {"MFC": ("Manuvie", "#1677c8"), "SLF": ("Sun Life", "#f4b400"), "GWO": ("Great-West Lifeco", "#d99800"), "IAG": ("iA Groupe financier", "#c54b8c")}
@@ -22,6 +23,42 @@ HELP = {
     "Rendement des capitaux propres de base": "Rendement des capitaux propres de base, en pourcentage.",
 }
 
+QUARTER_PATTERN = re.compile(r"^(?P<year>20[0-9]{2})-Q(?P<quarter>[1-4])$")
+
+
+def latest_quarter_period(
+    all_rows: dict[str, list[dict[str, Any]]],
+    additional_periods: list[str] | None = None,
+) -> str | None:
+    """Return one explicit latest quarterly period; annual periods never qualify."""
+    periods = {
+        str(row.get("current_period_id"))
+        for rows in all_rows.values()
+        for row in rows
+        if QUARTER_PATTERN.fullmatch(str(row.get("current_period_id") or ""))
+    }
+    periods.update(
+        period for period in (additional_periods or []) if QUARTER_PATTERN.fullmatch(str(period))
+    )
+    return max(periods) if periods else None
+
+
+def rows_for_period(
+    all_rows: dict[str, list[dict[str, Any]]], period_id: str | None
+) -> dict[str, list[dict[str, Any]]]:
+    """Do not substitute an older KPI when the target-quarter value is absent."""
+    return {
+        company: [row for row in rows if row.get("current_period_id") == period_id]
+        for company, rows in all_rows.items()
+    }
+
+
+def expected_yoy_period(period_id: str | None) -> str | None:
+    match = QUARTER_PATTERN.fullmatch(str(period_id or ""))
+    if not match:
+        return None
+    return f"{int(match['year']) - 1}-Q{match['quarter']}"
+
 
 def _format_value(value: Any, kind: str, metric_id: str) -> str:
     if value is None:
@@ -39,10 +76,13 @@ def _metric_row(rows: list[dict[str, Any]], selector: str | tuple[str, ...]) -> 
 
 
 def _delta(row: dict[str, Any], kind: str) -> tuple[str, str, str]:
+    expected_period = expected_yoy_period(row.get("current_period_id"))
+    if not expected_period or row.get("previous_period_id") != expected_period:
+        return "N/A", "flat", f"vs {expected_period}" if expected_period else ""
     direction = row.get("direction")
-    if not direction: return "", "", ""
+    if not direction: return "N/A", "flat", f"vs {expected_period}"
     change = row.get("change_value") if kind == "percent" else row.get("change_pct")
-    if change is None: return "", "", ""
+    if change is None: return "N/A", "flat", f"vs {expected_period}"
     text = f"{float(change):+.1f} pp" if kind == "percent" else f"{float(change) * 100:+.1f} %"
     symbol = "▲" if direction == "up" else "▼" if direction == "down" else "•"
     tone = "up" if direction == "up" else "down" if direction == "down" else "flat"
@@ -62,7 +102,7 @@ def comparison_html(all_rows: dict[str, list[dict[str, Any]]]) -> str:
         for selector, _, kind in METRICS:
             row = _metric_row(rows, selector)
             if not row:
-                cells.append("<td class='comparison-empty'>—</td>")
+                cells.append("<td class='comparison-empty'>N/A</td>")
                 continue
             delta, tone, delta_period = _delta(row, kind)
             value = _format_value(row.get("current_value"), kind, row.get("metric_id", ""))
