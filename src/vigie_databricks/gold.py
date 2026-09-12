@@ -141,40 +141,80 @@ def _build_gold_snapshot(silver_df: DataFrame) -> DataFrame:
         silver_df.select("observation_id", "company_id", "metric_id", "period_id", "value", "ingested_at")
     )
 
-    period_key = F.regexp_extract(F.col("period_id"), r"(?:Q([1-4])|AN)$", 1)
-    enriched = resolved.withColumn("_period_year", F.substring("period_id", 1, 4).cast("int")).withColumn(
-        "_period_quarter",
-        F.when(F.col("period_id").endswith("AN"), F.lit(5)).otherwise(period_key.cast("int")),
+    # Gold is the quarterly comparison product. Annual observations remain in
+    # Silver for audit/history, but must never outrank a quarterly publication.
+    enriched = (
+        resolved.where(F.col("period_id").rlike(r"^20[0-9]{2}-?Q[1-4]$"))
+        .withColumn("_period_year", F.substring("period_id", 1, 4).cast("int"))
+        .withColumn(
+            "_period_quarter",
+            F.regexp_extract(F.col("period_id"), r"Q([1-4])$", 1).cast("int"),
+        )
     )
 
-    window = Window.partitionBy("company_id", "metric_id").orderBy(
+    # Normalize equivalent spellings such as 2026Q2 and 2026-Q2 before the
+    # latest-quarter selection. The newest ingested source wins deterministically.
+    semantic_period_window = Window.partitionBy(
+        "company_id", "metric_id", "_period_year", "_period_quarter"
+    ).orderBy(F.col("ingested_at").desc(), F.col("observation_id").desc())
+    quarterly = (
+        enriched.withColumn("_rn_semantic_period", F.row_number().over(semantic_period_window))
+        .where(F.col("_rn_semantic_period") == 1)
+        .drop("_rn_semantic_period")
+    )
+
+    latest_window = Window.partitionBy("company_id", "metric_id").orderBy(
         F.col("_period_year").desc(),
         F.col("_period_quarter").desc(),
     )
 
-    latest_with_previous = (
-        enriched.withColumn("_seq", F.row_number().over(window))
-        .withColumn("_previous_period_id", F.lead("period_id").over(window))
-        .withColumn("_previous_value", F.lead("value").over(window))
-        .where(F.col("_seq") == 1)
-        .drop("_seq", "_period_year", "_period_quarter", "observation_id", "period_id", "value", "ingested_at")
-        .withColumnRenamed("_previous_period_id", "previous_period_id")
-        .withColumnRenamed("_previous_value", "previous_value")
-    )
-
-    # Re-attach current values after deterministic latest-period selection.
     current_rows = (
-        enriched.withColumn("_seq", F.row_number().over(window))
+        quarterly.withColumn("_seq", F.row_number().over(latest_window))
         .where(F.col("_seq") == 1)
         .select(
             "company_id",
             "metric_id",
             F.col("period_id").alias("current_period_id"),
             F.col("value").alias("current_value"),
+            F.col("_period_year").alias("_current_year"),
+            F.col("_period_quarter").alias("_current_quarter"),
         )
     )
 
-    base = latest_with_previous.join(current_rows, on=["company_id", "metric_id"], how="inner")
+    previous_rows = (
+        quarterly
+        .select(
+            "company_id",
+            "metric_id",
+            F.col("period_id").alias("previous_period_id"),
+            F.col("value").alias("previous_value"),
+            F.col("_period_year").alias("_previous_year"),
+            F.col("_period_quarter").alias("_previous_quarter"),
+        )
+    )
+
+    current = current_rows.alias("current")
+    previous = previous_rows.alias("previous")
+    base = (
+        current.join(
+            previous,
+            on=(
+                (F.col("current.company_id") == F.col("previous.company_id"))
+                & (F.col("current.metric_id") == F.col("previous.metric_id"))
+                & (F.col("previous._previous_year") == F.col("current._current_year") - F.lit(1))
+                & (F.col("previous._previous_quarter") == F.col("current._current_quarter"))
+            ),
+            how="left",
+        )
+        .select(
+            F.col("current.company_id").alias("company_id"),
+            F.col("current.metric_id").alias("metric_id"),
+            F.col("current.current_period_id"),
+            F.col("current.current_value"),
+            F.col("previous.previous_period_id"),
+            F.col("previous.previous_value"),
+        )
+    )
 
     with_change = (
         base.withColumn(
