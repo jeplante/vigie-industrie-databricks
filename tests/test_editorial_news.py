@@ -7,7 +7,13 @@ from vigie_databricks.news_bronze import NewsSource, parse_sources_json
 
 def test_editorial_sources_are_allowlisted_and_typed():
     sources = load_sources(Path(__file__).parents[1] / "config" / "editorial_news_sources.json")
-    assert {source.source_id for source in sources} == {"advisor_ca", "investment_executive", "insurance_journal"}
+    assert {source.source_id for source in sources} == {
+        "advisor_ca", "investment_executive", "insurance_journal",
+        "insurance_canada", "naifa_advisor_today", "artemis",
+    }
+    assert {source.source_id for source in sources if source.enabled} == {
+        "insurance_journal", "insurance_canada", "naifa_advisor_today", "artemis",
+    }
     assert {source.source_type for source in sources} == {"editorial_wealth", "editorial_insurance"}
 
 

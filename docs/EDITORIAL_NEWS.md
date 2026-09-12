@@ -1,10 +1,13 @@
 # Veille éditoriale
 
-Les articles éditoriaux sont collectés dans `workspace.vigie.editorial_news`, séparément de `official_news`. Ils ne modifient ni les KPI Finance ni la liste des communiqués investisseurs.
+Les articles éditoriaux sont collectés dans `workspace.vigie.editorial_news`, séparément de `official_news` au niveau des données. Dans l’App, ils sont présentés avec les communiqués dans une seule section « Actualités », avec une étiquette indiquant le type de source. Ils ne modifient jamais les KPI Finance.
 
 ## Sources actives
 
 - `insurance_journal`: flux RSS officiel, actualités assurance et P&C internationales.
+- `insurance_canada`: flux RSS public canadien, technologie et industrie de l’assurance.
+- `naifa_advisor_today`: publication professionnelle sur l’assurance-vie et le conseil financier.
+- `artemis`: risques, réassurance et marché des capitaux d’assurance.
 
 ## Sources en attente de validation
 
@@ -17,4 +20,5 @@ Les articles éditoriaux sont collectés dans `workspace.vigie.editorial_news`, 
 - maximum 15 articles par source et par exécution;
 - timeout, limite de taille et isolation des échecs par source;
 - association MFC/SLF/GWO/IAG par termes déterministes seulement;
-- étiquette « Veille sectorielle » dans l’App et lien vers l’article original.
+- étiquette « Source officielle » ou « Média sectoriel » dans l’App et lien vers l’article original;
+- les nouvelles sectorielles générales apparaissent sur chaque page; celles associées déterministement à un assureur apparaissent sur sa page.

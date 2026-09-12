@@ -156,12 +156,13 @@ def test_fetch_finance_document_periods_is_traceable_and_quarterly():
     assert connection.cursor_instance.statement.lstrip().startswith("SELECT")
 
 
-def test_fetch_editorial_news_filters_by_deterministic_company_tag():
+def test_fetch_editorial_news_includes_company_and_general_industry_articles():
     connection = FakeConnection([], [])
     fetch_editorial_news(connection, config(), "MFC")
     assert connection.cursor_instance.parameters == ["MFC"]
     assert "editorial_news" in connection.cursor_instance.statement
     assert "array_contains(relevant_company_ids, ?)" in connection.cursor_instance.statement
+    assert "COALESCE(size(relevant_company_ids), 0) = 0" in connection.cursor_instance.statement
 
 
 def test_fetch_latest_finance_audit_exposes_ai_and_retention_counters():

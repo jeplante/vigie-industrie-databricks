@@ -1,5 +1,8 @@
 [
   {"source_id":"advisor_ca","url":"https://www.advisor.ca/feed/","enabled":false,"source_type":"editorial_wealth"},
   {"source_id":"investment_executive","url":"https://www.investmentexecutive.com/feed/","enabled":false,"source_type":"editorial_wealth"},
-  {"source_id":"insurance_journal","url":"https://www.insurancejournal.com/rss/news","enabled":true,"source_type":"editorial_insurance"}
+  {"source_id":"insurance_journal","url":"https://www.insurancejournal.com/rss/news","enabled":true,"source_type":"editorial_insurance"},
+  {"source_id":"insurance_canada","url":"https://www.insurance-canada.ca/blog/feed/","enabled":true,"source_type":"editorial_insurance"},
+  {"source_id":"naifa_advisor_today","url":"https://at.naifa.org/rss.xml","enabled":true,"source_type":"editorial_wealth"},
+  {"source_id":"artemis","url":"https://www.artemis.bm/feed/","enabled":true,"source_type":"editorial_insurance"}
 ]

@@ -22,7 +22,12 @@ BRONZE_COLUMNS = [
     "description_raw", "published_at_raw", "published_at_iso", "fetched_at", "raw_payload", "content_hash",
 ]
 BRONZE_SCHEMA = ",".join(f"{column} string" for column in BRONZE_COLUMNS)
-ALLOWED_LIVE_HOSTS = {"www150.statcan.gc.ca", "www.manulife.com", "www.sunlife.com", "www.greatwestlifeco.com", "ia.ca", "www.advisor.ca", "www.investmentexecutive.com", "www.insurancejournal.com"}
+ALLOWED_LIVE_HOSTS = {
+    "www150.statcan.gc.ca", "www.manulife.com", "www.sunlife.com",
+    "www.greatwestlifeco.com", "ia.ca", "www.advisor.ca",
+    "www.investmentexecutive.com", "www.insurancejournal.com",
+    "www.insurance-canada.ca", "at.naifa.org", "www.artemis.bm",
+}
 ALLOWED_CONTENT_TYPES = {"application/atom+xml", "application/rss+xml", "application/xml", "text/xml"}
 
 

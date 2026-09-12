@@ -12,6 +12,12 @@ from history_quality import flag_suspicious_history
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
+NEWS_SOURCE_LABELS = {
+    "insurance_journal": "Insurance Journal",
+    "insurance_canada": "Insurance-Canada.ca",
+    "naifa_advisor_today": "Advisor Today (NAIFA)",
+    "artemis": "Artemis",
+}
 
 st.set_page_config(page_title="Vigie de l'industrie", page_icon="📊", layout="wide")
 st.markdown(f"<style>{Path(__file__).with_name('style.css').read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
@@ -179,24 +185,24 @@ with company_tab:
             table = [{"Indicateur": r["metric_id"], "Période": display_value(r["current_period_id"]), "Valeur": display_number(r["current_value"]), "Variation": display_percentage(r["change_pct"]), "Tendance": display_value(r["direction"])} for r in rows]
             st.dataframe(pd.DataFrame(table), hide_index=True, width="stretch")
             st.markdown("#### Actualités")
-            try: articles = company_news(config, company)
-            except Exception: articles = []
-            if not articles: st.caption("Aucune actualité officielle n'est disponible pour cette compagnie.")
-            for article in articles:
-                st.markdown(f"**{article['title']}**  \n{article['source']} · {display_value(article['published_at'], 'Date non fournie')}")
-                if article["summary"]: st.write(article["summary"])
-                st.link_button("Consulter la source ↗", article["source_url"], key=article["article_id"])
-            st.markdown("#### Veille sectorielle")
-            st.caption("Articles éditoriaux : contexte de marché seulement; ils ne modifient jamais les KPI publiés.")
+            st.caption("Communiqués officiels et articles de médias sectoriels pertinents. Les articles externes apportent du contexte et ne modifient jamais les KPI publiés.")
+            try: official_articles = company_news(config, company)
+            except Exception: official_articles = []
             try: editorial_articles = company_editorial_news(config, company)
             except Exception: editorial_articles = []
-            if not editorial_articles:
-                st.caption("Aucun article éditorial pertinent n’est encore disponible pour cet assureur.")
-            for article in editorial_articles:
-                category = ", ".join(article.get("categories") or [])
-                st.markdown(f"**{article['title']}**  \n{article['source']} · {category} · {display_value(article['published_at'], 'Date non fournie')}")
+            articles = [dict(article, news_kind="Source officielle") for article in official_articles]
+            articles.extend(dict(article, news_kind="Média sectoriel") for article in editorial_articles)
+            articles.sort(key=lambda article: str(article.get("published_at") or ""), reverse=True)
+            if not articles:
+                st.caption("Aucune actualité pertinente n’est encore disponible pour cet assureur.")
+            for article in articles[:20]:
+                source = NEWS_SOURCE_LABELS.get(article["source"], article["source"])
+                metadata = [source, article["news_kind"]]
+                metadata.extend(article.get("categories") or [])
+                metadata.append(display_value(article["published_at"], "Date non fournie"))
+                st.markdown(f"**{article['title']}**  \n{' · '.join(metadata)}")
                 if article["summary"]: st.write(article["summary"])
-                st.link_button("Lire l’article ↗", article["source_url"], key=f"editorial-{article['article_id']}")
+                st.link_button("Consulter la source ↗", article["source_url"], key=f"news-{article['news_kind']}-{article['article_id']}")
 st.caption("Données issues de sources publiques. Vérifiez toujours les documents officiels avant une décision financière.")
 
 st.divider()

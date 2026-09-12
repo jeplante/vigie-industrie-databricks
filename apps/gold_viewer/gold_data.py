@@ -172,7 +172,7 @@ def fetch_editorial_news(connection: Any, config: GoldConfig, company_id: str | 
     filters = ["enrichment_status = 'succeeded'"]
     parameters: list[Any] = []
     if company_id:
-        filters.append("array_contains(relevant_company_ids, ?)")
+        filters.append("(COALESCE(size(relevant_company_ids), 0) = 0 OR array_contains(relevant_company_ids, ?))")
         parameters.append(company_id)
     table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.editorial_news_table))
     return _query(connection, f"""
