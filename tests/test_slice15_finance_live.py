@@ -5,7 +5,8 @@ from pathlib import Path
 from vigie_databricks.finance_documents import create_financial_document
 from datetime import UTC, datetime
 
-from vigie_databricks.finance_live import acquire_live_finance, discover_mfc_direct_documents, persist_raw_content
+from vigie_databricks.finance_discovery import DiscoveredFinancialDocument
+from vigie_databricks.finance_live import _latest_document, acquire_live_finance, discover_mfc_direct_documents, persist_raw_content
 from vigie_databricks.insurer_contract import load_insurer_contract
 
 
@@ -60,6 +61,16 @@ def test_mfc_direct_discovery_is_bounded_newest_first():
     assert [item.source_url.rsplit("/", 1)[-1] for item in documents] == [
         "MFC_SR_2026_Q3_EN.pdf", "MFC_SR_2026_Q2_EN.pdf", "MFC_SR_2026_Q1_EN.pdf",
     ]
+
+
+def test_latest_document_prefers_shareholder_report_over_transcript_for_same_period():
+    selected = _latest_document([
+        DiscoveredFinancialDocument("quarterly_report", "https://example.com/q2-2026-transcript.pdf", "Q2 2026 transcript"),
+        DiscoveredFinancialDocument("quarterly_report", "https://example.com/pa-e-q226-shrpt.pdf", "Q2 2026 report to shareholders"),
+        DiscoveredFinancialDocument("quarterly_report", "https://example.com/q1-2026-report.pdf", "Q1 2026 quarterly report"),
+    ])
+
+    assert selected.source_url.endswith("pa-e-q226-shrpt.pdf")
 
 
 def test_raw_content_persistence_is_content_addressed_and_idempotent(tmp_path):

@@ -13,6 +13,10 @@ from vigie_databricks.insurer_contract import FinancialSource
 
 QUARTERLY_PATTERN = re.compile(r"\b(q[1-4](?:\d{2})?|[1-4]q\d{2}|quarter|quarterly|trimestre)\b", re.IGNORECASE)
 ANNUAL_PATTERN = re.compile(r"\b(annual|year[ -]?end|annuel)\b", re.IGNORECASE)
+NON_FINANCIAL_REPORT_PATTERN = re.compile(
+    r"\b(transcript|webcast|conference call|presentation|slide deck|certification)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +79,11 @@ def discover_financial_documents(html: str, source: FinancialSource) -> list[Dis
 
 
 def _document_type(value: str) -> str | None:
+    # Transcripts, presentations, and compliance certificates are official
+    # investor-relations documents, but not suitable as the deterministic
+    # source of record for KPI extraction.
+    if NON_FINANCIAL_REPORT_PATTERN.search(value):
+        return None
     if QUARTERLY_PATTERN.search(value):
         return "quarterly_report"
     if ANNUAL_PATTERN.search(value):

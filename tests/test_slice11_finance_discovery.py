@@ -41,3 +41,18 @@ def test_discovery_accepts_compact_quarter_year_in_official_filename() -> None:
     source = load_insurer_contract(ROOT / "config").financial_sources["SLF"]
     documents = discover_financial_documents('<a href="/reports/pa-e-q226-shrpt.pdf">Report to shareholders</a>', source)
     assert documents[0].document_type == "quarterly_report"
+
+
+def test_discovery_rejects_transcripts_presentations_and_webcasts() -> None:
+    source = load_insurer_contract(ROOT / "config").financial_sources["SLF"]
+    html = """
+    <a href="/reports/pa-e-q226-transcript.pdf">Q2 2026 transcript</a>
+    <a href="/reports/q2-2026-presentation.pdf">Q2 2026 presentation</a>
+    <a href="/reports/q2-2026-webcast.pdf">Q2 2026 webcast</a>
+    <a href="/reports/q2-2026-certification-interim.pdf">Q2 2026 certification</a>
+    <a href="/reports/pa-e-q226-shrpt.pdf">Q2 2026 report to shareholders</a>
+    """
+
+    documents = discover_financial_documents(html, source)
+
+    assert [item.source_url.rsplit("/", 1)[-1] for item in documents] == ["pa-e-q226-shrpt.pdf"]

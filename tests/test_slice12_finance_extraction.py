@@ -29,3 +29,19 @@ def test_reporting_period_inference_requires_an_explicit_year_and_period_marker(
     assert infer_reporting_period("pa-e-q226-earnings.pdf") == "2026-Q2"
     assert infer_reporting_period("Manulife 2Q26 results") == "2026-Q2"
     assert infer_reporting_period("Quarterly results") is None
+
+
+def test_gwo_extraction_does_not_treat_inline_reference_markers_as_values():
+    content = """
+    Base earnings1 $ 1,270 $ 1,149. Net earnings $ 1,039 $ 894.
+    Base EPS2 $ 1.42 $ 1.24. Base ROE2,3 19.3 % 17.4 %.
+    """
+
+    rows = extract_finance_metrics("GWO", content, load_insurer_contract(ROOT / "config"))
+
+    assert {row.metric_id: row.value for row in rows} == {
+        "core_eps": 1.42,
+        "core_earnings": 1.27,
+        "net_income": 1.039,
+        "core_roe": 19.3,
+    }

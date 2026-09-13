@@ -52,7 +52,11 @@ def extract_finance_metrics(company_id: str, content: str, contract: InsurerCont
     for metric_id, aliases in ALIASES[company_id].items():
         expected_unit = contract.metrics[metric_id].unit
         for alias in aliases:
-            match = re.search(re.escape(alias) + r".{0,100}?" + VALUE_PATTERN.pattern, text, re.IGNORECASE)
+            # PDF text extraction commonly renders reference markers inline
+            # (for example ``Base EPS2 $1.42``). Consume those markers before
+            # looking for the financial value so they cannot become the value.
+            alias_with_reference = re.escape(alias) + r"(?:\s*\d+(?:,\d+)*)?"
+            match = re.search(alias_with_reference + r".{0,100}?" + VALUE_PATTERN.pattern, text, re.IGNORECASE)
             if not match:
                 continue
             number = match.group("prefix_number") or match.group("suffix_number")
