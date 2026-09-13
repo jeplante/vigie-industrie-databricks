@@ -31,8 +31,18 @@ def _latest_document(documents):
     for document in documents:
         period = infer_reporting_period(f"{document.title} {document.source_url}")
         if period:
-            ranked.append((period, document.source_url, document))
-    return max(ranked, default=(None, None, None))[2]
+            material = f"{document.title} {document.source_url}".lower()
+            preference = 0
+            if re.search(r"report to shareholders|shareholder report|shrpt", material):
+                preference = 4
+            elif re.search(r"quarterly report|financial report", material):
+                preference = 3
+            elif re.search(r"earnings release|financial results|news release", material):
+                preference = 2
+            elif re.search(r"financial statements", material):
+                preference = 1
+            ranked.append((period, preference, document.source_url, document))
+    return max(ranked, default=(None, None, None, None))[3]
 
 
 def discover_mfc_direct_documents(now: datetime | None = None, *, max_quarters: int = 6) -> list[DiscoveredFinancialDocument]:

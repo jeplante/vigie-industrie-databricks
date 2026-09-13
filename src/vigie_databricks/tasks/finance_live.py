@@ -85,7 +85,25 @@ def main() -> None:
         "quality_status": "validated" if all_sources else "stale",
     }
     if dry_run:
-        print(json.dumps({"status": "validated" if all_sources else "failed", "dry_run": True, "errors": result.source_errors, "audit": audit}, default=str, sort_keys=True))
+        diagnostics = {
+            "documents": [
+                {
+                    "company_id": document.company_id,
+                    "reporting_period": document.reporting_period,
+                    "source_url": document.source_url,
+                    "acquisition_status": document.acquisition_status,
+                }
+                for document in result.documents
+            ],
+            "candidates": list(result.candidates),
+        }
+        print(json.dumps({
+            "status": "validated" if all_sources else "failed",
+            "dry_run": True,
+            "errors": result.source_errors,
+            "audit": audit,
+            "diagnostics": diagnostics,
+        }, default=str, sort_keys=True))
         if not all_sources:
             raise ValueError("Live Finance gate failed; schedule must remain disabled")
         return

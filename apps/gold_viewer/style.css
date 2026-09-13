@@ -12,6 +12,19 @@
 [data-testid="stSidebar"] { background: #edf3f5; }
 [data-testid="stSelectbox"] { background: white; border-radius: .65rem; }
 [data-testid="stDataFrame"] { border: 1px solid #d7e0e5; padding: .25rem; }
+.comparison-wrap { overflow-x: auto; border: 1px solid #d7e0e5; border-radius: .8rem; background: #fff; box-shadow: 0 10px 30px rgb(15 36 51 / 5%); }
+.comparison-table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: .88rem; }
+.comparison-table th, .comparison-table td { border-right: 1px solid #d7e0e5; border-bottom: 1px solid #d7e0e5; padding: .85rem .8rem; text-align: left; vertical-align: top; }
+.comparison-table thead th { color: #3b5870; background: #f9fbfc; font-size: .75rem; line-height: 1.2; font-weight: 800; }
+.comparison-table tbody tr:last-child th, .comparison-table tbody tr:last-child td { border-bottom: 0; }
+.comparison-table th:last-child, .comparison-table td:last-child { border-right: 0; }
+.comparison-table tbody th { border-left: 4px solid var(--company-colour); color: #102c40; min-width: 135px; }
+.comparison-table td strong { color: #09273d; display: block; font-size: 1rem; white-space: nowrap; }
+.comparison-ticker, .comparison-period { display: block; color: #60788a; font-size: .7rem; line-height: 1.5; margin-top: .15rem; }
+.comparison-delta { display: inline-block; border-radius: .3rem; padding: .15rem .34rem; margin-top: .35rem; font-weight: 800; font-size: .72rem; white-space: nowrap; }
+.comparison-delta-period { display: block; color: #60788a; font-size: .68rem; margin-top: .15rem; }
+.comparison-delta.up { background: #e2f5ec; color: #087f5b; }.comparison-delta.down { background: #ffeaeb; color: #c3343b; }.comparison-delta.flat { background: #edf1f3; color: #526975; }
+.comparison-empty { color: #8ea0ac; vertical-align: middle !important; }
 [data-testid="stMetric"] { background: white; border: 1px solid #d7e0e5; border-top: 3px solid #146c7e; border-radius: .65rem; padding: 1rem; box-shadow: 0 10px 30px rgb(15 36 51 / 8%); height: 100%; }
 [data-testid="stMetricLabel"] { color: #5f6f7d; }
 [data-testid="stMetricValue"] { font-size: clamp(1.3rem,2.6vw,2.15rem); font-weight: 800; letter-spacing: -.04em; }

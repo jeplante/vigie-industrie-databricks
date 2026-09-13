@@ -50,7 +50,7 @@ def _objects(connect_spark, prefix: str) -> tuple[str, str, str]:
     return bronze, silver, gold
 
 
-def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_spark) -> None:
+def test_gold_same_period_resolution_exact_yoy_and_rerun(connect_spark) -> None:
     bronze_object, silver_object, gold_object = _objects(connect_spark, "s3_core")
 
     base = datetime.now(UTC)
@@ -72,12 +72,12 @@ def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_s
             "ingested_at": (base + timedelta(minutes=5)).isoformat(),
         },
         {
-            "observation_id": "obs-2025q4",
+            "observation_id": "obs-2025q2",
             "company_id": "C1",
             "metric_id": "revenue",
-            "period_id": "2025Q4",
+            "period_id": "2025Q2",
             "value": 90.0,
-            "ingested_at": (base - timedelta(days=90)).isoformat(),
+            "ingested_at": (base - timedelta(days=365)).isoformat(),
         },
         {
             "observation_id": "obs-only",
@@ -99,9 +99,9 @@ def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_s
             "observation_id": "obs-zero-prev-older",
             "company_id": "C3",
             "metric_id": "ratio",
-            "period_id": "2025Q4",
+            "period_id": "2025Q2",
             "value": 0.0,
-            "ingested_at": (base - timedelta(days=90)).isoformat(),
+            "ingested_at": (base - timedelta(days=365)).isoformat(),
         },
         {
             "observation_id": "obs-tie-a",
@@ -123,9 +123,17 @@ def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_s
             "observation_id": "obs-tie-prev",
             "company_id": "C4",
             "metric_id": "quality",
-            "period_id": "2025Q4",
+            "period_id": "2025Q2",
             "value": 0.0,
-            "ingested_at": (base - timedelta(days=90)).isoformat(),
+            "ingested_at": (base - timedelta(days=365)).isoformat(),
+        },
+        {
+            "observation_id": "obs-annual-must-not-win",
+            "company_id": "C1",
+            "metric_id": "revenue",
+            "period_id": "2026-AN",
+            "value": 999.0,
+            "ingested_at": (base + timedelta(minutes=10)).isoformat(),
         },
     ]
     load_bronze_observations(connect_spark, bronze_rows, bronze_object)
@@ -150,7 +158,7 @@ def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_s
     row = rows[0]
     assert row["current_period_id"] == "2026Q2"
     assert row["current_value"] == 120.0
-    assert row["previous_period_id"] == "2025Q4"
+    assert row["previous_period_id"] == "2025Q2"
     assert row["previous_value"] == 90.0
     assert row["change_value"] == 30.0
     assert row["change_pct"] == pytest.approx((120.0 - 90.0) / 90.0)
@@ -166,7 +174,7 @@ def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_s
 
     zero_prev = connect_spark.table(gold_object).where("company_id = 'C3' AND metric_id = 'ratio'").collect()[0]
     assert zero_prev["current_period_id"] == "2026Q2"
-    assert zero_prev["previous_period_id"] == "2025Q4"
+    assert zero_prev["previous_period_id"] == "2025Q2"
     assert zero_prev["previous_value"] == 0.0
     assert zero_prev["current_value"] == 5.0
     assert zero_prev["change_value"] == 5.0
@@ -176,7 +184,7 @@ def test_gold_same_period_resolution_non_contiguous_previous_and_rerun(connect_s
     tie_break = connect_spark.table(gold_object).where("company_id = 'C4' AND metric_id = 'quality'").collect()[0]
     assert tie_break["current_period_id"] == "2026Q2"
     assert tie_break["current_value"] == 2.0
-    assert tie_break["previous_period_id"] == "2025Q4"
+    assert tie_break["previous_period_id"] == "2025Q2"
 
 
 def test_gold_changed_current_changed_previous_and_delete(connect_spark) -> None:
@@ -193,12 +201,12 @@ def test_gold_changed_current_changed_previous_and_delete(connect_spark) -> None
             "ingested_at": base.isoformat(),
         },
         {
-            "observation_id": "m-2025q4",
+            "observation_id": "m-2025q2",
             "company_id": "M1",
             "metric_id": "revenue",
-            "period_id": "2025Q4",
+            "period_id": "2025Q2",
             "value": 80.0,
-            "ingested_at": (base - timedelta(days=90)).isoformat(),
+            "ingested_at": (base - timedelta(days=365)).isoformat(),
         },
         {
             "observation_id": "m-delete",
@@ -238,13 +246,13 @@ def test_gold_changed_current_changed_previous_and_delete(connect_spark) -> None
     assert after_current["previous_value"] == 80.0
     assert after_current["change_value"] == 50.0
 
-    # Changed-previous behavior: previous available period value changes.
+    # Changed-previous behavior: the exact year-over-year value changes.
     changed_previous = [
         {
-            "observation_id": "m-2025q4",
+            "observation_id": "m-2025q2",
             "company_id": "M1",
             "metric_id": "revenue",
-            "period_id": "2025Q4",
+            "period_id": "2025Q2",
             "value": 70.0,
             "ingested_at": (base + timedelta(minutes=6)).isoformat(),
         }

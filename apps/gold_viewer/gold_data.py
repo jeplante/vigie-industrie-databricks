@@ -29,6 +29,7 @@ class GoldConfig:
     news_ai_audit_table: str = "news_ai_run_audit"
     finance_documents_table: str = "financial_documents"
     finance_audit_table: str = "finance_run_audit"
+    editorial_news_table: str = "editorial_news"
 
     @classmethod
     def from_environment(cls) -> "GoldConfig":
@@ -41,6 +42,7 @@ class GoldConfig:
             "news_ai_audit_table": os.environ.get("NEWS_AI_AUDIT_TABLE", "news_ai_run_audit"),
             "finance_documents_table": os.environ.get("FINANCE_DOCUMENTS_TABLE", "financial_documents"),
             "finance_audit_table": os.environ.get("FINANCE_AUDIT_TABLE", "finance_run_audit"),
+            "editorial_news_table": os.environ.get("EDITORIAL_NEWS_TABLE", "editorial_news"),
         }
         missing = [name for name, value in values.items() if not value]
         if missing:
@@ -166,6 +168,22 @@ def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = Non
     )
 
 
+def fetch_editorial_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
+    filters = ["enrichment_status = 'succeeded'"]
+    parameters: list[Any] = []
+    if company_id:
+        filters.append("(COALESCE(size(relevant_company_ids), 0) = 0 OR array_contains(relevant_company_ids, ?))")
+        parameters.append(company_id)
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.editorial_news_table))
+    return _query(connection, f"""
+        SELECT article_id, source, source_type, source_url, title, summary, published_at, categories, relevant_company_ids
+        FROM {table}
+        WHERE {' AND '.join(filters)}
+        ORDER BY published_at DESC NULLS LAST, article_id
+        LIMIT 20
+        """, parameters)
+
+
 def fetch_latest_news_ai_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
     table = ".".join(
         f"`{part}`" for part in (config.catalog, config.schema, config.news_ai_audit_table)
@@ -204,6 +222,33 @@ def fetch_finance_provenance(
         LIMIT 1
         """, (company_id, reporting_period))
     return rows[0] if rows else None
+
+
+def fetch_latest_finance_provenance(
+    connection: Any, config: GoldConfig, company_id: str
+) -> dict[str, Any] | None:
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    rows = _query(connection, f"""
+        SELECT company_id, reporting_period, source_url, content_hash, fetched_at, acquisition_status
+        FROM {table}
+        WHERE company_id = ? AND acquisition_status IN ('fetched', 'unchanged')
+        ORDER BY reporting_period DESC, fetched_at DESC, document_id DESC
+        LIMIT 1
+        """, (company_id,))
+    return rows[0] if rows else None
+
+
+def fetch_finance_document_periods(connection: Any, config: GoldConfig) -> list[dict[str, Any]]:
+    """Return traceable quarterly documents for chart completeness indicators."""
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    return _query(connection, f"""
+        SELECT company_id, reporting_period, source_url
+        FROM {table}
+        WHERE company_id IN ('MFC', 'SLF', 'GWO', 'IAG')
+          AND acquisition_status IN ('fetched', 'unchanged')
+          AND reporting_period RLIKE '^20[0-9]{{2}}-Q[1-4]$'
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY company_id, reporting_period ORDER BY fetched_at DESC, document_id DESC) = 1
+        """)
 
 
 def fetch_latest_finance_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
