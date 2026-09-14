@@ -14,9 +14,27 @@ from vigie_databricks.insurer_contract import FinancialSource
 QUARTERLY_PATTERN = re.compile(r"\b(q[1-4](?:\d{2})?|[1-4]q\d{2}|quarter|quarterly|trimestre)\b", re.IGNORECASE)
 ANNUAL_PATTERN = re.compile(r"\b(annual|year[ -]?end|annuel)\b", re.IGNORECASE)
 NON_FINANCIAL_REPORT_PATTERN = re.compile(
-    r"\b(transcript|webcast|conference call|presentation|slide deck|certification)\b",
+    r"\b(transcript|webcast|conference call|presentation|slide deck|certificat(?:e|ion)|"
+    r"dividend|fact sheet|annual information form|management discussion and analysis|mda|ifrs[ -]?17|"
+    r"ncib|normal course issuer bid|supplemental information package|sip)\b",
     re.IGNORECASE,
 )
+
+
+def financial_document_preference(value: str) -> int:
+    """Rank source-of-record documents; negative values must never be extracted."""
+    material = re.sub(r"[-_/]+", " ", value.lower())
+    if NON_FINANCIAL_REPORT_PATTERN.search(material):
+        return -1
+    if re.search(r"report to shareholders|shareholders? report|shrpt|mfc sr|mfc qpr", material):
+        return 4
+    if re.search(r"quarterly report|financial report", material):
+        return 3
+    if re.search(r"earnings release|\bearnings\b|financial results|news release", material):
+        return 2
+    if re.search(r"financial statements", material):
+        return 1
+    return 0
 
 
 @dataclass(frozen=True)
@@ -82,7 +100,7 @@ def _document_type(value: str) -> str | None:
     # Transcripts, presentations, and compliance certificates are official
     # investor-relations documents, but not suitable as the deterministic
     # source of record for KPI extraction.
-    if NON_FINANCIAL_REPORT_PATTERN.search(value):
+    if financial_document_preference(value) < 0:
         return None
     if QUARTERLY_PATTERN.search(value):
         return "quarterly_report"

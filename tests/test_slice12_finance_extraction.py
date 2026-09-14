@@ -23,6 +23,38 @@ def test_sun_life_and_iag_extract_their_source_specific_metrics():
     assert {row.metric_id: row.value for row in iag}["assets_under_administration"] == 250.0
 
 
+def test_skips_incompatible_earlier_alias_occurrence_and_uses_later_value():
+    contract = load_insurer_contract(ROOT / "config")
+    rows = extract_finance_metrics("IAG", "Core EPS of $3.68. Core earnings per share of $3.68. Core earnings of $330 million.", contract)
+    values = {row.metric_id: row.value for row in rows}
+    assert values["core_eps"] == 3.68
+    assert values["core_earnings"] == 0.33
+
+
+def test_skips_core_earnings_adjustments_and_accepts_long_form_eps_alias():
+    contract = load_insurer_contract(ROOT / "config")
+    iag = extract_finance_metrics(
+        "IAG",
+        "Core earnings adjustments totalled $3 million. Core earnings were $327 million.",
+        contract,
+    )
+    slf = extract_finance_metrics("SLF", "Underlying earnings per share of $1.79.", contract)
+    assert {row.metric_id: row.value for row in iag}["core_earnings"] == 0.327
+    assert {row.metric_id: row.value for row in slf}["core_eps"] == 1.79
+
+
+def test_extracts_values_from_tables_with_units_in_headers():
+    contract = load_insurer_contract(ROOT / "config")
+    iag = extract_finance_metrics(
+        "IAG",
+        "Core earnings (in millions) 327 267. Assets under management and assets under administration (in billions)7 $273.8 $264.0.",
+        contract,
+    )
+    slf = extract_finance_metrics("SLF", "Underlying EPS ($) (1)(4) 1.79 1.72.", contract)
+    assert {row.metric_id: row.value for row in iag} == {"core_earnings": 0.327, "assets_under_administration": 273.8}
+    assert {row.metric_id: row.value for row in slf} == {"core_eps": 1.79}
+
+
 def test_reporting_period_inference_requires_an_explicit_year_and_period_marker():
     assert infer_reporting_period("Sun Life reports first quarter 2026 results") == "2026-Q1"
     assert infer_reporting_period("Great-West Lifeco full year 2025 results") == "2025-AN"

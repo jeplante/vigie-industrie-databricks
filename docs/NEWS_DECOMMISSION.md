@@ -21,25 +21,36 @@ La collecte historique est separee de la publication des KPI :
 `scripts/fetch_finance_history.py` conserve les PDF et leur provenance dans
 le volume Finance et `financial_documents`, mais ne publie pas les valeurs
 extraites. Les archives Sun Life, les pages trimestrielles Great-West et les
-communiques T4 Manuvie completent la decouverte courante. Les 72 periodes,
-de T1 2022 a T2 2026 pour chaque assureur, ont un PDF brut conserve. La revue
-produit des candidats controles par empreinte. Les periodes deja referencees
-avec un fichier brut sont ignorees lors de la reprise.
+communiques T4 Manuvie completent la decouverte courante. La reprise cible les
+72 periodes, de T1 2022 a T2 2026 pour les quatre assureurs. Une periode n'est
+consideree acquise que si son fichier brut provient d'un rapport aux
+actionnaires, d'un rapport financier ou d'un communique de resultats admissible.
+Les transcriptions, presentations et certificats restent dans l'audit, mais ne
+peuvent plus satisfaire la couverture ni alimenter un KPI.
 
-## Publication de l'historique - 7 septembre 2026
+## Publication de l'historique - mise a jour du 14 septembre 2026
 
 Le Job `vigie-finance-history-publish` (`623558766235360`) valide les candidats
 contre leur document source avant toute publication. Le passage de validation
 retient uniquement les rapports trimestriels dont la compagnie, la periode,
-l'URL et l'empreinte correspondent au document indexe. Pour la publication
-initiale jusqu'a T4 2025, 230 observations trimestrielles ont ete validees et
-4 candidats ont ete rejetes; 36 candidats hors plage ou non trimestriels sont
-conserves pour revue, sans etre publies.
+l'URL et l'empreinte correspondent au document indexe. Il verifie aussi le KPI
+attendu, l'unite, les bornes de valeur, le contexte comptable, la completude de
+chaque compagnie-periode et les variations annuelles extremes. Un KPI absent
+reste `N/A`; une valeur suspecte reste en quarantaine avec sa raison sans faire
+disparaitre les autres KPI valides du trimestre. La derniere publication fiable
+est preservee et les versions Delta precedentes sont restaurees si la
+publication multi-couche echoue.
 
-Le premier run persistant a insere 229 observations et mis a jour 1
-observation dans Bronze/Silver, puis a mis a jour 18 cles et insere 3 cles
-dans Gold. La reconciliation Bronze/Silver/Gold est nulle. Le second run
-persistant a reussi avec 0 insertion et 0 mise a jour dans les trois couches,
-ce qui confirme l'idempotence. Le Job est intentionnellement non planifie :
-il s'agit d'une reprise historique ponctuelle. Le Job Finance live quotidien
-reste la seule publication planifiee.
+Le dry-run `925379669030111` a revu 399 candidats issus de 72 rapports, sans
+erreur d'extraction. Il a valide 392 observations, mis 7 valeurs anormales en
+quarantaine et releve 12 compagnie-periodes incompletes; les KPI absents restent
+`N/A`. Le T2 2025 est complet pour les quatre assureurs, notamment le BPA de
+Great-West Lifeco a 1,24 $.
+
+La publication `943155556729120` a retire 9 anciennes observations ou donnees
+de demonstration, puis publie les 392 valeurs valides avec une reconciliation
+nulle entre Bronze, Silver et Gold. Le second run persistant
+`1109043667602846` n'a fait aucune insertion, mise a jour ou suppression dans
+les trois couches, ce qui confirme l'idempotence. Le Job reste
+intentionnellement non planifie : il s'agit d'une reprise historique ponctuelle.
+Le Job Finance live quotidien reste la seule publication planifiee.

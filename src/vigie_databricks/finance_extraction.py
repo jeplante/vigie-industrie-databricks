@@ -14,11 +14,13 @@ from vigie_databricks.insurer_contract import InsurerContract
 
 ALIASES = {
     "MFC": {"core_eps": ("core EPS", "BPA tire des activites de base"), "core_earnings": ("core earnings",), "net_income": ("net income attributed to shareholders",), "core_roe": ("core ROE",), "licat_ratio": ("LICAT ratio",)},
-    "SLF": {"core_eps": ("underlying EPS",), "core_earnings": ("underlying net income",), "net_income": ("reported net income",), "core_roe": ("underlying ROE",), "licat_ratio": ("LICAT ratio",), "assets_under_management": ("assets under management",)},
+    "SLF": {"core_eps": ("underlying EPS", "underlying earnings per share"), "core_earnings": ("underlying net income",), "net_income": ("reported net income",), "core_roe": ("underlying ROE",), "licat_ratio": ("LICAT ratio",), "assets_under_management": ("assets under management",)},
     "GWO": {"core_eps": ("base EPS", "base earnings per share"), "core_earnings": ("base earnings",), "net_income": ("net earnings",), "core_roe": ("consolidated base ROE", "base ROE"), "licat_ratio": ("LICAT ratio",), "total_client_assets": ("total client assets",)},
-    "IAG": {"core_eps": ("core EPS",), "core_earnings": ("core earnings",), "net_income": ("net income attributed to common shareholders",), "core_roe": ("core ROE",), "licat_ratio": ("solvency ratio", "LICAT ratio"), "assets_under_administration": ("assets under administration",)},
+    "IAG": {"core_eps": ("core EPS",), "core_earnings": ("core earnings",), "net_income": ("net income attributed to common shareholders",), "core_roe": ("core ROE",), "licat_ratio": ("solvency ratio", "LICAT ratio"), "assets_under_administration": ("assets under management and assets under administration", "assets under management and administration", "assets under administration")},
 }
+EXPECTED_METRICS = {company_id: frozenset(metrics) for company_id, metrics in ALIASES.items()}
 NUMBER_PATTERN = r"\d{1,3}(?:[ ,]\d{3})+|\d+(?:[.,]\d+)?"
+TABLE_NUMBER_PATTERN = r"\d{1,3}(?:,\d{3})+|\d+(?:[.,]\d+)?"
 VALUE_PATTERN = re.compile(
     rf"(?:(?P<prefix_currency>\$)\s*(?P<prefix_number>{NUMBER_PATTERN})(?:\s*(?P<prefix_scale>trillion|billion|million))?|(?P<suffix_number>{NUMBER_PATTERN})\s*(?P<suffix_unit>trillion|billion|million|T\$|G\$|M\$|\$|%))",
     re.IGNORECASE,
@@ -55,16 +57,39 @@ def extract_finance_metrics(company_id: str, content: str, contract: InsurerCont
             # PDF text extraction commonly renders reference markers inline
             # (for example ``Base EPS2 $1.42``). Consume those markers before
             # looking for the financial value so they cannot become the value.
-            alias_with_reference = re.escape(alias) + r"(?:\s*\d+(?:,\d+)*)?"
-            match = re.search(alias_with_reference + r".{0,100}?" + VALUE_PATTERN.pattern, text, re.IGNORECASE)
-            if not match:
+            # Footnote references are attached to the label in extracted PDF
+            # text (``Base EPS2``). Whitespace means the following number is a
+            # value and must not be consumed as a reference.
+            alias_with_reference = re.escape(alias) + r"(?:\d+(?:,\d+)*)?"
+            table_pattern = re.compile(
+                re.escape(alias)
+                + rf".{{0,50}}?\((?:in\s+)?(?P<table_unit>\$|millions?|billions?|trillions?)\)"
+                + rf"(?:\s*(?:\(\d+\)|[\u2020\u2021,*]+))*\s*(?:\d+\s+(?=\$))?\$?\s*(?P<table_number>{TABLE_NUMBER_PATTERN})",
+                re.IGNORECASE,
+            )
+            table_match = table_pattern.search(text)
+            if table_match:
+                table_unit = table_match.group("table_unit").lower().rstrip("s")
+                table_value = _normalized_value(table_match.group("table_number"), table_unit, expected_unit)
+                if table_value is not None:
+                    raw_match = table_match.group(0)
+                    if metric_id != "core_earnings" or not re.search(r"per share|adjustments?", raw_match, re.IGNORECASE):
+                        extracted.append(ExtractedMetric(metric_id, table_value, expected_unit, raw_match, raw_match[:500]))
+                        break
+            pattern = re.compile(alias_with_reference + r".{0,100}?" + VALUE_PATTERN.pattern, re.IGNORECASE)
+            for match in pattern.finditer(text):
+                raw_match = match.group(0)
+                if metric_id == "core_earnings" and re.search(r"per share|adjustments?", raw_match, re.IGNORECASE):
+                    continue
+                number = match.group("prefix_number") or match.group("suffix_number")
+                source_unit = match.group("prefix_scale") or match.group("prefix_currency") or match.group("suffix_unit")
+                value = _normalized_value(number, source_unit, expected_unit)
+                if value is not None:
+                    extracted.append(ExtractedMetric(metric_id, value, expected_unit, raw_match, raw_match[:500]))
+                    break
+            else:
                 continue
-            number = match.group("prefix_number") or match.group("suffix_number")
-            source_unit = match.group("prefix_scale") or match.group("prefix_currency") or match.group("suffix_unit")
-            value = _normalized_value(number, source_unit, expected_unit)
-            if value is not None:
-                extracted.append(ExtractedMetric(metric_id, value, expected_unit, match.group(0), match.group(0)[:500]))
-                break
+            break
     return extracted
 
 

@@ -25,7 +25,7 @@ def test_live_finance_selects_latest_report_and_builds_deterministic_candidates(
 
     def document_fetcher(contract, company_id, document_type, source_url, **kwargs):
         from vigie_databricks.finance_acquisition import FinancialDocumentFetch
-        payload = b"<p>Core EPS $1.25. Core earnings $2,000 million. Underlying EPS $1.25. Underlying net income $2,000 million. Base EPS $1.25. Base earnings $2,000 million. LICAT ratio 140%. Solvency ratio 140%.</p>"
+        payload = b"<p>Core EPS $1.25. Core earnings $2,000 million. Net income attributed to shareholders $1,000 million. Core ROE 18%. Underlying EPS $1.25. Underlying net income $2,000 million. Reported net income $1,000 million. Underlying ROE 18%. Assets under management $1,500 billion. Base EPS $1.25. Base earnings $2,000 million. Net earnings $1,000 million. Base ROE 18%. Total client assets $3 trillion. Net income attributed to common shareholders $1,000 million. Assets under administration $300 billion. LICAT ratio 140%. Solvency ratio 140%.</p>"
         document = create_financial_document(contract, company_id, document_type, source_url, "fetched", content=payload, content_type="text/html")
         return FinancialDocumentFetch(document, payload)
 

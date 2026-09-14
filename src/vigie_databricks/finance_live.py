@@ -9,9 +9,9 @@ import re
 from typing import Any, Callable
 
 from vigie_databricks.finance_acquisition import acquire_discovery_page, acquire_financial_document
-from vigie_databricks.finance_discovery import DiscoveredFinancialDocument, discover_financial_documents
+from vigie_databricks.finance_discovery import DiscoveredFinancialDocument, discover_financial_documents, financial_document_preference
 from vigie_databricks.finance_documents import FinancialDocument, create_financial_document
-from vigie_databricks.finance_extraction import extract_document_text, extract_finance_metrics, infer_reporting_period
+from vigie_databricks.finance_extraction import EXPECTED_METRICS, extract_document_text, extract_finance_metrics, infer_reporting_period
 from vigie_databricks.insurer_contract import InsurerContract
 
 
@@ -31,16 +31,9 @@ def _latest_document(documents):
     for document in documents:
         period = infer_reporting_period(f"{document.title} {document.source_url}")
         if period:
-            material = f"{document.title} {document.source_url}".lower()
-            preference = 0
-            if re.search(r"report to shareholders|shareholder report|shrpt", material):
-                preference = 4
-            elif re.search(r"quarterly report|financial report", material):
-                preference = 3
-            elif re.search(r"earnings release|financial results|news release", material):
-                preference = 2
-            elif re.search(r"financial statements", material):
-                preference = 1
+            preference = financial_document_preference(f"{document.title} {document.source_url}")
+            if preference < 0:
+                continue
             ranked.append((period, preference, document.source_url, document))
     return max(ranked, default=(None, None, None, None))[3]
 
@@ -150,6 +143,10 @@ def acquire_live_finance(
             ai_candidates = [] if metrics or ai_fallback is None else ai_fallback(company_id, period_id, selected.source_url, document.content_hash, text)
             if not metrics and not ai_candidates:
                 raise ValueError("deterministic_extraction_empty")
+            present_metrics = {metric.metric_id for metric in metrics} | {str(row.get("metric_id")) for row in ai_candidates}
+            missing_metrics = EXPECTED_METRICS[company_id] - present_metrics
+            if missing_metrics:
+                raise ValueError("incomplete_metric_set_" + "_".join(sorted(missing_metrics)))
             for metric in metrics:
                 candidates.append({
                     "observation_id": f"{company_id}-{period_id}-{metric.metric_id}",

@@ -11,7 +11,7 @@ from databricks.sdk import WorkspaceClient
 from databricks.connect import DatabricksSession
 from vigie_databricks.insurer_contract import load_insurer_contract
 from vigie_databricks.finance_acquisition import acquire_discovery_page, acquire_financial_document
-from vigie_databricks.finance_discovery import discover_financial_documents, DiscoveredFinancialDocument, _LinkCollector
+from vigie_databricks.finance_discovery import discover_financial_documents, DiscoveredFinancialDocument, _LinkCollector, financial_document_preference
 from urllib.parse import urljoin, urlsplit
 from vigie_databricks.finance_extraction import infer_reporting_period
 from vigie_databricks.finance_live import discover_mfc_direct_documents
@@ -26,8 +26,16 @@ def main():
     periods = [f'{year}-Q{q}' for year in range(2022, now.year + 1) for q in range(1, 5)
                if (year, q) < (now.year, (now.month - 1) // 3 + 1)]
     report = {}
-    existing = {(r['company_id'], r['reporting_period']) for r in
-                spark.table('workspace.vigie.financial_documents').where('raw_content_path IS NOT NULL').select('company_id', 'reporting_period').collect()}
+    existing_rows = spark.table('workspace.vigie.financial_documents').where(
+        "raw_content_path IS NOT NULL AND acquisition_status IN ('fetched', 'unchanged')"
+    ).select('company_id', 'reporting_period', 'source_url').collect()
+    existing_preference = {}
+    for row in existing_rows:
+        key = (row['company_id'], row['reporting_period'])
+        existing_preference[key] = max(
+            existing_preference.get(key, -1), financial_document_preference(row['source_url'])
+        )
+    existing = {key for key, preference in existing_preference.items() if preference >= 0}
     for company, source in contract.financial_sources.items():
         found, errors = {}, {}
         try:
@@ -39,17 +47,17 @@ def main():
                 discovered.extend(discover_financial_documents(acquire_discovery_page(archive), archive))
             for item in discovered:
                 period = infer_reporting_period(f'{item.title} {item.source_url}')
-                if period in periods and period not in found and item.source_url.lower().endswith('.pdf'):
+                if period in periods and item.source_url.lower().endswith('.pdf'):
                     if company == 'MFC' and period.endswith('Q4'):
                         item = replace(item, source_url=item.source_url.replace('MFC_SR_', 'MFC_QPR_'))
-                    found[period] = item
+                    current = found.get(period)
+                    if current is None or financial_document_preference(f'{item.title} {item.source_url}') > financial_document_preference(f'{current.title} {current.source_url}'):
+                        found[period] = item
         except Exception as exc:
             errors['discovery'] = type(exc).__name__
-        acquired = []
+        acquired = {period for existing_company, period in existing if existing_company == company}
         if company == 'GWO':
             for period in periods:
-                if (company, period) in existing:
-                    continue
                 year, quarter = period[:4], int(period[-1])
                 ordinal = ('1st', '2nd', '3rd', '4th')[quarter - 1]
                 archive = replace(source, url=f'https://www.greatwestlifeco.com/investor-relations/financial-reports/{year}/{ordinal}-quarter-{year}-results.html')
@@ -60,6 +68,7 @@ def main():
                     links.links.extend((m.group(2), m.group(1)) for m in re.finditer(r'"title"\s*:\s*"([^"]+)"\s*,\s*"href"\s*:\s*"([^"]+)"', html.unescape(page)))
                     matches = [(urljoin(archive.url, href), title) for href, title in links.links
                                if 'earnings release' in title.lower() or 'report to shareholders' in title.lower()]
+                    matches.sort(key=lambda pair: financial_document_preference(f'{pair[1]} {pair[0]}'), reverse=True)
                     for url, title in matches:
                         if urlsplit(url).hostname in source.allowed_hosts and urlsplit(url).path.endswith('.pdf'):
                             found[period] = DiscoveredFinancialDocument('quarterly_report', url, f'{period} {title}')
@@ -67,8 +76,8 @@ def main():
                 except Exception as exc:
                     errors[period] = type(exc).__name__
         for period, item in sorted(found.items()):
-            if (company, period) in existing:
-                acquired.append(period)
+            if existing_preference.get((company, period), -1) >= financial_document_preference(f'{item.title} {item.source_url}'):
+                acquired.add(period)
                 continue
             try:
                 fetched = acquire_financial_document(contract, company, item.document_type, item.source_url)
@@ -77,12 +86,12 @@ def main():
                 client.files.upload(path, BytesIO(fetched.content), overwrite=True)
                 document = replace(fetched.document, reporting_period=period, raw_content_path=path)
                 upsert_financial_documents(spark, 'workspace.vigie.financial_documents', [document])
-                acquired.append(period)
+                acquired.add(period)
                 print(json.dumps({'company': company, 'period': period, 'status': 'raw_stored'}), flush=True)
             except Exception as exc:
                 errors[period] = type(exc).__name__
                 print(json.dumps({'company': company, 'period': period, 'error': type(exc).__name__}), flush=True)
-        report[company] = {'acquired': acquired, 'missing': sorted(set(periods) - set(acquired)), 'errors': errors}
+        report[company] = {'acquired': sorted(acquired), 'missing': sorted(set(periods) - acquired), 'errors': errors}
     print(json.dumps({'historical_raw_report': report}, sort_keys=True), flush=True)
 
 
