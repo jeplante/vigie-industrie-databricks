@@ -6,10 +6,10 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
-from chat_service import ask, compact_context, deterministic_answer
+from chat_service import ask, compact_context, deterministic_answer, fallback_answer
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
 from history_quality import flag_suspicious_history
-from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_metric_history, fetch_news, fetch_official_news_audit
+from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 NEWS_SOURCE_LABELS = {
@@ -83,6 +83,13 @@ with summary_tab:
         card.metric(company, display_value(period, "Source absente"), "À jour" if is_current else "À vérifier", delta_color="normal" if is_current else "off")
         card.caption(f"Collecté : {display_value(document.get('fetched_at') if document else None, '—')}")
     with st.expander("À surveiller", expanded=False):
+        try:
+            operations_alerts = fetch_latest_operations_alerts(connection(), config)
+        except Exception:
+            operations_alerts = []
+        for alert in operations_alerts:
+            if alert.get("status") == "alert":
+                st.warning(f"{alert.get('entity')} — {alert.get('message')}")
         stale_companies = [company for company, document in latest_documents.items() if not document or document.get("reporting_period") != current_period]
         if stale_companies:
             st.warning("Sources hors de la période la plus récente : " + ", ".join(stale_companies) + ".")
@@ -208,19 +215,34 @@ st.divider()
 st.markdown("<p class='section-eyebrow'>Assistant fondé sur les données publiées</p>", unsafe_allow_html=True)
 st.subheader("Questionner la Vigie")
 st.caption("Les réponses sont limitées aux KPI publiés et aux documents officiels cités. Ce n'est pas un conseil financier.")
+examples = (
+    "Compare les bénéfices de base des quatre assureurs pour T2 2026",
+    "Quel est le résultat net de iA?",
+    "Compare les ratios LICAT au dernier trimestre",
+)
+example_columns = st.columns(3)
+selected_example = None
+for column, example in zip(example_columns, examples):
+    if column.button(example, use_container_width=True):
+        selected_example = example
 if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = []
 for message in st.session_state.chat_messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
-question = st.chat_input("Ex. Compare les bénéfices de base des quatre assureurs.")
+question = selected_example or st.chat_input("Ex. Compare les bénéfices de base des quatre assureurs.")
 if question:
     st.session_state.chat_messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.write(question)
+    chat_news = []
+    for company in available_companies:
+        try:
+            chat_news.extend(company_news(config, company))
+        except Exception:
+            continue
     context = compact_context(
-        [row for rows in current_rows.values() for row in rows],
-        [article for company in available_companies for article in company_news(config, company)],
+        [row for rows in current_rows.values() for row in rows], chat_news,
         [document for document in latest_documents.values() if document],
     )
     with st.chat_message("assistant"):
@@ -228,8 +250,9 @@ if question:
             try:
                 answer = deterministic_answer(question, context) or ask(question, context, st.session_state.chat_messages[:-1])
                 st.write(answer["answer"])
-                used_kpis = sorted({row.get("metric_id") for row in context["comparisons"] if row.get("metric_id")})
-                st.caption("KPI disponibles pour la réponse : " + ", ".join(used_kpis))
+                used_kpis = [f"{row.get('company_id')} {row.get('metric_id')} {row.get('period_id')}" for row in answer.get("used_kpis", [])]
+                if used_kpis:
+                    st.caption("KPI utilisés : " + "; ".join(used_kpis))
                 for citation in answer.get("citations", []):
                     st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-{citation['url']}")
                 if answer.get("caveat"):
@@ -237,4 +260,9 @@ if question:
                 st.session_state.chat_messages.append({"role": "assistant", "content": answer["answer"]})
             except Exception:
                 logging.getLogger(__name__).exception("Chat query failed")
-                st.error("Le chat est temporairement indisponible. Les données financières restent consultables.")
+                answer = fallback_answer(context)
+                st.warning(answer["answer"])
+                st.caption(answer["caveat"])
+                for citation in answer.get("citations", []):
+                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-fallback-{citation['url']}")
+                st.session_state.chat_messages.append({"role": "assistant", "content": answer["answer"]})

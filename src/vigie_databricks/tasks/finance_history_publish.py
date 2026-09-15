@@ -12,7 +12,7 @@ from uuid import uuid4
 from pyspark.sql import SparkSession
 
 from vigie_databricks.bronze import load_bronze_observations
-from vigie_databricks.finance_history import VALIDATED_STATUS, anomalous_observations, incomplete_periods, select_preferred_documents, validate_historical_candidate
+from vigie_databricks.finance_history import REVIEWED_VARIANCES, REVIEWED_VARIANCE_STATUS, VALIDATED_STATUS, anomalous_observations, incomplete_periods, select_preferred_documents, validate_historical_candidate
 from vigie_databricks.gold import load_gold_observations
 from vigie_databricks.insurer_contract import load_insurer_contract
 from vigie_databricks.silver import load_silver_observations
@@ -108,11 +108,16 @@ def main() -> None:
     anomalies = anomalous_observations(reviewed)
     for row in reviewed:
         if row["observation_id"] in anomalies and row["validation_status"] == VALIDATED_STATUS:
-            row["validation_status"] = "rejected"
-            row["validation_reason"] = anomalies[row["observation_id"]]
+            key = (row["company_id"], row["metric_id"], row["period_id"])
+            if key in REVIEWED_VARIANCES:
+                row["validation_status"] = REVIEWED_VARIANCE_STATUS
+                row["validation_reason"] = REVIEWED_VARIANCES[key]
+            else:
+                row["validation_status"] = "rejected"
+                row["validation_reason"] = anomalies[row["observation_id"]]
     eligible = [
         row for row in reviewed
-        if row["validation_status"] == VALIDATED_STATUS
+        if row["validation_status"] in {VALIDATED_STATUS, REVIEWED_VARIANCE_STATUS}
         and row["period_id"] <= through_period
     ]
     companies = {row["company_id"] for row in eligible}
@@ -125,7 +130,7 @@ def main() -> None:
     audit = {
         "run_id": args.run_id, "observed_at": datetime.now(UTC), "through_period": through_period,
         "reviewed_candidates": len(reviewed), "validated_quarterly": len(eligible),
-        "rejected_candidates": len(reviewed) - sum(row["validation_status"] == VALIDATED_STATUS for row in reviewed),
+        "rejected_candidates": len(reviewed) - sum(row["validation_status"] in {VALIDATED_STATUS, REVIEWED_VARIANCE_STATUS} for row in reviewed),
         "dry_run": args.dry_run == "true",
         "incomplete_periods": len(incomplete), "anomalous_observations": len(anomalies),
         "removed_observations": 0,

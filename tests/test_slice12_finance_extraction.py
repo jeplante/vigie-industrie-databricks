@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from vigie_databricks.finance_extraction import extract_finance_metrics, infer_reporting_period
 from vigie_databricks.insurer_contract import load_insurer_contract
 
@@ -55,6 +57,39 @@ def test_extracts_values_from_tables_with_units_in_headers():
     assert {row.metric_id: row.value for row in slf} == {"core_eps": 1.79}
 
 
+def test_skips_percentage_change_and_year_headers_before_reported_values():
+    contract = load_insurer_contract(ROOT / "config")
+    gwo = extract_finance_metrics(
+        "GWO",
+        "LICAT Ratio increased by 2%. Later, the LICAT Ratio was 128%.",
+        contract,
+    )
+    iag = extract_finance_metrics(
+        "IAG",
+        "Net income attributed to common shareholders (in millions) Second quarter Year-to-date at June 30 2024 2023 2024 2023 $206 $196.",
+        contract,
+    )
+    assert {row.metric_id: row.value for row in gwo}["licat_ratio"] == 128.0
+    assert {row.metric_id: row.value for row in iag}["net_income"] == pytest.approx(0.206)
+
+
+def test_repairs_split_percent_and_extracts_older_gwo_labels():
+    contract = load_insurer_contract(ROOT / "config")
+    slf = extract_finance_metrics("SLF", "LICAT ratios at period end Sun Life Financial Inc. 1 29%.", contract)
+    gwo = extract_finance_metrics(
+        "GWO",
+        "Lifeco base earnings $808 million. Lifeco net earnings - common shareholders $595 million. Base earnings per common share $0.87. Base return on equity 14.7%. Empower assets under administration (AUA) were $1.4 trillion. Total assets under administration (AUA) increased by $127.7 billion to $2.6 trillion.",
+        contract,
+    )
+    values = {row.metric_id: row.value for row in gwo}
+    assert {row.metric_id: row.value for row in slf}["licat_ratio"] == 129.0
+    assert values["core_earnings"] == 0.808
+    assert values["net_income"] == 0.595
+    assert values["core_eps"] == 0.87
+    assert values["core_roe"] == 14.7
+    assert values["total_client_assets"] == 2.6
+
+
 def test_reporting_period_inference_requires_an_explicit_year_and_period_marker():
     assert infer_reporting_period("Sun Life reports first quarter 2026 results") == "2026-Q1"
     assert infer_reporting_period("Great-West Lifeco full year 2025 results") == "2025-AN"
@@ -77,3 +112,12 @@ def test_gwo_extraction_does_not_treat_inline_reference_markers_as_values():
         "net_income": 1.039,
         "core_roe": 19.3,
     }
+
+
+def test_gwo_q4_assets_table_without_explicit_scale_is_interpreted_as_millions():
+    rows = extract_finance_metrics(
+        "GWO",
+        "Total assets under administration1,4  2,497,712  2,384,273  2,291,592",
+        load_insurer_contract(ROOT / "config"),
+    )
+    assert {row.metric_id: row.value for row in rows}["total_client_assets"] == pytest.approx(2.497712)

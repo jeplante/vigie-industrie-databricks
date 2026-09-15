@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from vigie_databricks.editorial_news import editorial_row, load_sources
+import pytest
+
+from vigie_databricks.editorial_news import editorial_row, load_editorial_news, load_sources
 from vigie_databricks.news_bronze import NewsSource, parse_sources_json
 
 
@@ -26,3 +28,8 @@ def test_editorial_row_assigns_company_and_editorial_category():
 
 def test_editorial_source_type_is_accepted_but_unknown_type_is_not():
     assert parse_sources_json('[{"source_id":"advisors","url":"https://www.advisor.ca/feed/","source_type":"editorial_wealth"}]')[0].source_type == "editorial_wealth"
+
+
+def test_editorial_lookback_is_bounded():
+    with pytest.raises(ValueError, match="lookback_days"):
+        load_editorial_news(None, "unused", "unused", lookback_days=0)

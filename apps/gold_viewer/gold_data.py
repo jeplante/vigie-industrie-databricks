@@ -30,6 +30,7 @@ class GoldConfig:
     finance_documents_table: str = "financial_documents"
     finance_audit_table: str = "finance_run_audit"
     editorial_news_table: str = "editorial_news"
+    operations_audit_table: str = "operations_monitor_audit"
 
     @classmethod
     def from_environment(cls) -> "GoldConfig":
@@ -43,6 +44,7 @@ class GoldConfig:
             "finance_documents_table": os.environ.get("FINANCE_DOCUMENTS_TABLE", "financial_documents"),
             "finance_audit_table": os.environ.get("FINANCE_AUDIT_TABLE", "finance_run_audit"),
             "editorial_news_table": os.environ.get("EDITORIAL_NEWS_TABLE", "editorial_news"),
+            "operations_audit_table": os.environ.get("OPERATIONS_AUDIT_TABLE", "operations_monitor_audit"),
         }
         missing = [name for name, value in values.items() if not value]
         if missing:
@@ -149,7 +151,7 @@ def fetch_metric_history(connection: Any, config: GoldConfig, metric_id: str) ->
 
 
 def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
-    filters = ["enrichment_status = 'succeeded'", "parse_url(source_url, 'HOST') IN ('www.manulife.com', 'www.sunlife.com', 'www.greatwestlifeco.com', 'ia.ca')"]
+    filters = ["enrichment_status = 'succeeded'", "published_at >= current_timestamp() - INTERVAL 365 DAYS", "parse_url(source_url, 'HOST') IN ('www.manulife.com', 'www.sunlife.com', 'www.greatwestlifeco.com', 'ia.ca')"]
     parameters: list[Any] = []
     if company_id:
         filters.append("array_contains(relevant_company_ids, ?)")
@@ -169,7 +171,7 @@ def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = Non
 
 
 def fetch_editorial_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
-    filters = ["enrichment_status = 'succeeded'"]
+    filters = ["enrichment_status = 'succeeded'", "published_at >= current_timestamp() - INTERVAL 365 DAYS"]
     parameters: list[Any] = []
     if company_id:
         filters.append("(COALESCE(size(relevant_company_ids), 0) = 0 OR array_contains(relevant_company_ids, ?))")
@@ -206,6 +208,17 @@ def fetch_official_news_audit(connection: Any, config: GoldConfig) -> dict[str, 
     table = f'`{config.catalog}`.`{config.schema}`.`official_news_audit`'
     rows = _query(connection, f'SELECT run_id, observed_at, sources_succeeded, articles, inserted_rows, updated_rows, model_calls FROM {table} ORDER BY observed_at DESC LIMIT 1')
     return rows[0] if rows else None
+
+
+def fetch_latest_operations_alerts(connection: Any, config: GoldConfig) -> list[dict[str, Any]]:
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.operations_audit_table))
+    return _query(connection, f"""
+        WITH latest AS (SELECT run_id FROM {table} ORDER BY observed_at DESC, run_id DESC LIMIT 1)
+        SELECT status, alert_type, severity, entity, message, observed_at
+        FROM {table}
+        WHERE run_id = (SELECT run_id FROM latest)
+        ORDER BY severity DESC, alert_type, entity
+    """)
 
 
 def fetch_finance_provenance(

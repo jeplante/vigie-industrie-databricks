@@ -68,6 +68,7 @@ def test_ask_extracts_text_from_gpt_oss_structured_content(monkeypatch):
     assert answer == {
         "answer": "ready",
         "citations": [{"label": "Report", "url": "https://official.example/report"}],
+        "used_kpis": [],
         "caveat": None,
     }
 
@@ -121,3 +122,31 @@ def test_deterministic_answer_handles_simple_published_kpi_lookup():
     )
     assert answer and "MFC : 1.923 (2026-Q2)" in answer["answer"]
     assert answer["citations"][0]["url"] == "https://official.example/mfc"
+    assert answer["used_kpis"] == [{"company_id": "MFC", "metric_id": "core_earnings", "period_id": "2026-Q2"}]
+
+
+def test_deterministic_answer_understands_french_quarter_and_company():
+    chat = _chat_service()
+    context = {"comparisons": [
+        {"company_id": "MFC", "metric_id": "net_income", "current_value": 2.1, "current_period_id": "2026-Q2"},
+        {"company_id": "IAG", "metric_id": "net_income", "current_value": 0.384, "current_period_id": "2026-Q2"},
+    ], "documents": []}
+    answer = chat.deterministic_answer("Quel est le résultat net de iA au T2 2026?", context)
+    assert answer and "IAG : 0.384" in answer["answer"]
+    assert "MFC" not in answer["answer"]
+
+
+def test_model_response_accepts_json_code_fence():
+    chat = _chat_service()
+    parsed = chat._response_object('```json\n{"answer":"ok","citations":[],"used_kpis":[],"caveat":null}\n```')
+    assert parsed["answer"] == "ok"
+
+
+def test_fallback_answer_uses_only_published_core_earnings():
+    chat = _chat_service()
+    answer = chat.fallback_answer({"comparisons": [
+        {"company_id": "MFC", "metric_id": "core_earnings", "current_value": 1.9, "current_period_id": "2026-Q2"},
+        {"company_id": "MFC", "metric_id": "net_income", "current_value": 2.1, "current_period_id": "2026-Q2"},
+    ], "documents": []})
+    assert "MFC : 1.9" in answer["answer"]
+    assert answer["used_kpis"] == [{"company_id": "MFC", "metric_id": "core_earnings", "period_id": "2026-Q2"}]

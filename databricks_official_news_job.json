@@ -4,15 +4,21 @@
     "name": "vigie-official-investor-news",
     "max_concurrent_runs": 1,
     "email_notifications": {"on_failure": ["jerome.plante@hotmail.com"]},
-    "schedule": {"quartz_cron_expression": "0 0 0/6 * * ?", "timezone_id": "America/Toronto", "pause_status": "PAUSED"},
+    "schedule": {"quartz_cron_expression": "0 0 0/6 * * ?", "timezone_id": "America/Toronto", "pause_status": "UNPAUSED"},
     "parameters": [{"name": "dry_run", "default": "true"}],
     "environments": [{"environment_key": "Default", "spec": {
       "environment_version": "5",
-      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/vigie_databricks_foundation-0.8.0-py3-none-any.whl"]
+      "dependencies": ["/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/vigie_databricks_foundation-0.9.6-py3-none-any.whl"]
     }}],
-    "tasks": [{"task_key": "official_news", "environment_key": "Default", "python_wheel_task": {
-      "package_name": "vigie_databricks_foundation", "entry_point": "official_news",
-      "parameters": ["--config-directory", "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/config", "--dry-run", "{{job.parameters.dry_run}}", "--run-id", "{{job.run_id}}"]
-    }}]
+    "tasks": [
+      {"task_key": "official_news", "environment_key": "Default", "python_wheel_task": {
+        "package_name": "vigie_databricks_foundation", "entry_point": "official_news",
+        "parameters": ["--config-directory", "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/config", "--dry-run", "{{job.parameters.dry_run}}", "--run-id", "{{job.run_id}}"]
+      }},
+      {"task_key": "editorial_news", "depends_on": [{"task_key": "official_news"}], "environment_key": "Default", "python_wheel_task": {
+        "package_name": "vigie_databricks_foundation", "entry_point": "editorial_news",
+        "parameters": ["--sources-path", "/Workspace/Users/jerome.plante@hotmail.com/vigie_databricks_finance/config/editorial_news_sources.json", "--target", "workspace.vigie.editorial_news", "--dry-run", "{{job.parameters.dry_run}}", "--max-articles", "15", "--lookback-days", "365", "--minimum-sources", "2"]
+      }}
+    ]
   }
 }

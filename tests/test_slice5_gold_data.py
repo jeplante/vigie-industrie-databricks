@@ -161,6 +161,7 @@ def test_fetch_editorial_news_includes_company_and_general_industry_articles():
     fetch_editorial_news(connection, config(), "MFC")
     assert connection.cursor_instance.parameters == ["MFC"]
     assert "editorial_news" in connection.cursor_instance.statement
+    assert "INTERVAL 365 DAYS" in connection.cursor_instance.statement
     assert "array_contains(relevant_company_ids, ?)" in connection.cursor_instance.statement
     assert "COALESCE(size(relevant_company_ids), 0) = 0" in connection.cursor_instance.statement
 

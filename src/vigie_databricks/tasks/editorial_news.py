@@ -12,9 +12,17 @@ def main() -> None:
     parser.add_argument("--target", default="workspace.vigie.editorial_news")
     parser.add_argument("--dry-run", choices=["true", "false"], default="true")
     parser.add_argument("--max-articles", type=int, default=15)
+    parser.add_argument("--lookback-days", type=int, default=365)
+    parser.add_argument("--minimum-sources", type=int, default=2)
     args = parser.parse_args()
-    result = load_editorial_news(SparkSession.builder.getOrCreate(), args.sources_path, args.target, dry_run=args.dry_run == "true", max_articles=args.max_articles)
+    result = load_editorial_news(
+        SparkSession.builder.getOrCreate(), args.sources_path, args.target,
+        dry_run=args.dry_run == "true", max_articles=args.max_articles,
+        lookback_days=args.lookback_days,
+    )
     print(json.dumps(result, default=str, sort_keys=True))
+    if result["sources_succeeded"] < args.minimum_sources:
+        raise ValueError("insufficient editorial news sources")
 
 
 if __name__ == "__main__":

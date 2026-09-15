@@ -13,6 +13,13 @@ from vigie_databricks.insurer_contract import InsurerContract, parse_finance_obs
 
 REVIEW_STATUS = "needs_period_and_accounting_basis_review"
 VALIDATED_STATUS = "validated_quarterly"
+REVIEWED_VARIANCE_STATUS = "validated_quarterly_reviewed_variance"
+# Values independently confirmed in two official reports but exceeding the
+# conservative year-over-year screen. Keep the trace and quality distinction;
+# do not silently suppress the signal or discard a published value.
+REVIEWED_VARIANCES = {
+    ("IAG", "net_income", "2024-Q3"): "officially_verified_variance_vs_2023-Q3",
+}
 
 
 VALUE_RANGES = {
@@ -96,7 +103,7 @@ def incomplete_periods(
     """Return missing expected KPIs for each insurer-quarter represented by candidates."""
     present: dict[tuple[str, str], set[str]] = {key: set() for key in expected_periods}
     for candidate in candidates:
-        if candidate.get("validation_status") != VALIDATED_STATUS:
+        if candidate.get("validation_status") not in {VALIDATED_STATUS, REVIEWED_VARIANCE_STATUS}:
             continue
         key = (str(candidate.get("company_id")), str(candidate.get("period_id")))
         present.setdefault(key, set()).add(str(candidate.get("metric_id")))

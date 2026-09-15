@@ -1,7 +1,7 @@
 """Bounded, deterministic ingestion of approved insurance and wealth media."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 import re
@@ -48,11 +48,27 @@ def editorial_row(row: dict[str, Any], source: NewsSource) -> dict[str, Any]:
     }
 
 
-def load_editorial_news(spark: SparkSession, sources_path: str, target: str, *, dry_run: bool = True, max_articles: int = 15) -> dict[str, Any]:
+def load_editorial_news(
+    spark: SparkSession,
+    sources_path: str,
+    target: str,
+    *,
+    dry_run: bool = True,
+    max_articles: int = 15,
+    lookback_days: int = 365,
+) -> dict[str, Any]:
+    if not 1 <= lookback_days <= 730:
+        raise ValueError("lookback_days must be between 1 and 730")
     sources = load_sources(sources_path)
     rows, succeeded, failed = acquire_sources(sources, max_articles=max_articles)
     source_by_id = {source.source_id: source for source in sources}
-    output = [editorial_row(row, source_by_id[row["source"]]) for row in rows]
+    cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
+    output = [
+        item
+        for row in rows
+        if (item := editorial_row(row, source_by_id[row["source"]]))["published_at"] is not None
+        and item["published_at"] >= cutoff
+    ]
     result = {"sources_succeeded": succeeded, "sources_failed": failed, "articles": len(output), "inserted_rows": 0, "updated_rows": 0, "dry_run": dry_run}
     if dry_run:
         return result
@@ -68,6 +84,7 @@ def load_editorial_news(spark: SparkSession, sources_path: str, target: str, *, 
     source.createOrReplaceTempView(view)
     try:
         spark.sql(f"MERGE INTO {target} t USING {view} s ON t.article_id=s.article_id WHEN MATCHED AND NOT (t.content_hash <=> s.content_hash) THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *")
+        spark.sql(f"DELETE FROM {target} WHERE published_at < current_timestamp() - INTERVAL {lookback_days} DAYS")
     finally:
         spark.catalog.dropTempView(view)
     return result
