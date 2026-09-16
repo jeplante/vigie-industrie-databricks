@@ -1,0 +1,21 @@
+financial_documents:
+  IFC:
+    source_id: ifc_financial_results
+    url: https://www.intactfc.com/English/investors/financial-results/default.aspx
+    allowed_hosts: [www.intactfc.com]
+    document_types: [quarterly_report, annual_report]
+  AV:
+    source_id: aviva_results
+    url: https://www.aviva.com/investors/results-reports-and-presentations/
+    allowed_hosts: [www.aviva.com, static.aviva.io]
+    document_types: [quarterly_report, annual_report]
+  TD:
+    source_id: td_quarterly_results
+    url: https://www.td.com/ca/en/about-td/for-investors/quarterly-results
+    allowed_hosts: [www.td.com]
+    document_types: [quarterly_report, annual_report]
+  DFY:
+    source_id: definity_financial_reports
+    url: https://www.definityfinancial.com/English/investors/financial-reports/default.aspx
+    allowed_hosts: [www.definityfinancial.com]
+    document_types: [quarterly_report, annual_report]

@@ -1,0 +1,21 @@
+companies:
+  IFC:
+    name: Intact Financial
+    full_name: Intact Financial Corporation
+    ticker: IFC.TO
+    investor_relations_url: https://www.intactfc.com/English/investors/financial-results/default.aspx
+  AV:
+    name: Aviva Canada
+    full_name: Aviva plc — Canada segment
+    ticker: AV.L
+    investor_relations_url: https://www.aviva.com/investors/results-reports-and-presentations/
+  TD:
+    name: TD Insurance
+    full_name: The Toronto-Dominion Bank — TD Insurance segment
+    ticker: TD.TO
+    investor_relations_url: https://www.td.com/ca/en/about-td/for-investors/quarterly-results
+  DFY:
+    name: Definity Financial
+    full_name: Definity Financial Corporation
+    ticker: DFY.TO
+    investor_relations_url: https://www.definityfinancial.com/English/investors/financial-reports/default.aspx

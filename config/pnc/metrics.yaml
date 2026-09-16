@@ -1,0 +1,41 @@
+metrics:
+  insurance_revenue:
+    label: Produits d'assurance
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  combined_ratio:
+    label: Ratio combiné
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: down
+  claims_ratio:
+    label: Ratio de sinistres
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: down
+  expense_ratio:
+    label: Ratio de frais
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: down
+  catastrophe_losses:
+    label: Pertes catastrophiques
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: down
+  operating_income:
+    label: Résultat d'exploitation
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  net_income:
+    label: Résultat net
+    unit: CAD_BILLION
+    comparison: percent
+    favorable_trend: up
+  operating_roe:
+    label: Rendement des capitaux propres opérationnel
+    unit: PERCENT
+    comparison: percentage_point
+    favorable_trend: up
