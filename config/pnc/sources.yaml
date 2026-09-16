@@ -2,7 +2,7 @@ financial_documents:
   IFC:
     source_id: ifc_financial_results
     url: https://www.intactfc.com/English/investors/financial-results/default.aspx
-    allowed_hosts: [www.intactfc.com]
+    allowed_hosts: [www.intactfc.com, newsroom.intactfc.com]
     document_types: [quarterly_report, annual_report]
   AV:
     source_id: aviva_results

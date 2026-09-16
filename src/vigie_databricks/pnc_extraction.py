@@ -16,7 +16,7 @@ PNC_ALIASES = {
         "expense_ratio": ("expense ratio",),
         "catastrophe_losses": ("catastrophe losses", "catastrophe loss"),
         "operating_income": ("operating net income",),
-        "net_income": ("net operating income",),
+        "net_income": ("net income",),
         "operating_roe": ("operating ROE", "return on equity"),
     },
     "DFY": {
@@ -25,8 +25,8 @@ PNC_ALIASES = {
         "claims_ratio": ("claims ratio",),
         "expense_ratio": ("expense ratio",),
         "catastrophe_losses": ("catastrophe losses",),
-        "operating_income": ("operating income",),
-        "net_income": ("net income",),
+        "operating_income": ("operating net income",),
+        "net_income": ("net income attributable to common shareholders",),
         "operating_roe": ("operating ROE",),
     },
     "AV": {
