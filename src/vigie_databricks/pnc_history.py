@@ -38,6 +38,27 @@ def validate_pnc_candidate(
     for candidate_key, document_key in key_map.items():
         if candidate.get(candidate_key) != document.get(document_key):
             return "rejected", f"source_{document_key}_mismatch"
+    if not re.fullmatch(r"[a-f0-9]{64}", str(document.get("content_hash") or "")):
+        return "rejected", "source_hash_invalid"
+    # A manifest/filename period is only a discovery hint. Publication needs
+    # independently reviewed evidence from the report, tied to this revision.
+    evidence = candidate.get("basis_evidence")
+    if not isinstance(evidence, dict):
+        return "rejected", "accounting_basis_unverified"
+    if evidence.get("basis") != "quarterly":
+        return "rejected", "non_quarterly_accounting_basis"
+    for key, expected in {
+        "period_id": period,
+        "source_document_hash": document["content_hash"],
+        "metric_id": candidate.get("metric_id"),
+        "value": candidate.get("value"),
+        "unit": candidate.get("unit"),
+    }.items():
+        if evidence.get(key) != expected:
+            return "rejected", f"basis_evidence_{key}_mismatch"
+    if not all(isinstance(evidence.get(key), str) and evidence[key].strip()
+               for key in ("reviewed_by", "source_locator", "period_excerpt", "scope_excerpt")):
+        return "rejected", "basis_evidence_incomplete"
     company_id = str(candidate.get("company_id") or "")
     metric_id = str(candidate.get("metric_id") or "")
     if company_id not in PNC_ALIASES or metric_id not in PNC_ALIASES[company_id]:
@@ -55,7 +76,9 @@ def validate_pnc_candidate(
     aliases = PNC_ALIASES[company_id][metric_id]
     if not context or not any(re.search(re.escape(alias), context, re.IGNORECASE) for alias in aliases):
         return "rejected", "metric_context_missing_alias"
-    valid_basis, reason = validate_pnc_source_basis(company_id, str(candidate["source_url"]), context, contract)
+    valid_basis, reason = validate_pnc_source_basis(
+        company_id, str(candidate["source_url"]), evidence["scope_excerpt"] + " " + context, contract
+    )
     if not valid_basis:
         return "rejected", reason
     return PNC_VALIDATED_STATUS, None

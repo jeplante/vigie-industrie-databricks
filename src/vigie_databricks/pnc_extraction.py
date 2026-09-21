@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 
 from vigie_databricks.finance_extraction import ExtractedMetric, _normalized_value
 from vigie_databricks.insurer_contract import InsurerContract
@@ -15,9 +16,9 @@ PNC_ALIASES = {
         "claims_ratio": ("claims ratio",),
         "expense_ratio": ("expense ratio",),
         "catastrophe_losses": ("catastrophe losses", "catastrophe loss"),
-        "operating_income": ("operating net income",),
+        "operating_income": ("operating net income", "net operating income"),
         "net_income": ("net income",),
-        "operating_roe": ("operating ROE", "return on equity"),
+        "operating_roe": ("operating ROE",),
     },
     "DFY": {
         "insurance_revenue": ("insurance revenue",),
@@ -43,29 +44,63 @@ PNC_ALIASES = {
 
 _NUMBER = r"\d{1,3}(?:[, ]\d{3})+|\d+(?:[.,]\d+)?"
 _VALUE = re.compile(rf"(?P<number>{_NUMBER})\s*(?P<unit>%|million|billion|\$)", re.IGNORECASE)
+_DIRECT_VALUE = re.compile(
+    rf"\s*(?:(?:was|is|of|:|=)\s*)?(?:CAD\s*|C\$\s*|\$\s*)?"
+    rf"(?P<number>{_NUMBER})\s*(?P<unit>%|million\b|billion\b)",
+    re.IGNORECASE,
+)
+
+
+class _ReportText(HTMLParser):
+    """Read visible report text, excluding metadata, scripts and footnotes."""
+
+    def __init__(self):
+        super().__init__()
+        self.parts = []
+        self.hidden = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"head", "script", "style", "sup"}:
+            self.hidden.append(tag)
+        elif not self.hidden and tag in {"p", "li", "tr", "h1", "h2", "h3"}:
+            self.parts.append(". ")
+
+    def handle_endtag(self, tag):
+        if self.hidden and tag == self.hidden[-1]:
+            self.hidden.pop()
+
+    def handle_data(self, data):
+        if not self.hidden:
+            self.parts.append(data)
 
 
 def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract) -> list[ExtractedMetric]:
     """Extract only explicitly labelled P&C candidates from an issuer's report."""
     if company_id not in PNC_ALIASES or company_id not in contract.companies:
         raise ValueError("company_id has no configured P&C extractor")
-    text = re.sub(r"\s+", " ", content).strip()
+    parser = _ReportText()
+    parser.feed(content)
+    text = re.sub(r"\s+", " ", " ".join(parser.parts)).strip()
     extracted: list[ExtractedMetric] = []
     for metric_id, aliases in PNC_ALIASES[company_id].items():
         if metric_id not in contract.metrics:
             continue
         expected_unit = contract.metrics[metric_id].unit
         for alias in aliases:
-            for match in re.finditer(re.escape(alias), text, re.IGNORECASE):
+            for match in re.finditer(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", text, re.IGNORECASE):
                 # TD's combined Wealth Management and Insurance segment is not
                 # a comparable P&C value; accept only the standalone Insurance line.
                 preceding = text[:match.start()].rsplit(".", 1)[-1].lower()
+                if re.search(r"year[ -]to[ -]date|\bytd\b|six.month|twelve.month|full.year", preceding):
+                    continue
                 if company_id == "TD" and metric_id == "net_income" and "wealth management" in preceding:
                     continue
-                context = text[match.start():match.end() + 120]
-                value_match = _VALUE.search(context[len(alias):])
+                if metric_id == "net_income" and re.search(r"operating\s*$", preceding):
+                    continue
+                value_match = _DIRECT_VALUE.match(text[match.end():])
                 if not value_match:
                     continue
+                context = text[match.start():match.end() + value_match.end()]
                 value = _normalized_value(value_match.group("number"), value_match.group("unit"), expected_unit)
                 if value is not None:
                     extracted.append(ExtractedMetric(metric_id, value, expected_unit, value_match.group(0), context))

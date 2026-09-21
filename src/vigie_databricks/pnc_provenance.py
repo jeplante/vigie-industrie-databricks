@@ -37,7 +37,13 @@ def validate_pnc_source_basis(
     """Verify allowlisted provenance plus company-specific disclosure scope."""
     if company_id not in PNC_SOURCE_BASIS or company_id not in contract.financial_sources:
         return False, "pnc_company_not_configured"
-    hostname = urlparse(source_url).hostname
+    try:
+        parsed = urlparse(source_url)
+        if parsed.scheme != "https" or parsed.username or parsed.password or parsed.port not in {None, 443}:
+            return False, "pnc_source_url_invalid"
+        hostname = parsed.hostname
+    except ValueError:
+        return False, "pnc_source_url_invalid"
     allowed_hosts = contract.financial_sources[company_id].allowed_hosts
     if hostname not in allowed_hosts:
         return False, "pnc_source_host_not_allowlisted"

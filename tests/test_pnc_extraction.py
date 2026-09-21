@@ -9,6 +9,45 @@ from vigie_databricks.pnc_extraction import extract_pnc_metrics
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize("content", [
+    "Insurance revenue unavailable. Combined ratio was 91.2%.",
+    "Insurance revenue declined by 5%.",
+    "Insurance revenue was GBP 100 million.",
+])
+def test_does_not_invent_revenue_from_neighboring_or_incompatible_values(content):
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    assert "insurance_revenue" not in {row.metric_id for row in extract_pnc_metrics("IFC", content, contract)}
+
+
+def test_operating_income_is_not_net_income():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    rows = extract_pnc_metrics("IFC", "Operating net income was $820 million. Return on equity was 17%.", contract)
+    assert {row.metric_id for row in rows} == {"operating_income"}
+
+
+def test_cumulative_definity_values_are_not_quarterly_candidates():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    text = (
+        "Year to date, operating net income was $236.1 million. "
+        "Year to date, net income attributable to common shareholders was $216.3 million."
+    )
+    assert extract_pnc_metrics("DFY", text, contract) == []
+
+
+def test_visible_quarterly_html_values_precede_cumulative_values():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    text = (
+        '<html><head><script>Operating net income was $999 million.</script></head><body>'
+        '<li><span>Operating net income</span> was $118.0 million in Q2 2026. '
+        'Year to date, operating net income was $236.1 million.</li>'
+        '<li><span>Net income attributable to common shareholders</span> was $152.4 million in Q2 2026.</li>'
+        '</body></html>'
+    )
+    values = {row.metric_id: row.value for row in extract_pnc_metrics("DFY", text, contract)}
+    assert values["operating_income"] == pytest.approx(.118)
+    assert values["net_income"] == pytest.approx(.1524)
+
+
 def test_ifc_candidates_are_deterministic_and_unit_normalized():
     contract = load_insurer_contract(ROOT / "config" / "pnc")
     rows = extract_pnc_metrics(

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vigie-databricks-foundation"
-version = "0.9.6"
+version = "0.10.1"
 description = "Databricks implementation of the Vigie insurer monitoring pipeline"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -16,6 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
+pnc_acquire = "vigie_databricks.tasks.pnc_acquire:main"
 bronze = "vigie_databricks.tasks.bronze:main"
 silver = "vigie_databricks.tasks.silver:main"
 gold = "vigie_databricks.tasks.gold:main"

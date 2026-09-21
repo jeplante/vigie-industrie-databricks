@@ -1,0 +1,28 @@
+{
+  "name": "vigie-pnc-acquisition-review",
+  "max_concurrent_runs": 1,
+  "environments": [{
+    "environment_key": "Default",
+    "spec": {
+      "environment_version": "5",
+      "dependencies": ["<workspace-path>/vigie_databricks_foundation-0.10.0-py3-none-any.whl"]
+    }
+  }],
+  "tasks": [{
+    "task_key": "pnc_acquire",
+    "environment_key": "Default",
+    "timeout_seconds": 600,
+    "max_retries": 0,
+    "python_wheel_task": {
+      "package_name": "vigie_databricks_foundation",
+      "entry_point": "pnc_acquire",
+      "parameters": [
+        "--config-directory", "<workspace-path>/config/pnc",
+        "--manifest", "<workspace-path>/pnc_source_manifest.yaml",
+        "--allow-network", "--persist",
+        "--namespace", "workspace.vigie",
+        "--run-id", "{{job.run_id}}"
+      ]
+    }
+  }]
+}
