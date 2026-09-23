@@ -76,6 +76,38 @@ def test_half_year_and_trailing_values_are_rejected():
         )
 
 
+def test_quarterly_claim_does_not_override_cumulative_source_excerpt():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    for excerpt in ("Six months 2026", "HY26", "H1 2026", "2026-Q2, year-to-date",
+                    "Q2 2026 and full year 2025"):
+        candidate = _candidate("Insurance net income was $279 million.")
+        candidate["basis_evidence"]["period_excerpt"] = excerpt
+        assert validate_pnc_candidate(candidate, _document(), contract) == (
+            "rejected", "quarterly_period_evidence_mismatch"
+        )
+
+
+def test_quarterly_period_excerpt_must_identify_matching_period():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    for excerpt in ("Q1 2026", "Q2 2025", "Results released in 2026",
+                    "Quarterly 2026", "Three months ended April 30 2025, reported 2026"):
+        candidate = _candidate("Insurance net income was $279 million.")
+        candidate["basis_evidence"]["period_excerpt"] = excerpt
+        assert validate_pnc_candidate(candidate, _document(), contract) == (
+            "rejected", "quarterly_period_evidence_mismatch"
+        )
+
+
+def test_quarterly_period_excerpt_accepts_reviewed_source_formats():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    for excerpt in ("Q2-2026", "2026-Q2", "For the three months ended April 30 2026"):
+        candidate = _candidate("Insurance net income was $279 million.")
+        candidate["basis_evidence"]["period_excerpt"] = excerpt
+        assert validate_pnc_candidate(candidate, _document(), contract) == (
+            PNC_VALIDATED_STATUS, None
+        )
+
+
 def test_reviewed_evidence_cannot_be_reused_for_another_value():
     contract = load_insurer_contract(ROOT / "config" / "pnc")
     candidate = _candidate("Insurance net income was $279 million.")

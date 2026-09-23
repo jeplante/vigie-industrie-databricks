@@ -27,6 +27,14 @@ Neither establishes a separately published Canadian Q2 COR, and subtracting
 rounded premiums would not recover that rate. The App links the official HY26
 Canada release next to Aviva's quarterly N/A, without inserting its HY ratio
 into quarterly Gold.
+The official [HY26 Excel results-pack tables](https://static.aviva.io/content/dam/aviva-corporate/documents/investors/excel/results/2026/aviva-plc-half-year-2026-financial-results-pack-tables.xlsx)
+were checked on 2026-09-23 as well. Worksheet A1 labels Canada personal,
+commercial and total columns **6 months 2026**; the 93.0% undiscounted COR
+is in total-Canada cell J30 on that six-month basis. The other Canada rows
+checked (B1 operating profit, B4 controllable costs, C1 cash remittances,
+C2 own-funds generation) likewise use six-month or full-year columns.
+This workbook does not support publishing an isolated Canada Q2 ratio or
+quarterly monetary KPI.
 
 ## Publication evidence
 
@@ -83,6 +91,11 @@ basis, matching metric, value, unit, period and SHA-256; a reviewer identifier;
 a report locator; and period/scope excerpts. Acquisition never creates this
 approval. This is a review record, not an automatic proof of accuracy. The
 future persistent workflow must restrict writes to those records accordingly.
+The publication gate also rejects an excerpt naming six months, a half-year,
+year-to-date or full-year period even if the review field says `quarterly`.
+An explicit quarter must match the observation period; a three-month excerpt
+must name the reporting year. This is a conservative text check, not a
+substitute for the report-level accounting review.
 
 Period hints in URLs/manifests and matching metric labels alone do not authorize
 publication. Semiannual, cumulative and trailing-year evidence is rejected by

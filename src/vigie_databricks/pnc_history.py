@@ -15,6 +15,27 @@ from vigie_databricks.pnc_provenance import validate_pnc_source_basis
 PNC_REVIEW_STATUS = "needs_period_and_accounting_basis_review"
 PNC_VALIDATED_STATUS = "validated_quarterly"
 
+_CUMULATIVE_PERIOD = re.compile(
+    r"\b(?:six|6|twelve|12)\s+months?\b|\bhalf[ -]?year\b|\bfull[ -]?year\b|"
+    r"\b(?:first|second)\s+half\b|"
+    r"\b(?:year[ -]?to[ -]?date|YTD|HY\s?\d{2,4}|H[12]\s?20\d{2})\b",
+    re.IGNORECASE,
+)
+_QUARTER = re.compile(r"\b(?:Q([1-4])[ -]?(20\d{2})|(20\d{2})[ -]?Q([1-4]))\b", re.IGNORECASE)
+_THREE_MONTHS = re.compile(r"\b(?:three|3)\s+months?\b|\bquarter\s+ended\b", re.IGNORECASE)
+
+
+def _quarterly_period_excerpt_matches(excerpt: str, period: str) -> bool:
+    """Reject cumulative or conflicting period evidence even if reviewed as quarterly."""
+    if _CUMULATIVE_PERIOD.search(excerpt):
+        return False
+    quarters = _QUARTER.findall(excerpt)
+    if quarters:
+        return all(f"{year_a or year_b}-Q{quarter_a or quarter_b}" == period
+                   for quarter_a, year_a, year_b, quarter_b in quarters)
+    years = re.findall(r"\b20\d{2}\b", excerpt)
+    return bool(_THREE_MONTHS.search(excerpt) and years and set(years) == {period[:4]})
+
 
 def validate_pnc_candidate(
     candidate: dict[str, Any], document: dict[str, Any] | None, contract: InsurerContract
@@ -59,6 +80,8 @@ def validate_pnc_candidate(
     if not all(isinstance(evidence.get(key), str) and evidence[key].strip()
                for key in ("reviewed_by", "source_locator", "period_excerpt", "scope_excerpt")):
         return "rejected", "basis_evidence_incomplete"
+    if not _quarterly_period_excerpt_matches(evidence["period_excerpt"], period):
+        return "rejected", "quarterly_period_evidence_mismatch"
     company_id = str(candidate.get("company_id") or "")
     metric_id = str(candidate.get("metric_id") or "")
     if company_id not in PNC_ALIASES or metric_id not in PNC_ALIASES[company_id]:
