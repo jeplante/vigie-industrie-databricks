@@ -1,0 +1,47 @@
+reviews:
+  - company_id: IFC
+    period_id: 2026-Q2
+    period_end: 2026-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: c340131465502c9969db3ac6c3083bca89a34f845e90cbf8f729cf476b57cae0
+    reviewed_by: codex-report-review-2026-09-23
+    basis: quarterly
+    source_locator: Consolidated Highlights, Combined Ratio and Net income rows, Q2-2026 column
+    period_excerpt: Q2-2026
+    scope_excerpt: Intact Consolidated Highlights
+    metrics:
+      combined_ratio: {value: 94.9, unit: PERCENT}
+      net_income: {value: 0.720, unit: CAD_BILLION}
+  - company_id: TD
+    period_id: 2026-Q2
+    period_end: 2026-04-30
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: 3d944e7f30b6193875bcfc8a9972f9be55931c51669d7591d0491b6ced8490aa
+    reviewed_by: codex-report-review-2026-09-21
+    basis: quarterly
+    source_locator: Report to shareholders page 21, Table 13 and quarterly comparison narrative
+    period_excerpt: For the three months ended April 30 2026
+    scope_excerpt: Insurance net income
+    metrics:
+      net_income: {value: 0.279, unit: CAD_BILLION}
+  - company_id: DFY
+    period_id: 2026-Q2
+    period_end: 2026-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 967d8c321a32218a8c06cc73ca2d4c027e9076e36c3ec6c8ad0423b29f78f799
+    reviewed_by: codex-report-review-2026-09-21
+    basis: quarterly
+    source_locator: Consolidated Results, first numeric column; income narrative cross-check
+    period_excerpt: Q2 2026
+    scope_excerpt: Definity consolidated results
+    metrics:
+      combined_ratio: {value: 93.9, unit: PERCENT}
+      claims_ratio: {value: 64.2, unit: PERCENT}
+      expense_ratio: {value: 29.7, unit: PERCENT}
+      operating_income: {value: 0.118, unit: CAD_BILLION}
+      net_income: {value: 0.1524, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly

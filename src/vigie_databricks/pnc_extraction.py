@@ -74,6 +74,28 @@ class _ReportText(HTMLParser):
             self.parts.append(data)
 
 
+def _ifc_quarterly_net_income(text: str, expected_unit: str) -> ExtractedMetric | None:
+    """Read only the first (Q2) column of IFC's CAD-million highlights table."""
+    section = re.search(
+        r"Consolidated Highlights\s*\.\s*"
+        r"\(in millions of Canadian dollars except as otherwise noted\)\s*\.\s*"
+        r"(?P<quarter>Q[1-4]-20\d{2})[.\s]+Q[1-4]-20\d{2}[.\s]+Change"
+        r"(?P<body>.*?)Per share measures",
+        text, re.IGNORECASE | re.DOTALL,
+    )
+    if not section:
+        return None
+    match = re.search(r"(?<!\w)Net income\s*(?:\.\s*)?(?P<number>\d[\d,]*)(?=\s|\.)",
+                      section.group("body"), re.IGNORECASE)
+    if not match:
+        return None
+    value = _normalized_value(match.group("number"), "million", expected_unit)
+    if value is None:
+        return None
+    context = f"Consolidated Highlights {section.group('quarter')} Net income {match.group('number')} million CAD"
+    return ExtractedMetric("net_income", value, expected_unit, match.group("number"), context)
+
+
 def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract) -> list[ExtractedMetric]:
     """Extract only explicitly labelled P&C candidates from an issuer's report."""
     if company_id not in PNC_ALIASES or company_id not in contract.companies:
@@ -86,6 +108,11 @@ def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract
         if metric_id not in contract.metrics:
             continue
         expected_unit = contract.metrics[metric_id].unit
+        if company_id == "IFC" and metric_id == "net_income":
+            table_value = _ifc_quarterly_net_income(text, expected_unit)
+            if table_value is not None:
+                extracted.append(table_value)
+                continue
         for alias in aliases:
             for match in re.finditer(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", text, re.IGNORECASE):
                 # TD's combined Wealth Management and Insurance segment is not

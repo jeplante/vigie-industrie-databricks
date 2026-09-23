@@ -11,6 +11,8 @@ env:
     value: "vigie"
   - name: "GOLD_TABLE"
     value: "gold_observations"
+  - name: "PNC_PREVIEW_ENABLED"
+    value: "true"
   - name: "SILVER_TABLE"
     value: "silver_observations"
   - name: "GOLD_NEWS_TABLE"

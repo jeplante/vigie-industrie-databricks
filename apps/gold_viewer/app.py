@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import logging
+import os
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -38,6 +39,22 @@ def company_editorial_news(config, company): return fetch_editorial_news(connect
 def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
 @st.cache_data(ttl=60, show_spinner=False)
 def document_periods(config): return fetch_finance_document_periods(connection(), config)
+
+# Enable P&C only in workspaces where its reviewed Gold table and App grant exist.
+if os.environ.get("PNC_PREVIEW_ENABLED", "false").lower() == "true":
+    universe = st.radio("Univers", ["Assurance vie", "Assurance de dommages"], horizontal=True, key="industry_universe")
+    if universe == "Assurance de dommages":
+        from pnc_view import render_pnc_preview
+        from pnc_data import fetch_pnc_published
+        try:
+            pnc_config = GoldConfig.from_environment()
+            pnc_rows = fetch_pnc_published(connection(), pnc_config.catalog, pnc_config.schema)
+        except Exception:
+            logging.getLogger(__name__).exception("P&C publication unavailable")
+            st.warning("Les données P&C publiées sont temporairement indisponibles.")
+            pnc_rows = []
+        render_pnc_preview(st, pnc_rows)
+        st.stop()
 
 st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)
 try:

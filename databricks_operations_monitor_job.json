@@ -1,10 +1,7 @@
 {
   "name": "vigie-operations-monitor",
   "max_concurrent_runs": 1,
-  "email_notifications": {
-    "on_failure": ["jerome.plante@hotmail.com"],
-    "no_alert_for_skipped_runs": false
-  },
+  "email_notifications": {},
   "schedule": {
     "quartz_cron_expression": "0 45 6 * * ?",
     "timezone_id": "America/Toronto",

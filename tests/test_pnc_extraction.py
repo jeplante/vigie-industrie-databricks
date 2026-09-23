@@ -62,6 +62,34 @@ def test_ifc_candidates_are_deterministic_and_unit_normalized():
     assert values["operating_roe"] == pytest.approx(16.4)
 
 
+def test_ifc_highlights_net_income_uses_quarterly_first_column():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    report = (
+        "<h2>Consolidated Highlights</h2>"
+        "<p>(in millions of Canadian dollars except as otherwise noted)</p>"
+        "<tr><td>Q2-2026</td><td>Q2-2025</td><td>Change</td>"
+        "<td>H1-2026</td><td>H1-2025</td></tr>"
+        "<tr><td>Net operating income attributable to common shareholders</td>"
+        "<td>561</td><td>935</td><td>1,331</td></tr>"
+        "<tr><td>Net income</td><td>720</td><td>867</td><td>1,472</td></tr>"
+        "<h2>Per share measures</h2>"
+    )
+    rows = extract_pnc_metrics("IFC", report, contract)
+    net_income = next(row for row in rows if row.metric_id == "net_income")
+    assert net_income.value == pytest.approx(0.720)
+    assert "Q2-2026" in net_income.context
+
+
+def test_ifc_highlights_requires_cad_millions_and_quarter_header():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    report = (
+        "<h2>Consolidated Highlights</h2><p>(in millions of pounds)</p>"
+        "<tr><td>H1-2026</td><td>H1-2025</td><td>Change</td></tr>"
+        "<tr><td>Net income</td><td>720</td></tr><h2>Per share measures</h2>"
+    )
+    assert "net_income" not in {row.metric_id for row in extract_pnc_metrics("IFC", report, contract)}
+
+
 def test_td_extracts_only_explicit_insurance_values():
     contract = load_insurer_contract(ROOT / "config" / "pnc")
     rows = extract_pnc_metrics(
