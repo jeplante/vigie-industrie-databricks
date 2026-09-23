@@ -51,12 +51,25 @@ On 2026-09-23, the stored IFC report revision above was rechecked against its
 SHA-256 and the issuer's Consolidated Highlights. The Q2-2026 first-column
 `Net income` value is CAD 720 million (0.720 billion); the H1 value is CAD
 1,472 million and was not used. A table-scoped deterministic extractor now
-produces this candidate. `scripts/stage_ifc_net_income.py` staged only this
+produces this candidate. `scripts/stage_ifc_highlights.py` staged only this
 candidate, with exact-hash readback. Its explicit review has the same global
 consolidated scope and June 30 quarter end as IFC's combined ratio. Publication
 dry-run accepted eight reviewed observations. Two Gold MERGEs succeeded; a
 subsequent count returned eight rows, eight distinct observation IDs and one
 IFC net-income row. Aviva and the other unsupported KPIs remain unpublished.
+
+The same IFC Consolidated Highlights first Q2-2026 column reports CAD 561
+million of **net operating income attributable to common shareholders**. This
+is a non-IFRS measure, not Intact's underwriting income or the CAD 720 million
+IFRS net income. It was extracted from the hash-checked stored report, matched
+to the issuer's published table, reviewed with the same June 30 and global
+consolidated scope, staged via `scripts/stage_ifc_highlights.py --metric
+operating_income --persist`, and published on 2026-09-23. Two Gold MERGEs
+left nine rows with nine unique IDs, including one IFC operating-income row.
+The App and P&C metric contract now label `operating_income` as "Résultat net
+opérationnel"; Definity's CAD 118 million is also operating **net** income.
+Both are company-defined non-IFRS measures, so cross-issuer differences in
+adjustments must be checked in the linked reports.
 
 `validate_pnc_candidate` now requires `basis_evidence`: a reviewed quarterly
 basis, matching metric, value, unit, period and SHA-256; a reviewer identifier;

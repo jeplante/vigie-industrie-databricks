@@ -23,7 +23,7 @@ def render_pnc_preview(st, published_rows=()):
     table = []
     metrics = (("insurance_revenue", "Produits d’assurance"), ("combined_ratio", "Ratio combiné"),
                ("claims_ratio", "Ratio de sinistres"), ("expense_ratio", "Ratio de frais"),
-               ("operating_income", "Résultat opérationnel"), ("net_income", "Résultat net"))
+               ("operating_income", "Résultat net opérationnel"), ("net_income", "Résultat net"))
     for company, name, scope in COMPANIES:
         rows = [row for row in published_rows if row["company_id"] == company]
         ends = {str(row["period_end"]) for row in rows}
@@ -39,6 +39,7 @@ def render_pnc_preview(st, published_rows=()):
                              else f"{row['value']:.1f} %") if row else "N/A"
         table.append(output)
     st.dataframe(table, hide_index=True, width="stretch")
+    st.caption("Le résultat net opérationnel est une mesure non-IFRS propre à chaque assureur; ses ajustements peuvent différer. Vérifiez le rapport officiel avant une comparaison directe.")
     for company, name, _ in COMPANIES:
         sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
         for index, url in enumerate(sources):

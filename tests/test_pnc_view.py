@@ -62,3 +62,33 @@ def test_preview_warns_when_fiscal_and_calendar_quarters_differ(monkeypatch):
     assert len(view.warnings) == 1
     assert "30 avril" in view.warnings[0]
     assert "30 juin" in view.warnings[0]
+
+
+def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class View:
+        def __init__(self):
+            self.rows = []
+            self.captions = []
+
+        def dataframe(self, rows, **kwargs):
+            self.rows = rows
+
+        def caption(self, message):
+            self.captions.append(message)
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+    row = dict(company_id="IFC", metric_id="operating_income", period_id="2026-Q2",
+               period_end="2026-06-30", calendar_basis="calendar", value=0.561,
+               unit="CAD_BILLION", source_url="https://example.com/ifc")
+    view = View()
+    module.render_pnc_preview(view, [row])
+    assert view.rows[0]["Résultat net opérationnel"] == "0.561 G$ CA"
+    assert any("non-IFRS" in caption for caption in view.captions)

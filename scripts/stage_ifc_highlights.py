@@ -1,4 +1,4 @@
-"""Stage the reviewed IFC Q2 net-income extraction from its stored raw report."""
+"""Stage reviewed IFC Q2 income highlights from the stored raw report."""
 
 import argparse
 import hashlib
@@ -19,7 +19,7 @@ TABLE = "workspace.vigie.pnc_candidates"
 RAW_ROOT = "/Volumes/workspace/vigie/pnc_finance_raw/"
 
 
-def build_candidate(client, root):
+def build_candidate(client, root, metric_id):
     contract = load_insurer_contract(root / "config/pnc")
     reviews = yaml.safe_load((root / "config/pnc/reviewed_evidence.yaml").read_text(encoding="utf-8"))["reviews"]
     review = next(item for item in reviews if item["company_id"] == "IFC" and item["period_id"] == "2026-Q2")
@@ -34,12 +34,14 @@ def build_candidate(client, root):
     if hashlib.sha256(content).hexdigest() != document["content_hash"]:
         raise ValueError("Stored IFC report hash mismatch")
     metrics = [item for item in extract_pnc_metrics("IFC", content.decode("utf-8"), contract)
-               if item.metric_id == "net_income"]
-    if len(metrics) != 1 or metrics[0].value != 0.720 or metrics[0].unit != "CAD_BILLION":
-        raise ValueError("IFC net-income extraction differs from report review")
+               if item.metric_id == metric_id]
+    expected = review["metrics"][metric_id]
+    if (len(metrics) != 1 or metrics[0].value != expected["value"]
+            or metrics[0].unit != expected["unit"]):
+        raise ValueError("IFC income extraction differs from report review")
     metric = metrics[0]
     return {
-        "observation_id": "IFC-2026-Q2-net_income",
+        "observation_id": f"IFC-2026-Q2-{metric_id}",
         "company_id": "IFC", "period_id": "2026-Q2", "metric_id": metric.metric_id,
         "value": metric.value, "unit": metric.unit, "source_url": document["source_url"],
         "source_document_hash": document["content_hash"], "context": metric.context,
@@ -50,13 +52,15 @@ def build_candidate(client, root):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--persist", action="store_true")
+    parser.add_argument("--metric", choices=("net_income", "operating_income"), default="net_income")
     args = parser.parse_args()
     client = WorkspaceClient(profile="jeplante")
-    candidate = build_candidate(client, Path(__file__).resolve().parents[1])
+    candidate = build_candidate(client, Path(__file__).resolve().parents[1], args.metric)
+    observation_id = candidate["observation_id"]
     count = query(client, f"SELECT to_json(named_struct('n', count(*))) FROM {TABLE} "
-                          "WHERE observation_id = 'IFC-2026-Q2-net_income'")[0]["n"]
+                          f"WHERE observation_id = '{observation_id}'")[0]["n"]
     existing = (query(client, f"SELECT payload_json FROM {TABLE} "
-                             "WHERE observation_id = 'IFC-2026-Q2-net_income'") if count else [])
+                             f"WHERE observation_id = '{observation_id}'") if count else [])
     if any(item["value"] != candidate["value"] or item["unit"] != candidate["unit"]
            for item in existing):
         raise ValueError("Conflicting IFC net-income candidate")

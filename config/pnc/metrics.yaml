@@ -25,10 +25,11 @@ metrics:
     comparison: percent
     favorable_trend: down
   operating_income:
-    label: Résultat d'exploitation
+    label: Résultat net opérationnel
     unit: CAD_BILLION
     comparison: percent
     favorable_trend: up
+    definition: Mesure non-IFRS après impôt propre à chaque assureur; la définition et les ajustements peuvent différer.
   net_income:
     label: Résultat net
     unit: CAD_BILLION

@@ -76,8 +76,11 @@ def test_ifc_highlights_net_income_uses_quarterly_first_column():
     )
     rows = extract_pnc_metrics("IFC", report, contract)
     net_income = next(row for row in rows if row.metric_id == "net_income")
+    operating_income = next(row for row in rows if row.metric_id == "operating_income")
     assert net_income.value == pytest.approx(0.720)
+    assert operating_income.value == pytest.approx(0.561)
     assert "Q2-2026" in net_income.context
+    assert "common shareholders" in operating_income.context
 
 
 def test_ifc_highlights_requires_cad_millions_and_quarter_header():

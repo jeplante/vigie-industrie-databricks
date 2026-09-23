@@ -7,11 +7,12 @@ reviews:
     source_document_hash: c340131465502c9969db3ac6c3083bca89a34f845e90cbf8f729cf476b57cae0
     reviewed_by: codex-report-review-2026-09-23
     basis: quarterly
-    source_locator: Consolidated Highlights, Combined Ratio and Net income rows, Q2-2026 column
+    source_locator: Consolidated Highlights, Combined Ratio, Net operating income attributable to common shareholders, and Net income rows, Q2-2026 column
     period_excerpt: Q2-2026
     scope_excerpt: Intact Consolidated Highlights
     metrics:
       combined_ratio: {value: 94.9, unit: PERCENT}
+      operating_income: {value: 0.561, unit: CAD_BILLION}
       net_income: {value: 0.720, unit: CAD_BILLION}
   - company_id: TD
     period_id: 2026-Q2

@@ -74,8 +74,10 @@ class _ReportText(HTMLParser):
             self.parts.append(data)
 
 
-def _ifc_quarterly_net_income(text: str, expected_unit: str) -> ExtractedMetric | None:
-    """Read only the first (Q2) column of IFC's CAD-million highlights table."""
+def _ifc_quarterly_highlight(
+    text: str, metric_id: str, row_label: str, expected_unit: str
+) -> ExtractedMetric | None:
+    """Read a named first-quarter column from IFC's CAD-million highlights."""
     section = re.search(
         r"Consolidated Highlights\s*\.\s*"
         r"\(in millions of Canadian dollars except as otherwise noted\)\s*\.\s*"
@@ -85,15 +87,17 @@ def _ifc_quarterly_net_income(text: str, expected_unit: str) -> ExtractedMetric 
     )
     if not section:
         return None
-    match = re.search(r"(?<!\w)Net income\s*(?:\.\s*)?(?P<number>\d[\d,]*)(?=\s|\.)",
+    match = re.search(r"(?<!\w)" + re.escape(row_label) +
+                      r"\s*(?:\.\s*)?(?P<number>\d[\d,]*)(?=\s|\.)",
                       section.group("body"), re.IGNORECASE)
     if not match:
         return None
     value = _normalized_value(match.group("number"), "million", expected_unit)
     if value is None:
         return None
-    context = f"Consolidated Highlights {section.group('quarter')} Net income {match.group('number')} million CAD"
-    return ExtractedMetric("net_income", value, expected_unit, match.group("number"), context)
+    context = (f"Consolidated Highlights {section.group('quarter')} "
+               f"{row_label} {match.group('number')} million CAD")
+    return ExtractedMetric(metric_id, value, expected_unit, match.group("number"), context)
 
 
 def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract) -> list[ExtractedMetric]:
@@ -108,8 +112,10 @@ def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract
         if metric_id not in contract.metrics:
             continue
         expected_unit = contract.metrics[metric_id].unit
-        if company_id == "IFC" and metric_id == "net_income":
-            table_value = _ifc_quarterly_net_income(text, expected_unit)
+        if company_id == "IFC" and metric_id in {"net_income", "operating_income"}:
+            row_label = ("Net income" if metric_id == "net_income"
+                         else "Net operating income attributable to common shareholders")
+            table_value = _ifc_quarterly_highlight(text, metric_id, row_label, expected_unit)
             if table_value is not None:
                 extracted.append(table_value)
                 continue
