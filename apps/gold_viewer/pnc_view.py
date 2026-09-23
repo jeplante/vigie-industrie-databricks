@@ -6,6 +6,7 @@ COMPANIES = (
     ("TD", "TD Insurance", "Activités d’assurance"),
     ("DFY", "Definity Financial", "Groupe consolidé"),
 )
+AVIVA_HY26_URL = "https://www.aviva.ca/en/press-releases/2026/half-year-results-2026/"
 
 
 def render_pnc_preview(st, published_rows=()):
@@ -39,6 +40,10 @@ def render_pnc_preview(st, published_rows=()):
                              else f"{row['value']:.1f} %") if row else "N/A"
         table.append(output)
     st.dataframe(table, hide_index=True, width="stretch")
+    if published_rows and not any(row["company_id"] == "AV" for row in published_rows):
+        st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
+        st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL,
+                       key="pnc-aviva-hy26-source")
     st.caption("Le résultat net opérationnel est une mesure non-IFRS propre à chaque assureur; ses ajustements peuvent différer. Vérifiez le rapport officiel avant une comparaison directe.")
     for company, name, _ in COMPANIES:
         sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})

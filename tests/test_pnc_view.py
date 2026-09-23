@@ -92,3 +92,39 @@ def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):
     module.render_pnc_preview(view, [row])
     assert view.rows[0]["Résultat net opérationnel"] == "0.561 G$ CA"
     assert any("non-IFRS" in caption for caption in view.captions)
+
+
+def test_aviva_half_year_source_is_separate_from_quarterly_values(monkeypatch):
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class View:
+        def __init__(self):
+            self.rows = []
+            self.links = []
+            self.info_messages = []
+
+        def dataframe(self, rows, **kwargs):
+            self.rows = rows
+
+        def link_button(self, label, url, **kwargs):
+            self.links.append((label, url))
+
+        def info(self, message):
+            self.info_messages.append(message)
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+    row = dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q2",
+               period_end="2026-06-30", calendar_basis="calendar", value=94.9,
+               unit="PERCENT", source_url="https://example.com/ifc")
+    view = View()
+    module.render_pnc_preview(view, [row])
+    aviva = next(item for item in view.rows if item["Compagnie"] == "Aviva Canada")
+    assert aviva["Ratio combiné"] == "N/A"
+    assert any("six mois" in message for message in view.info_messages)
+    assert any(url == module.AVIVA_HY26_URL for _, url in view.links)

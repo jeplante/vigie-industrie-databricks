@@ -1,7 +1,7 @@
 # P&C source review — 2026-09-20
 
 Acquisition success is separate from publication eligibility. The latest live
-run fetched all four configured reports. Eight observations subsequently
+run fetched all four configured reports. Nine observations subsequently
 received report-level accounting review and were published; the remaining
 candidates are not eligible for the quarterly Gold table.
 
@@ -19,7 +19,14 @@ in GBP; the Canadian segment is not automatically denominated in CAD.
 Do not populate quarterly CAD KPIs with these figures or derive a Q2 ratio by
 subtracting Q1. The quarterly comparison remains N/A until comparable evidence
 is available. A future separate half-year presentation can retain this fact
-with its actual period and basis.
+with its actual period and basis. On 2026-09-23, the official Q1 2026 trading
+update and the HY26 financial results pack were also checked. Q1 reports
+Canada GI gross written premiums (in rounded GBP) but only a Group COR; the
+pack's Canada general-insurance table labels its figures as six months 2026.
+Neither establishes a separately published Canadian Q2 COR, and subtracting
+rounded premiums would not recover that rate. The App links the official HY26
+Canada release next to Aviva's quarterly N/A, without inserting its HY ratio
+into quarterly Gold.
 
 ## Publication evidence
 
