@@ -1,0 +1,21 @@
+sources:
+  - company_id: IFC
+    period_id: 2025-Q4
+    source_url: https://newsroom.intactfc.com/2026-02-10-Intact-Financial-Corporation-reports-Q4-2025-results?asPDF=1
+    document_type: quarterly_report
+    disclosure_scope: Intact consolidated P&C operations; Q4 column only
+  - company_id: AV
+    period_id: 2025-Q4
+    unavailable_reason: no_quarterly_segment_disclosure
+    reference_url: https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2026/03/full-year-2025-results-announcement/
+    disclosure_scope: Aviva Canada annual disclosure is not a Q4 result
+  - company_id: TD
+    period_id: 2025-Q4
+    source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q4/q4-2025-news-release-en.pdf
+    document_type: quarterly_report
+    disclosure_scope: TD Insurance standalone line, fiscal quarter ended October 31
+  - company_id: DFY
+    period_id: 2025-Q4
+    source_url: https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Reports-Fourth-Quarter-and-Full-Year-2025-Results/default.aspx
+    document_type: quarterly_report
+    disclosure_scope: Definity consolidated Canadian P&C operations; Q4 column only

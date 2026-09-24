@@ -1,5 +1,54 @@
 reviews:
   - company_id: IFC
+    period_id: 2025-Q4
+    period_end: 2025-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 8b98bc8d6d84f9d6b3d8049680d5496e7b6e10b5aa5a319e24456f386b7589cf
+    reviewed_by: codex-report-review-2026-09-24
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q4-2025 first numeric column
+    period_excerpt: Q4-2025
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 85.9, unit: PERCENT}
+      operating_income: {value: 0.979, unit: CAD_BILLION}
+      net_income: {value: 0.961, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: TD
+    period_id: 2025-Q4
+    period_end: 2025-10-31
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: 83a53de263f050485d215e725cb4a487f88114b7e9041887a17d228755b59b1d
+    reviewed_by: codex-report-review-2026-09-24
+    basis: quarterly
+    source_locator: Earnings News Release page 18, Table 11 quarterly comparison narrative
+    period_excerpt: For the three months ended October 31 2025
+    scope_excerpt: Standalone Insurance net income
+    metrics:
+      net_income: {value: 0.142, unit: CAD_BILLION}
+  - company_id: DFY
+    period_id: 2025-Q4
+    period_end: 2025-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 0a8b6a70344c9ca3b0e7b96770d0bf5ef130983bd04fcb684680f9a7905ceb2d
+    reviewed_by: codex-report-review-2026-09-24
+    basis: quarterly
+    source_locator: Consolidated Results, Q4 2025 first numeric column; earnings narrative
+    period_excerpt: Q4 2025
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      combined_ratio: {value: 89.9, unit: PERCENT}
+      claims_ratio: {value: 60.6, unit: PERCENT}
+      expense_ratio: {value: 29.3, unit: PERCENT}
+      operating_income: {value: 0.1207, unit: CAD_BILLION}
+      net_income: {value: 0.058, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
     period_id: 2026-Q1
     period_end: 2026-03-31
     calendar_basis: calendar

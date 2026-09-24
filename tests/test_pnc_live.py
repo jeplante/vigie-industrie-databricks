@@ -46,3 +46,31 @@ def test_invalid_manifest_fails_before_network():
         pytest.fail("network must not run")
     with pytest.raises(ValueError, match="approved"):
         acquire_pnc_documents(contract, manifest, document_fetcher=fetch)
+
+
+def test_explicitly_unavailable_quarterly_source_is_not_fetched_or_extracted():
+    contract = load_insurer_contract(ROOT / "config/pnc")
+    manifest = yaml.safe_load((ROOT / "config/pnc/history/2025-Q4.yaml").read_text())["sources"]
+    calls = []
+
+    def fetch(contract, company, kind, url, **kwargs):
+        calls.append(company)
+        content = b"Insurance net income was $142 million."
+        document = create_financial_document(contract, company, kind, url, "fetched",
+                                             content=content, content_type="text/html")
+        return FinancialDocumentFetch(document, content)
+
+    result = acquire_pnc_documents(contract, manifest, document_fetcher=fetch,
+                                   text_extractor=lambda content, kind: content.decode())
+    assert calls == ["IFC", "TD", "DFY"]
+    assert len(result.documents) == 3
+    assert result.errors == {}
+    assert all(row["company_id"] != "AV" for row in result.candidates)
+
+
+def test_unavailable_source_cannot_hide_an_acquisition_url():
+    contract = load_insurer_contract(ROOT / "config/pnc")
+    manifest = yaml.safe_load((ROOT / "config/pnc/history/2025-Q4.yaml").read_text())["sources"]
+    manifest[1]["source_url"] = "https://www.aviva.com/annual-report"
+    with pytest.raises(ValueError, match="cannot have an acquisition URL"):
+        acquire_pnc_documents(contract, manifest)

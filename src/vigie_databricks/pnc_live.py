@@ -34,14 +34,23 @@ def acquire_pnc_documents(contract, manifest, prior_by_url=None, *, persist_raw=
         raise ValueError("manifest must contain exactly one document per P&C issuer")
     for entry in entries:
         source = contract.financial_sources[entry["company_id"]]
+        if not re.fullmatch(r"20\d{2}-Q[1-4]", str(entry.get("period_id", ""))):
+            raise ValueError("manifest requires a quarterly discovery period")
+        if entry.get("unavailable_reason"):
+            if entry["unavailable_reason"] != "no_quarterly_segment_disclosure":
+                raise ValueError("unsupported unavailable reason")
+            if entry.get("source_url") or entry.get("document_type"):
+                raise ValueError("unavailable source cannot have an acquisition URL or document type")
+            _validate_source_url(source, entry["reference_url"])
+            continue
         _validate_source_url(source, entry["source_url"])
         if entry.get("document_type") not in source.document_types:
             raise ValueError("unsupported document type")
-        if not re.fullmatch(r"20\d{2}-Q[1-4]", str(entry.get("period_id", ""))):
-            raise ValueError("manifest requires a quarterly discovery period")
     prior_by_url = prior_by_url or {}
     documents, candidates, errors = [], [], {}
     for entry in entries:
+        if entry.get("unavailable_reason"):
+            continue
         company, url = entry["company_id"], entry["source_url"]
         try:
             prior = prior_by_url.get(url, {})

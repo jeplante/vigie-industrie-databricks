@@ -30,9 +30,21 @@ def checked_manifest(path: Path):
     if len(entries) != len(contract.companies) or set(companies) != set(contract.companies):
         raise ValueError("Historical manifest must contain exactly one source per insurer")
     for entry in entries:
-        if entry["period_id"] != path.stem or entry["document_type"] != "quarterly_report":
-            raise ValueError("Manifest period or document type does not match the quarter")
-        _validate_source_url(contract.financial_sources[entry["company_id"]], entry["source_url"])
+        if entry["period_id"] != path.stem:
+            raise ValueError("Manifest period does not match the quarter")
+        source = contract.financial_sources[entry["company_id"]]
+        if entry.get("unavailable_reason"):
+            if entry["unavailable_reason"] != "no_quarterly_segment_disclosure":
+                raise ValueError("Unsupported unavailable reason")
+            if entry.get("source_url") or entry.get("document_type"):
+                raise ValueError("Unavailable source must not have an acquisition URL")
+            _validate_source_url(source, entry["reference_url"])
+        else:
+            if entry.get("document_type") != "quarterly_report":
+                raise ValueError("Historical acquisition requires quarterly reports")
+            _validate_source_url(source, entry["source_url"])
+    if not any(not entry.get("unavailable_reason") for entry in entries):
+        raise ValueError("Historical manifest requires an acquirable quarterly source")
     return path
 
 

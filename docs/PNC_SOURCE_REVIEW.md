@@ -145,20 +145,30 @@ The existing `vigie-gold-viewer` App was restarted and its snapshot deployment
 2026-09-24. This verifies deployment state, not a browser-level visual check.
 No P&C acquisition or publication schedule was activated.
 
-## Q4 2025 source reconnaissance — not yet published
+## Historical Q4 2025 review and publication — 2026-09-24
 
-The next historical quarter has official source candidates, but no Q4 2025
-document hash or extracted value has been reviewed or published yet:
+`config/pnc/history/2025-Q4.yaml` explicitly marks Aviva as having no
+Canada-quarter disclosure; its [FY 2025 statement](https://www.aviva.ca/en/press-releases/2026/full-year-2025-results/)
+reports a 95.6% **annual** Canada COR, which is not a Q4 KPI. The bounded
+acquirer skipped that annual document. Two local reads of the three quarterly
+sources returned stable hashes, eleven candidates and zero AI calls. The
+one-time staging run `870566534049261` persisted three raw documents and
+eleven candidates; its task status was `FAILED` by the expected four-source
+completeness gate (`AV` missing), not by a download or storage error.
 
-| Issuer | Official source candidate | Basis to verify |
+| Official source and actual close | Reviewed Q4 values | SHA-256 |
 | --- | --- | --- |
-| Intact | [Q4 2025 results](https://newsroom.intactfc.com/2026-02-10-Intact-Financial-Corporation-reports-Q4-2025-results) | Consolidated Q4 column, not full-year column |
-| TD Insurance | [Q4 2025 earnings release](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q4/q4-2025-news-release-en.pdf) | Standalone Insurance net income for fiscal quarter ended October 31, not Wealth Management and Insurance combined |
-| Definity | [Q4 and FY 2025 results](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Reports-Fourth-Quarter-and-Full-Year-2025-Results/default.aspx) | Q4 column, not full-year column |
-| Aviva Canada | [FY 2025 Canada statement](https://www.aviva.ca/en/press-releases/2026/full-year-2025-results/) | **Annual only**; 95.6% Canada COR must not be labeled Q4 |
+| [Intact consolidated](https://newsroom.intactfc.com/2026-02-10-Intact-Financial-Corporation-reports-Q4-2025-results?asPDF=1), Dec 31 | Combined ratio 85.9%; operating net income attributable to common shareholders CAD 979m; IFRS net income CAD 961m | `8b98bc8d6d84f9d6b3d8049680d5496e7b6e10b5aa5a319e24456f386b7589cf` |
+| [TD Insurance](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q4/q4-2025-news-release-en.pdf), fiscal Oct 31 | Standalone Insurance net income CAD 142m, not the CAD 699m combined Wealth Management and Insurance segment | `83a53de263f050485d215e725cb4a487f88114b7e9041887a17d228755b59b1d` |
+| [Definity consolidated](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Reports-Fourth-Quarter-and-Full-Year-2025-Results/default.aspx), Dec 31 | Combined ratio 89.9%; claims ratio 60.6%; expense ratio 29.3%; operating net income CAD 120.7m; net income attributable to common shareholders CAD 58.0m | `0a8b6a70344c9ca3b0e7b96770d0bf5ef130983bd04fcb684680f9a7905ceb2d` |
 
-The three quarterly candidates require bounded acquisition, exact-document
-review and a reproducible staging check before any Q4 Gold publication.
-The existing four-source completeness gate cannot be satisfied by relabeling
-Aviva's annual result as quarterly; Aviva remains N/A for Q4 absent a genuine
-Canada-quarter disclosure.
+Intact's Q4 column was distinguished from its full-year column; the PDF
+rendering is used for byte-stable provenance. Definity's report also has
+separate Q4 and full-year columns. Intact's 19.5% and Definity's 12.2%
+operating ROE figures are trailing-year measures, so both candidates were
+rejected. The nine remaining Q4 candidates passed exact-hash, scope, period,
+unit and value review. A publisher dry-run accepted 27 total observations.
+Two reviewed-only Gold MERGEs succeeded. Independent SQL readback found
+27 rows and 27 distinct IDs: nine each for Q4 2025, Q1 2026 and Q2 2026;
+zero Aviva rows and zero operating ROE rows. Q4 close dates are preserved as
+Dec 31 for Intact/Definity and fiscal Oct 31 for TD. No schedule was enabled.
