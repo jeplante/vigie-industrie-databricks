@@ -7,11 +7,37 @@ COMPANIES = (
     ("DFY", "Definity Financial", "Groupe consolidé"),
 )
 AVIVA_HY26_URL = "https://www.aviva.ca/en/press-releases/2026/half-year-results-2026/"
+METRICS = (("insurance_revenue", "Produits d’assurance"), ("combined_ratio", "Ratio combiné"),
+           ("claims_ratio", "Ratio de sinistres"), ("expense_ratio", "Ratio de frais"),
+           ("operating_income", "Résultat net opérationnel"), ("net_income", "Résultat net"))
+
+
+def _display_value(row):
+    if row["unit"] == "CAD_BILLION":
+        return f"{row['value']:.3f} G$ CA"
+    return f"{row['value']:.1f} %"
+
+
+def pnc_history_table(rows):
+    """Expose reviewed observations with their true quarter and closing date."""
+    companies = {company: (index, name) for index, (company, name, _) in enumerate(COMPANIES)}
+    metrics = {metric: (index, label) for index, (metric, label) in enumerate(METRICS)}
+    ordered = sorted(
+        (row for row in rows if row.get("company_id") in companies and row.get("metric_id") in metrics),
+        key=lambda row: (-int(row["period_id"][:4]), -int(row["period_id"][-1]),
+                         companies[row["company_id"]][0], metrics[row["metric_id"]][0]),
+    )
+    return [{"Trimestre": row["period_id"], "Compagnie": companies[row["company_id"]][1],
+             "Indicateur": metrics[row["metric_id"]][1], "Valeur": _display_value(row),
+             "Clôture": str(row["period_end"]),
+             "Calendrier": "Fiscal" if row["calendar_basis"] == "fiscal" else "Civil",
+             "Rapport officiel": row["source_url"]} for row in ordered]
 
 
 def render_pnc_preview(st, published_rows=()):
     from pnc_data import current_pnc_rows
-    period, published_rows = current_pnc_rows(published_rows)
+    all_rows = list(published_rows)
+    period, published_rows = current_pnc_rows(all_rows)
     st.title("Assurance de dommages")
     st.caption("Intact Financial · Aviva Canada · TD Insurance · Definity Financial")
     if not published_rows:
@@ -22,9 +48,6 @@ def render_pnc_preview(st, published_rows=()):
             st.warning("Attention : TD Insurance utilise un trimestre fiscal clos le 30 avril; les résultats publiés ici pour Intact et Definity sont clos le 30 juin. Ces valeurs ne couvrent pas les mêmes dates.")
     st.subheader("Résultats des quatre compagnies")
     table = []
-    metrics = (("insurance_revenue", "Produits d’assurance"), ("combined_ratio", "Ratio combiné"),
-               ("claims_ratio", "Ratio de sinistres"), ("expense_ratio", "Ratio de frais"),
-               ("operating_income", "Résultat net opérationnel"), ("net_income", "Résultat net"))
     for company, name, scope in COMPANIES:
         rows = [row for row in published_rows if row["company_id"] == company]
         ends = {str(row["period_end"]) for row in rows}
@@ -34,10 +57,9 @@ def render_pnc_preview(st, published_rows=()):
                   "Période publiée": period if rows else "N/A",
                   "Clôture": next(iter(ends), "N/A"),
                   "Calendrier": "Fiscal" if any(row["calendar_basis"] == "fiscal" for row in rows) else "Civil" if rows else "N/A"}
-        for metric, label in metrics:
+        for metric, label in METRICS:
             row = next((r for r in rows if r["metric_id"] == metric), None)
-            output[label] = (f"{row['value']:.3f} G$ CA" if row["unit"] == "CAD_BILLION"
-                             else f"{row['value']:.1f} %") if row else "N/A"
+            output[label] = _display_value(row) if row else "N/A"
         table.append(output)
     st.dataframe(table, hide_index=True, width="stretch")
     if published_rows and not any(row["company_id"] == "AV" for row in published_rows):
@@ -49,6 +71,14 @@ def render_pnc_preview(st, published_rows=()):
         sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
         for index, url in enumerate(sources):
             st.link_button(f"Rapport officiel — {name}", url, key=f"pnc-source-{company}-{index}")
+    if len({row["period_id"] for row in all_rows}) > 1:
+        st.subheader("Historique trimestriel validé")
+        st.caption("Chaque ligne conserve sa clôture et son calendrier. Les trimestres fiscaux de TD ne couvrent pas les mêmes dates que les trimestres civils.")
+        st.dataframe(
+            pnc_history_table(all_rows), hide_index=True, width="stretch",
+            column_config={"Rapport officiel": st.column_config.LinkColumn(
+                "Rapport officiel", display_text="Ouvrir")},
+        )
     st.caption("N/A signifie ici qu’aucune valeur validée n’a été publiée, et non que l’assureur n’a pas communiqué de résultat.")
     st.subheader("Périmètres et périodes")
     st.write("Les résultats consolidés d’Intact et de Definity ne représentent pas le même périmètre que les segments Aviva Canada et TD Insurance.")

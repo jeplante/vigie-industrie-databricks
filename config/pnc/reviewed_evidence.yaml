@@ -1,5 +1,52 @@
 reviews:
   - company_id: IFC
+    period_id: 2026-Q1
+    period_end: 2026-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 6f92f8b966e6566aaa82baa5888a9a86f6e4fad7d96b425ef9948d73bed808b7
+    reviewed_by: codex-report-review-2026-09-24
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q1-2026 first numeric column
+    period_excerpt: Q1-2026
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 91.3, unit: PERCENT}
+      operating_income: {value: 0.770, unit: CAD_BILLION}
+      net_income: {value: 0.752, unit: CAD_BILLION}
+  - company_id: TD
+    period_id: 2026-Q1
+    period_end: 2026-01-31
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: fa7ca8776876498b7a8c23f63326975d498ca9c04e5b6c536ab9a7637e133510
+    reviewed_by: codex-report-review-2026-09-24
+    basis: quarterly
+    source_locator: Report to shareholders page 18, Table 13 quarterly comparison narrative
+    period_excerpt: For the three months ended January 31 2026
+    scope_excerpt: Standalone Insurance net income
+    metrics:
+      net_income: {value: 0.183, unit: CAD_BILLION}
+  - company_id: DFY
+    period_id: 2026-Q1
+    period_end: 2026-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: eeda8d7baa66188a2142d11aa5d39548894135da1da5f01ce949a15e87412266
+    reviewed_by: codex-report-review-2026-09-24
+    basis: quarterly
+    source_locator: Consolidated Results, Q1 2026 first numeric column; earnings narrative
+    period_excerpt: Q1 2026
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      combined_ratio: {value: 92.9, unit: PERCENT}
+      claims_ratio: {value: 62.4, unit: PERCENT}
+      expense_ratio: {value: 30.5, unit: PERCENT}
+      operating_income: {value: 0.1181, unit: CAD_BILLION}
+      net_income: {value: 0.0639, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
     period_id: 2026-Q2
     period_end: 2026-06-30
     calendar_basis: calendar

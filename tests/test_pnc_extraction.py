@@ -57,7 +57,7 @@ def test_ifc_candidates_are_deterministic_and_unit_normalized():
     )
     values = {row.metric_id: row.value for row in rows}
     assert values["insurance_revenue"] == pytest.approx(6.24)
-    assert values["combined_ratio"] == pytest.approx(91.2)
+    assert "combined_ratio" not in values  # No table proves consolidated scope.
     assert values["operating_income"] == pytest.approx(0.82)
     assert values["operating_roe"] == pytest.approx(16.4)
 
@@ -72,6 +72,7 @@ def test_ifc_highlights_net_income_uses_quarterly_first_column():
         "<tr><td>Net operating income attributable to common shareholders</td>"
         "<td>561</td><td>935</td><td>1,331</td></tr>"
         "<tr><td>Net income</td><td>720</td><td>867</td><td>1,472</td></tr>"
+        "<tr><td>Combined Ratio</td><td>94.9 %</td><td>91.0 %</td></tr>"
         "<h2>Per share measures</h2>"
     )
     rows = extract_pnc_metrics("IFC", report, contract)
@@ -79,8 +80,43 @@ def test_ifc_highlights_net_income_uses_quarterly_first_column():
     operating_income = next(row for row in rows if row.metric_id == "operating_income")
     assert net_income.value == pytest.approx(0.720)
     assert operating_income.value == pytest.approx(0.561)
+    assert next(row for row in rows if row.metric_id == "combined_ratio").value == pytest.approx(94.9)
     assert "Q2-2026" in net_income.context
     assert "common shareholders" in operating_income.context
+
+
+def test_ifc_segment_ratio_cannot_replace_consolidated_ratio():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    report = (
+        "<h2>Consolidated Highlights</h2>"
+        "<p>(in millions of Canadian dollars except as otherwise noted)</p>"
+        "<tr><td>Q1-2026</td><td>Q1-2025</td><td>Change</td></tr>"
+        "<tr><td>Combined Ratio</td><td>91.3 %</td><td>91.3 %</td></tr>"
+        "<h2>Per share measures</h2>"
+        "<p>Canada personal property combined ratio of 84.4%.</p>"
+    )
+    ratio = next(row for row in extract_pnc_metrics("IFC", report, contract)
+                 if row.metric_id == "combined_ratio")
+    assert ratio.value == pytest.approx(91.3)
+    assert "Consolidated Highlights Q1-2026" in ratio.context
+
+
+def test_ifc_pdf_highlights_skip_footnote_markers_not_current_values():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    pdf_text = (
+        "Consolidated Highlights\n"
+        "(in millions of Canadian dollars except as otherwise noted)\n"
+        "Q1-2026\nQ1-2025\nChange\n"
+        "Net operating income attributable to common\nshareholders\n1\n770\n717\n7 %\n"
+        "Net income\n752\n676\n11 %\n"
+        "Combined Ratio\n1\n91.3 %\n91.3 %\n-- pts\n"
+        "Per share measures (in dollars)\n"
+        "Canada personal property combined ratio of 84.4%."
+    )
+    values = {row.metric_id: row.value for row in extract_pnc_metrics("IFC", pdf_text, contract)}
+    assert values["operating_income"] == pytest.approx(0.770)
+    assert values["net_income"] == pytest.approx(0.752)
+    assert values["combined_ratio"] == pytest.approx(91.3)
 
 
 def test_ifc_highlights_requires_cad_millions_and_quarter_header():
@@ -101,3 +137,28 @@ def test_td_extracts_only_explicit_insurance_values():
         contract,
     )
     assert {row.metric_id: row.value for row in rows} == {"net_income": 0.279, "operating_roe": 35.9}
+
+
+def test_td_quarterly_comparison_extracts_insurance_component_not_bank_segment():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    text = (
+        "Quarterly comparison – Q1 2026 vs. Q1 2025 Other bank results. "
+        "Quarterly comparison – Q1 2026 vs. Q1 2025 "
+        "Wealth Management and Insurance net income for the quarter was $757 million, "
+        "reflecting Wealth Management net income of $574 million, an increase, "
+        "and Insurance net income of $183 million, an increase. "
+        "Quarterly comparison – Q1 2026 vs. Q4 2025 "
+        "Insurance net income of $999 million in an unrelated paragraph."
+    )
+    values = {row.metric_id: row for row in extract_pnc_metrics("TD", text, contract)}
+    assert values["net_income"].value == pytest.approx(0.183)
+    assert "Q1 2026" in values["net_income"].context
+
+
+def test_td_combined_segment_only_does_not_generate_insurance_candidate():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    text = (
+        "Quarterly comparison – Q1 2026 vs. Q1 2025 "
+        "Wealth Management and Insurance net income for the quarter was $757 million."
+    )
+    assert "net_income" not in {row.metric_id for row in extract_pnc_metrics("TD", text, contract)}

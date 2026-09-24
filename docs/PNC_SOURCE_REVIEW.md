@@ -101,3 +101,46 @@ Period hints in URLs/manifests and matching metric labels alone do not authorize
 publication. Semiannual, cumulative and trailing-year evidence is rejected by
 the quarterly publication gate. The P&C UI reads only reviewed Gold rows; a
 scheduled P&C publication workflow remains pending.
+
+## Historical Q1 2026 review — 2026-09-24
+
+`config/pnc/history/2026-Q1.yaml` identifies one official Q1 document for each
+issuer. A bounded local dry-run fetched four documents with zero AI calls.
+It produced ten candidates. Nine passed exact-hash, period, scope and value
+review; Definity's 13.0% operating ROE is a **trailing 12-month** measure and
+was deliberately excluded. Aviva's [Q1 trading update](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2026/05/Q12026-trading-update/)
+reports rounded Canadian premiums in GBP and a **Group**, not Canada, COR;
+it supplies no comparable quarterly Canada KPI for this Gold view.
+
+| Source and basis | Reviewed Q1 observations |
+| --- | --- |
+| [Intact](https://newsroom.intactfc.com/2026-05-05-Intact-Financial-Corporation-reports-Q1-2026-results?asPDF=1), global consolidated, March 31 | Combined ratio 91.3%; net operating income attributable to common shareholders CAD 770m; IFRS net income CAD 752m |
+| [TD Insurance](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2026/q1/2026-q1-report-shareholders-en.pdf), fiscal January 31 | Standalone Insurance net income CAD 183m, not the combined Wealth Management and Insurance CAD 757m |
+| [Definity](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Financial-Corporation-Reports-First-Quarter-2026-Results/default.aspx), March 31 | Combined ratio 92.9%; claims ratio 62.4%; expense ratio 30.5%; operating net income CAD 118.1m; net income attributable to common shareholders CAD 63.9m |
+
+The first live extraction incorrectly selected Intact's 84.4% Canada personal
+property ratio. Its extractor now requires the explicitly labelled
+`Consolidated Highlights` current-quarter row; the same table supplies its
+two income metrics. The HTML press-release bytes changed across requests,
+so Q1 uses Intact's official PDF rendering, which returned the same SHA-256
+`6f92f8b966e6566aaa82baa5888a9a86f6e4fad7d96b425ef9948d73bed808b7`
+on repeated bounded requests. TD's standalone CAD 183m is extracted from
+the Q1 quarterly-comparison paragraph, not the combined segment table.
+The review records are in `config/pnc/reviewed_evidence.yaml`. The one-time
+Databricks staging run `570585770938578` persisted four raw documents and ten
+candidates with zero AI calls. Its task status was `FAILED` by the source
+completeness gate because Aviva contributed no comparable Canada-quarter KPI;
+the run reported no download or storage error. Exact-hash staging review
+validated nine Q1 candidates, rejected the trailing-year ROE, and left Aviva
+at N/A.
+
+The reviewed-only publisher completed twice. An independent Gold readback
+found 18 observations and 18 distinct observation IDs: nine for Q1 and nine
+for Q2 2026, with no Aviva row or trailing-year ROE. Counts were unchanged
+on the second publication. The App now exposes these rows in a separate
+historical table with period, actual close, fiscal/calendar basis and official
+document link; its headline comparison remains fixed to the latest quarter.
+The existing `vigie-gold-viewer` App was restarted and its snapshot deployment
+`01f1b80f315a14188d366276560e9bda` reached `SUCCEEDED` / `RUNNING` on
+2026-09-24. This verifies deployment state, not a browser-level visual check.
+No P&C acquisition or publication schedule was activated.

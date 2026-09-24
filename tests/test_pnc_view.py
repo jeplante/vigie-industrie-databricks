@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
 
 def test_preview_displays_all_issuers_without_exposing_candidates(monkeypatch):
@@ -128,3 +129,45 @@ def test_aviva_half_year_source_is_separate_from_quarterly_values(monkeypatch):
     assert aviva["Ratio combiné"] == "N/A"
     assert any("six mois" in message for message in view.info_messages)
     assert any(url == module.AVIVA_HY26_URL for _, url in view.links)
+
+
+def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class View:
+        def __init__(self):
+            self.tables = []
+            self.column_config = SimpleNamespace(LinkColumn=lambda *args, **kwargs: kwargs)
+
+        def dataframe(self, rows, **kwargs):
+            self.tables.append((rows, kwargs))
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+    rows = [
+        dict(company_id="TD", metric_id="net_income", period_id="2026-Q1",
+             period_end="2026-01-31", calendar_basis="fiscal", value=.183,
+             unit="CAD_BILLION", source_url="https://example.com/td-q1"),
+        dict(company_id="TD", metric_id="net_income", period_id="2026-Q2",
+             period_end="2026-04-30", calendar_basis="fiscal", value=.279,
+             unit="CAD_BILLION", source_url="https://example.com/td-q2"),
+        dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q1",
+             period_end="2026-03-31", calendar_basis="calendar", value=91.3,
+             unit="PERCENT", source_url="https://example.com/ifc-q1"),
+    ]
+    view = View()
+    module.render_pnc_preview(view, rows)
+    current, history = view.tables
+    assert next(row for row in current[0] if row["Compagnie"] == "TD Insurance")["Résultat net"] == "0.279 G$ CA"
+    assert [row["Trimestre"] for row in history[0]] == ["2026-Q2", "2026-Q1", "2026-Q1"]
+    q1_td = next(row for row in history[0] if row["Compagnie"] == "TD Insurance" and row["Trimestre"] == "2026-Q1")
+    assert q1_td["Valeur"] == "0.183 G$ CA"
+    assert q1_td["Clôture"] == "2026-01-31"
+    assert q1_td["Calendrier"] == "Fiscal"
+    assert q1_td["Rapport officiel"] == "https://example.com/td-q1"
+    assert "Rapport officiel" in history[1]["column_config"]

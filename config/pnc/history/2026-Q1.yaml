@@ -1,0 +1,21 @@
+sources:
+  - company_id: IFC
+    period_id: 2026-Q1
+    source_url: https://newsroom.intactfc.com/2026-05-05-Intact-Financial-Corporation-reports-Q1-2026-results?asPDF=1
+    document_type: quarterly_report
+    disclosure_scope: Intact consolidated P&C operations
+  - company_id: AV
+    period_id: 2026-Q1
+    source_url: https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2026/05/Q12026-trading-update/
+    document_type: quarterly_report
+    disclosure_scope: Aviva Canada general-insurance segment; no validated Canada quarterly COR
+  - company_id: TD
+    period_id: 2026-Q1
+    source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2026/q1/2026-q1-report-shareholders-en.pdf
+    document_type: quarterly_report
+    disclosure_scope: TD Insurance standalone line, fiscal quarter ended January 31
+  - company_id: DFY
+    period_id: 2026-Q1
+    source_url: https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Financial-Corporation-Reports-First-Quarter-2026-Results/default.aspx
+    document_type: quarterly_report
+    disclosure_scope: Definity consolidated Canadian P&C operations
