@@ -45,7 +45,12 @@ def render_pnc_preview(st, published_rows=()):
     else:
         st.caption(f"Période de référence : {period}. Les dates de clôture peuvent différer selon l’assureur.")
         if len({row["period_end"] for row in published_rows}) > 1:
-            st.warning("Attention : TD Insurance utilise un trimestre fiscal clos le 30 avril; les résultats publiés ici pour Intact et Definity sont clos le 30 juin. Ces valeurs ne couvrent pas les mêmes dates.")
+            closes = [(name, sorted({str(row["period_end"]) for row in published_rows
+                                     if row["company_id"] == company}))
+                      for company, name, _ in COMPANIES]
+            details = "; ".join(f"{name} : {', '.join(dates)}" for name, dates in closes if dates)
+            st.warning(f"Attention : les périodes de clôture diffèrent ({details}). "
+                       "Les trimestres fiscaux et civils ne couvrent pas les mêmes dates.")
     st.subheader("Résultats des quatre compagnies")
     table = []
     for company, name, scope in COMPANIES:

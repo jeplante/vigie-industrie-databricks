@@ -51,18 +51,18 @@ def test_preview_warns_when_fiscal_and_calendar_quarters_differ(monkeypatch):
             return lambda *args, **kwargs: None
 
     rows = [
-        dict(company_id="TD", metric_id="net_income", period_id="2026-Q2",
-             period_end="2026-04-30", calendar_basis="fiscal", value=0.279,
+        dict(company_id="TD", metric_id="net_income", period_id="2026-Q3",
+             period_end="2026-07-31", calendar_basis="fiscal", value=0.279,
              unit="CAD_BILLION", source_url="https://example.com/td"),
-        dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q2",
-             period_end="2026-06-30", calendar_basis="calendar", value=94.9,
+        dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q3",
+             period_end="2026-09-30", calendar_basis="calendar", value=94.9,
              unit="PERCENT", source_url="https://example.com/ifc"),
     ]
     view = View()
     module.render_pnc_preview(view, rows)
     assert len(view.warnings) == 1
-    assert "30 avril" in view.warnings[0]
-    assert "30 juin" in view.warnings[0]
+    assert "TD Insurance : 2026-07-31" in view.warnings[0]
+    assert "Intact Financial : 2026-09-30" in view.warnings[0]
 
 
 def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):

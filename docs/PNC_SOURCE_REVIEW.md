@@ -144,3 +144,21 @@ The existing `vigie-gold-viewer` App was restarted and its snapshot deployment
 `01f1b80f315a14188d366276560e9bda` reached `SUCCEEDED` / `RUNNING` on
 2026-09-24. This verifies deployment state, not a browser-level visual check.
 No P&C acquisition or publication schedule was activated.
+
+## Q4 2025 source reconnaissance — not yet published
+
+The next historical quarter has official source candidates, but no Q4 2025
+document hash or extracted value has been reviewed or published yet:
+
+| Issuer | Official source candidate | Basis to verify |
+| --- | --- | --- |
+| Intact | [Q4 2025 results](https://newsroom.intactfc.com/2026-02-10-Intact-Financial-Corporation-reports-Q4-2025-results) | Consolidated Q4 column, not full-year column |
+| TD Insurance | [Q4 2025 earnings release](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q4/q4-2025-news-release-en.pdf) | Standalone Insurance net income for fiscal quarter ended October 31, not Wealth Management and Insurance combined |
+| Definity | [Q4 and FY 2025 results](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Reports-Fourth-Quarter-and-Full-Year-2025-Results/default.aspx) | Q4 column, not full-year column |
+| Aviva Canada | [FY 2025 Canada statement](https://www.aviva.ca/en/press-releases/2026/full-year-2025-results/) | **Annual only**; 95.6% Canada COR must not be labeled Q4 |
+
+The three quarterly candidates require bounded acquisition, exact-document
+review and a reproducible staging check before any Q4 Gold publication.
+The existing four-source completeness gate cannot be satisfied by relabeling
+Aviva's annual result as quarterly; Aviva remains N/A for Q4 absent a genuine
+Canada-quarter disclosure.
