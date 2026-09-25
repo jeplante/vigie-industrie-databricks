@@ -22,7 +22,7 @@ class PncAcquisitionResult:
 
 def acquire_pnc_documents(contract, manifest, prior_by_url=None, *, persist_raw=False,
                           document_fetcher=acquire_financial_document,
-                          text_extractor=extract_document_text):
+                          text_extractor=None):
     """Acquire at most one explicit document per configured issuer.
 
     Manifest periods are discovery hints, not proof of a quarterly accounting
@@ -75,7 +75,16 @@ def acquire_pnc_documents(contract, manifest, prior_by_url=None, *, persist_raw=
             if persist_raw:
                 document = persist_raw_content(contract.finance_policy.raw_content_volume, document, content)
             documents.append(document)
-            text = text_extractor(content, document.content_type or "application/pdf")
+            content_type = document.content_type or "application/pdf"
+            if text_extractor is None:
+                # TD's PDF glyph layout splits words and even numbers in plain
+                # mode; layout mode preserves the standalone Insurance line.
+                text = extract_document_text(
+                    content, content_type,
+                    pdf_extraction_mode="layout" if company == "TD" and content_type == "application/pdf" else "plain",
+                )
+            else:
+                text = text_extractor(content, content_type)
             for metric in extract_pnc_metrics(company, text, contract):
                 candidates.append({
                     "observation_id": f"{company}-{entry['period_id']}-{metric.metric_id}",

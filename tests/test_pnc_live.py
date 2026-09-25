@@ -74,3 +74,24 @@ def test_unavailable_source_cannot_hide_an_acquisition_url():
     manifest[1]["source_url"] = "https://www.aviva.com/annual-report"
     with pytest.raises(ValueError, match="cannot have an acquisition URL"):
         acquire_pnc_documents(contract, manifest)
+
+
+def test_td_pdf_uses_layout_text_without_changing_other_sources(monkeypatch):
+    contract = load_insurer_contract(ROOT / "config/pnc")
+    manifest = yaml.safe_load((ROOT / "config/pnc/history/2025-Q3.yaml").read_text())["sources"]
+    modes = []
+
+    def fetch(contract, company, kind, url, **kwargs):
+        content = b"%PDF-1.7\nexample"
+        document = create_financial_document(contract, company, kind, url, "fetched",
+                                             content=content, content_type="application/pdf")
+        return FinancialDocumentFetch(document, content)
+
+    def extract(content, kind, *, pdf_extraction_mode):
+        modes.append(pdf_extraction_mode)
+        return ""
+
+    monkeypatch.setattr("vigie_databricks.pnc_live.extract_document_text", extract)
+    result = acquire_pnc_documents(contract, manifest, document_fetcher=fetch)
+    assert result.errors == {}
+    assert modes == ["plain", "layout", "plain"]

@@ -50,3 +50,18 @@ def test_staging_audits_incomplete_sources_without_writing_gold(monkeypatch):
         "workspace.vigie.pnc_financial_documents", "workspace.vigie.pnc_candidates",
         "workspace.vigie.pnc_run_audit",
     ]
+
+
+def test_explicitly_unavailable_source_is_audited_but_not_a_failed_acquisition(monkeypatch):
+    from vigie_databricks import finance_storage
+    monkeypatch.setattr(finance_storage, "_upsert_rows", lambda *args: None)
+    candidate = dict(observation_id="TD-2025-Q2-net_income", company_id="TD", period_id="2025-Q2",
+                     source_document_hash="a" * 64, value=.227)
+    result = PncAcquisitionResult((), (candidate,), {})
+    audit = persist_pnc_acquisition(object(), "workspace.vigie", "q2-test", result,
+                                    ("TD", "AV"), unavailable_sources=("AV",))
+    assert audit["status"] == "needs_review"
+    assert audit["missing_sources_json"] == '["AV"]'
+    with pytest.raises(ValueError, match="invalid explicitly unavailable"):
+        persist_pnc_acquisition(object(), "workspace.vigie", "q2-test", result,
+                                ("TD", "AV"), unavailable_sources=("TD",))

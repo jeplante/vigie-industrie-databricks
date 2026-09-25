@@ -1,5 +1,111 @@
 reviews:
   - company_id: IFC
+    period_id: 2025-Q2
+    period_end: 2025-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 2cd9ee3f3816f04a27638456d699d0631158dff90a2365ab1ef0198a89032ff5
+    reviewed_by: codex-report-review-2026-09-25
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q2-2025 first numeric column
+    period_excerpt: Q2-2025
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 86.1, unit: PERCENT}
+      operating_income: {value: 0.935, unit: CAD_BILLION}
+      net_income: {value: 0.867, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: TD
+    period_id: 2025-Q2
+    period_end: 2025-04-30
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: 496491f7b0c283f7d0806d77a59378f0becd8c929339428ec49f7d3f5dae4779
+    reviewed_by: codex-report-review-2026-09-25
+    basis: quarterly
+    source_locator: Earnings News Release page 16, Table 9 quarterly comparison narrative
+    period_excerpt: For the three months ended April 30 2025
+    scope_excerpt: Standalone Insurance net income
+    metrics:
+      net_income: {value: 0.227, unit: CAD_BILLION}
+    exclusions:
+      combined_wealth_insurance: combined_segment_not_comparable
+      insurance_ytd: six_month_cumulative_not_quarterly
+  - company_id: DFY
+    period_id: 2025-Q2
+    period_end: 2025-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 4d3be5101e2d6f77e90b97a06dd466a3aa311bacf2fa69a59fa5e425f2f5abf1
+    reviewed_by: codex-report-review-2026-09-25
+    basis: quarterly
+    source_locator: Consolidated Results, Q2 2025 first numeric column; earnings narrative
+    period_excerpt: Q2 2025
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.1621, unit: CAD_BILLION}
+      combined_ratio: {value: 92.9, unit: PERCENT}
+      claims_ratio: {value: 63.2, unit: PERCENT}
+      expense_ratio: {value: 29.7, unit: PERCENT}
+      operating_income: {value: 0.0989, unit: CAD_BILLION}
+      net_income: {value: 0.0751, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2025-Q3
+    period_end: 2025-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 3918131d805d3a7a5f0627aa21489c753df6729f9846ae0c4b1294aff926310a
+    reviewed_by: codex-report-review-2026-09-25
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q3-2025 first numeric column
+    period_excerpt: Q3-2025
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 89.8, unit: PERCENT}
+      operating_income: {value: 0.797, unit: CAD_BILLION}
+      net_income: {value: 0.861, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: TD
+    period_id: 2025-Q3
+    period_end: 2025-07-31
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: 5173862dcd68797d7b010ccda5e64ee47f14ad5bf5f34ac4789460810a14b5f6
+    reviewed_by: codex-report-review-2026-09-25
+    basis: quarterly
+    source_locator: Earnings News Release page 17, Table 9 quarterly comparison narrative
+    period_excerpt: For the three months ended July 31 2025
+    scope_excerpt: Standalone Insurance net income
+    metrics:
+      net_income: {value: 0.182, unit: CAD_BILLION}
+    exclusions:
+      combined_wealth_insurance: combined_segment_not_comparable
+      insurance_ytd: nine_month_cumulative_not_quarterly
+  - company_id: DFY
+    period_id: 2025-Q3
+    period_end: 2025-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: f25fa778e6be1837c70de8d0716a0c7b7daeb5c73072643a7944016c5494647e
+    reviewed_by: codex-report-review-2026-09-25
+    basis: quarterly
+    source_locator: Consolidated Results, Q3 2025 first numeric column; earnings narrative
+    period_excerpt: Q3 2025
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.1836, unit: CAD_BILLION}
+      combined_ratio: {value: 89.4, unit: PERCENT}
+      claims_ratio: {value: 60.2, unit: PERCENT}
+      expense_ratio: {value: 29.2, unit: PERCENT}
+      operating_income: {value: 0.1252, unit: CAD_BILLION}
+      net_income: {value: 0.1931, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
     period_id: 2025-Q4
     period_end: 2025-12-31
     calendar_basis: calendar

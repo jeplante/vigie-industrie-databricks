@@ -172,3 +172,68 @@ Two reviewed-only Gold MERGEs succeeded. Independent SQL readback found
 27 rows and 27 distinct IDs: nine each for Q4 2025, Q1 2026 and Q2 2026;
 zero Aviva rows and zero operating ROE rows. Q4 close dates are preserved as
 Dec 31 for Intact/Definity and fiscal Oct 31 for TD. No schedule was enabled.
+
+## Historical Q3 2025 review and publication — 2026-09-25
+
+`config/pnc/history/2025-Q3.yaml` uses official releases for Intact, TD and
+Definity. The [Aviva Q3 trading update](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2025/11/Q32025-trading-update/)
+gives Canada GI premiums for **nine months** in GBP and a **Group** COR, not
+an isolated Canadian Q3 result. Aviva is explicitly unavailable for this
+quarter; neither figure is inserted into quarterly CAD Gold.
+
+| Official source and actual close | Reviewed Q3 values | SHA-256 |
+| --- | --- | --- |
+| [Intact consolidated](https://newsroom.intactfc.com/2025-11-04-Intact-Financial-Corporation-reports-Q3-2025-results?asPDF=1), Sep 30 | Combined ratio 89.8%; net operating income attributable to common shareholders CAD 797m; IFRS net income CAD 861m | `3918131d805d3a7a5f0627aa21489c753df6729f9846ae0c4b1294aff926310a` |
+| [TD Insurance](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q3/q3-2025-news-release-en.pdf), fiscal Jul 31 | Standalone Insurance net income CAD 182m, not the CAD 703m combined Wealth Management and Insurance segment or CAD 577m nine-month Insurance total | `5173862dcd68797d7b010ccda5e64ee47f14ad5bf5f34ac4789460810a14b5f6` |
+| [Definity consolidated](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2025/Definity-Financial-Corporation-Reports-Third-Quarter-2025-Results/default.aspx), Sep 30 | Insurance revenue CAD 1,183.6m; combined ratio 89.4%; claims ratio 60.2%; expense ratio 29.2%; operating net income CAD 125.2m; net income attributable to common shareholders CAD 193.1m | `f25fa778e6be1837c70de8d0716a0c7b7daeb5c73072643a7944016c5494647e` |
+
+TD's Q3 PDF plain-text extraction split words and `$521` across line breaks.
+The P&C TD PDF path now uses pypdf's layout mode; the generic finance path and
+the other P&C issuers retain plain mode. Tests guard against substituting
+the combined segment or nine-month result. Definity's insurance revenue is
+read only from the current-quarter CAD-millions column, never the YTD column.
+Definity's 12.5% operating ROE and Intact's 19.6% operating ROE are trailing
+12-month measures and remain excluded.
+
+The one-time staging run `1081049020047427` persisted three raw documents
+and 11 candidates. Its audit reports `extraction_incomplete`, missing `AV`,
+empty errors and zero AI calls. The task failed on the expected four-source
+completeness gate; no P&C schedule was enabled. Exact-hash review approved ten
+Q3 observations and rejected Definity's trailing ROE. The reviewed-only
+publisher accepted 37 total rows (including 27 previously published), and
+two Gold MERGEs completed. Independent SQL readback returned 37 rows with 37
+distinct IDs: ten Q3, nine Q4, nine Q1 2026 and nine Q2 2026. No Aviva or
+operating ROE row was published. TD's July 31 fiscal close is preserved.
+
+## Historical Q2 2025 review and publication — 2026-09-25
+
+`config/pnc/history/2025-Q2.yaml` covers the three acquirable official
+quarterly reports. The [Aviva HY25 report](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2025/08/HY2025-results-announcement/)
+reports a 94.7% **half-year** Canada COR and GBP-denominated half-year Canada
+premiums, not isolated Q2 Canadian-quarter figures. Aviva remains N/A for Q2.
+
+| Official source and actual close | Reviewed Q2 values | SHA-256 |
+| --- | --- | --- |
+| [Intact consolidated](https://newsroom.intactfc.com/2025-07-29-Intact-Financial-Corporation-reports-Q2-2025-results?asPDF=1), Jun 30 | Combined ratio 86.1%; net operating income attributable to common shareholders CAD 935m; IFRS net income CAD 867m | `2cd9ee3f3816f04a27638456d699d0631158dff90a2365ab1ef0198a89032ff5` |
+| [TD Insurance](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q2/2025-q2-earnings-newsrelease-en.pdf), fiscal Apr 30 | Standalone Insurance net income CAD 227m, not the CAD 707m combined Wealth Management and Insurance result or CAD 395m six-month total | `496491f7b0c283f7d0806d77a59378f0becd8c929339428ec49f7d3f5dae4779` |
+| [Definity consolidated](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2025/Definity-Reports-Second-Quarter-2025-Results/), Jun 30 | Insurance revenue CAD 1,162.1m; combined ratio 92.9%; claims ratio 63.2%; expense ratio 29.7%; operating net income CAD 98.9m; net income attributable to common shareholders CAD 75.1m | `4d3be5101e2d6f77e90b97a06dd466a3aa311bacf2fa69a59fa5e425f2f5abf1` |
+
+Two bounded local acquisitions returned identical document hashes and 12
+candidates, with no fetch errors or AI calls. Intact's 16.3% and Definity's
+9.6% operating ROE are trailing-12-month measures and were rejected. The
+one-time staging run `117048652549415` persisted three documents and 12
+candidates; its audit shows only `AV` missing, empty errors and zero AI calls.
+The run failed under the former four-source gate despite the explicit Aviva
+unavailable declaration. Subsequent code treats an explicitly unavailable
+source as an audited gap but does not fail acquisition; an unexpectedly missing
+acquirable source still fails. This fix was locally tested but was not part of
+the Q2 staging wheel (`0.10.5`).
+
+Exact-hash review approved ten Q2 values. The reviewed-only publisher accepted
+47 total observations, including the prior 37. Two Gold MERGEs succeeded;
+independent SQL readback found 47 rows and 47 unique IDs: ten each for Q2 and
+Q3 2025, nine each for Q4 2025, Q1 2026 and Q2 2026. Aviva and operating
+ROE have zero published rows. TD's April 30 fiscal close is preserved. The
+App's P&C reader queries Gold directly, but the App runtime was `STOPPED`
+(`workspace or account status`) on this date, so browser visibility was not
+verified. No P&C schedule was enabled.

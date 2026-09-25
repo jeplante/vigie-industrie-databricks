@@ -51,7 +51,8 @@ def load_pnc_document_index(spark, namespace):
     return latest_document_index(row.asDict(recursive=True) for row in spark.table(table).collect())
 
 
-def persist_pnc_acquisition(spark, namespace, run_id, result, expected_companies):
+def persist_pnc_acquisition(spark, namespace, run_id, result, expected_companies,
+                            unavailable_sources=()):
     from vigie_databricks.finance_storage import _upsert_rows
     from vigie_databricks.finance_documents import FINANCIAL_DOCUMENT_SCHEMA
 
@@ -61,7 +62,11 @@ def persist_pnc_acquisition(spark, namespace, run_id, result, expected_companies
     records = candidate_records(result.candidates)
     present = {row["company_id"] for row in result.candidates}
     missing = sorted(set(expected_companies) - present)
-    status = "acquisition_failed" if result.errors else "extraction_incomplete" if missing else "needs_review"
+    unavailable = set(unavailable_sources)
+    if not unavailable.issubset(set(expected_companies)) or unavailable & present:
+        raise ValueError("invalid explicitly unavailable source set")
+    unexpected_missing = set(missing) - unavailable
+    status = "acquisition_failed" if result.errors else "extraction_incomplete" if unexpected_missing else "needs_review"
     audit = {
         "run_id": str(run_id), "observed_at": datetime.now(UTC),
         "status": status, "documents_acquired": len(result.documents),

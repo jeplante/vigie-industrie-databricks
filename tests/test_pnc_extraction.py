@@ -48,6 +48,29 @@ def test_visible_quarterly_html_values_precede_cumulative_values():
     assert values["net_income"] == pytest.approx(.1524)
 
 
+def test_definity_revenue_requires_quarterly_cad_millions_table():
+    contract = load_insurer_contract(ROOT / "config" / "pnc")
+    report = (
+        "<h2>Consolidated Results</h2>"
+        "<p>(in millions of dollars, except as otherwise noted)</p>"
+        "<tr><td>Q3 2025</td><td>Q3 2024</td><td>Change</td>"
+        "<td>2025 YTD</td><td>2024 YTD</td></tr>"
+        "<tr><td>Insurance revenue</td><td>1,183.6</td><td>1,095.5</td>"
+        "<td>3,457.6</td></tr><h2>Per share measures</h2>"
+    )
+    rows = extract_pnc_metrics("DFY", report, contract)
+    revenue = next(row for row in rows if row.metric_id == "insurance_revenue")
+    assert revenue.value == pytest.approx(1.1836)
+    assert "Q3 2025" in revenue.context
+    assert "3,457.6" not in revenue.context
+    assert "insurance_revenue" not in {
+        row.metric_id for row in extract_pnc_metrics(
+            "DFY", "Consolidated Results (in millions of dollars) 2025 YTD "
+            "Insurance revenue 3,457.6. Per share measures", contract
+        )
+    }
+
+
 def test_ifc_candidates_are_deterministic_and_unit_normalized():
     contract = load_insurer_contract(ROOT / "config" / "pnc")
     rows = extract_pnc_metrics(
@@ -162,3 +185,18 @@ def test_td_combined_segment_only_does_not_generate_insurance_candidate():
         "Wealth Management and Insurance net income for the quarter was $757 million."
     )
     assert "net_income" not in {row.metric_id for row in extract_pnc_metrics("TD", text, contract)}
+
+
+def test_td_layout_quarterly_insurance_excludes_nine_month_comparison():
+    contract = load_insurer_contract(ROOT / "config/pnc")
+    text = (
+        "Quarterly comparison – Q3 2025 vs. Q2 2025 "
+        "Wealth Management and Insurance net income for the quarter was $703 million, "
+        "reflecting Wealth Management net income of $521 million, "
+        "and Insurance net income of $182 million. "
+        "Year-to-date comparison – Q3 2025 vs. Q3 2024 "
+        "Insurance net income of $577 million."
+    )
+    rows = {row.metric_id: row for row in extract_pnc_metrics("TD", text, contract)}
+    assert rows["net_income"].value == pytest.approx(0.182)
+    assert "Q3 2025" in rows["net_income"].context

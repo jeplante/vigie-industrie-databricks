@@ -9,11 +9,15 @@ from scripts import submit_pnc_history
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "config" / "pnc" / "history" / "2026-Q1.yaml"
 Q4_MANIFEST = ROOT / "config" / "pnc" / "history" / "2025-Q4.yaml"
+Q3_MANIFEST = ROOT / "config" / "pnc" / "history" / "2025-Q3.yaml"
+Q2_MANIFEST = ROOT / "config" / "pnc" / "history" / "2025-Q2.yaml"
 
 
 def test_checked_history_manifest_is_period_bound_and_allowlisted():
     assert submit_pnc_history.checked_manifest(MANIFEST) == MANIFEST.resolve()
     assert submit_pnc_history.checked_manifest(Q4_MANIFEST) == Q4_MANIFEST.resolve()
+    assert submit_pnc_history.checked_manifest(Q3_MANIFEST) == Q3_MANIFEST.resolve()
+    assert submit_pnc_history.checked_manifest(Q2_MANIFEST) == Q2_MANIFEST.resolve()
     with pytest.raises(ValueError, match="versioned quarter"):
         submit_pnc_history.checked_manifest(ROOT / "tests" / "fixtures" / "pnc_source_manifest.yaml")
 

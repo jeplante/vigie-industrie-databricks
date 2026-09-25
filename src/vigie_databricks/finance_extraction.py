@@ -126,11 +126,15 @@ def extract_finance_metrics(company_id: str, content: str, contract: InsurerCont
     return extracted
 
 
-def extract_document_text(content: bytes, content_type: str, *, max_pages: int = 120, max_characters: int = 500_000) -> str:
+def extract_document_text(content: bytes, content_type: str, *, max_pages: int = 120, max_characters: int = 500_000,
+                          pdf_extraction_mode: str = "plain") -> str:
     """Extract bounded text; PDF parsing is deterministic and never invokes AI."""
     if content_type == "application/pdf":
+        if pdf_extraction_mode not in {"plain", "layout"}:
+            raise ValueError("unsupported_pdf_extraction_mode")
         reader = PdfReader(BytesIO(content))
-        parts = [(page.extract_text() or "") for page in reader.pages[:max_pages]]
+        parts = [(page.extract_text(extraction_mode=pdf_extraction_mode) or "")
+                 for page in reader.pages[:max_pages]]
         return " ".join(parts)[:max_characters]
     if content_type in {"text/html", "application/xhtml+xml"}:
         return content.decode("utf-8", errors="replace")[:max_characters]
@@ -159,7 +163,8 @@ def infer_reporting_period(title: str) -> str | None:
 
 def _normalized_value(number: str, source_unit: str, expected_unit: str) -> float | None:
     compact = number.replace(" ", "")
-    numeric = float(compact.replace(",", "") if re.fullmatch(r"\d{1,3}(?:,\d{3})+", compact) else compact.replace(",", "."))
+    numeric = float(compact.replace(",", "") if re.fullmatch(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?", compact)
+                    else compact.replace(",", "."))
     unit = source_unit.lower()
     if expected_unit == "PERCENT" and unit == "%":
         return numeric

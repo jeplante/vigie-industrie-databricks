@@ -125,6 +125,28 @@ def _td_quarterly_insurance_income(text: str, expected_unit: str) -> ExtractedMe
     return None
 
 
+def _dfy_quarterly_insurance_revenue(text: str, expected_unit: str) -> ExtractedMetric | None:
+    """Read only the current-quarter insurance revenue in Definity's CAD-millions table."""
+    section = re.search(
+        r"Consolidated Results\s*\.?\s*"
+        r"\(in millions of dollars, except as otherwise noted\)\s*\.?\s*"
+        r"(?P<quarter>Q[1-4] 20\d{2})\s+Q[1-4] 20\d{2}\s+Change"
+        r"(?P<body>.*?)Per share measures",
+        text, re.IGNORECASE | re.DOTALL,
+    )
+    if not section:
+        return None
+    match = re.search(r"(?:^|\.\s+)Insurance revenue\s+(?P<number>\d[\d,]*\.\d+)(?=\s)",
+                      section.group("body"), re.IGNORECASE)
+    if not match:
+        return None
+    value = _normalized_value(match.group("number"), "million", expected_unit)
+    if value is None:
+        return None
+    context = f"Consolidated Results {section.group('quarter')} Insurance revenue {match.group('number')} million CAD"
+    return ExtractedMetric("insurance_revenue", value, expected_unit, match.group("number"), context)
+
+
 def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract) -> list[ExtractedMetric]:
     """Extract only explicitly labelled P&C candidates from an issuer's report."""
     if company_id not in PNC_ALIASES or company_id not in contract.companies:
@@ -154,6 +176,12 @@ def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract
             if insurance_income is not None:
                 extracted.append(insurance_income)
                 continue
+        if company_id == "DFY" and metric_id == "insurance_revenue":
+            revenue = _dfy_quarterly_insurance_revenue(text, expected_unit)
+            if revenue is not None:
+                extracted.append(revenue)
+            # Prose can describe YTD or group premiums; require the table.
+            continue
         for alias in aliases:
             for match in re.finditer(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", text, re.IGNORECASE):
                 # TD's combined Wealth Management and Insurance segment is not
