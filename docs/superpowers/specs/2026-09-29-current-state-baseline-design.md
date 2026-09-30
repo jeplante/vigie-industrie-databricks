@@ -368,7 +368,7 @@ The first attempt encountered a Windows permission failure in pytest's default
 temporary directory. Re-running with a new workspace-local `--basetemp`
 succeeded. Pytest cache writes were disabled for the evidence run.
 
-### First-class reliability gap: unenforced and incomplete quality gates
+### First-class reliability gap: incomplete quality gates
 
 Correction verified on 2026-09-30: the committed `.github/workflows/ci.yml`
 already runs on pull requests and pushes to `main`. It selects Python 3.12,
@@ -377,12 +377,17 @@ Databricks Connect and runtime markers. This workflow existed at the baseline
 reference revision; the original claim that CI was absent was incorrect. A
 [pull-request run](https://github.com/jeplante/vigie-industrie-databricks/actions/runs/34727417086)
 and a later [main push run](https://github.com/jeplante/vigie-industrie-databricks/actions/runs/36140553601)
-both succeeded. Their pytest logs show no skipped tests.
+both succeeded. Their pytest logs show no skipped tests. Later on 2026-09-30,
+[a repository ruleset](https://github.com/jeplante/vigie-industrie-databricks/rules/24260354)
+was activated for the default branch with the GitHub Actions `unit-tests`
+check required. Its effect on merging has not yet been tested with a new pull
+request. The ruleset also requires branches to be up to date and blocks
+deletion and force pushes; those settings extend beyond the minimal CI gate.
 
 The remaining automated-quality gap is still a primary reliability concern:
 
-- GitHub reports `main` as unprotected, with no required status checks. A
-  failing CI run therefore does not itself block a merge or direct push.
+- The required-check configuration is verified, but a new pull request has
+  not yet demonstrated that a missing or failing check blocks merging.
 - Databricks Connect and runtime acceptance remain manual.
 - No coverage threshold identifies untested production paths.
 - No lint, format, import, or static-type gate detects basic regressions.
@@ -482,7 +487,7 @@ is next modified. A repository-wide documentation rewrite is unnecessary.
 | Candidate | Concrete problem | Impact | Risk of change | Expected benefit | Blocks upcoming work? | Timing |
 | --- | --- | --- | --- | --- | --- | --- |
 | Canonical baseline | Existing documents conflict and mix historical checkpoints | Agents and maintainers can act on stale assumptions | Low | Reliable starting context | Yes, for dependable future planning | Addressed by this document |
-| Automated quality gates | CI runs local pytest, but `main` has no required status check; coverage, lint, type, and automated remote gates are absent | Regressions can merge despite a failing or absent CI result | Medium | Enforced minimum assurance | Yes, before broad concurrent development | Add a required CI status check as a separate bounded task |
+| Automated quality gates | CI and a required `unit-tests` ruleset exist, but merge enforcement remains untested; coverage, lint, type, and automated remote gates are absent | Configuration mistakes or untested paths can still allow regressions | Medium | Verified minimum assurance | Yes, before broad concurrent development | Test the rule on a new pull request; add other gates only when justified |
 | Live Finance transaction semantics | Bronze, Silver, and Gold advance sequentially without cross-table rollback | A mid-publication failure can leave inconsistent layer snapshots | High | Accurate last-known-good guarantee | Yes, before relying on atomicity or changing live publication | Address before the next live-publication change |
 | Deployment consolidation | Job definitions, paths, versions, IDs, and parameters drift across files | Deployments are difficult to reproduce or audit | Medium | One reviewable deployment contract | Blocks repeatable deployment, not local work | Address during the next deployment task |
 | P&C operationalization | Review publication is script-driven and staging writes are non-transactional | Scheduling would weaken current human-review safeguards | Medium | Safe repeatable P&C operation | Yes, for scheduling P&C | Keep manual until explicitly designed |
@@ -500,8 +505,8 @@ Use an evidence-first incremental migration:
 1. Use this baseline as the context for future Superpowers brainstorming.
 2. Add only the minimum permanent repository rules when agent instructions are
    introduced.
-3. Verify the existing CI gate on each change and decide whether its status
-   should be required before merging.
+3. Verify the required CI status on a new pull request before relying on merge
+   enforcement.
 4. Treat Live Finance transaction safety as its own high-risk bounded design;
    do not combine it with unrelated cleanup.
 5. Consolidate deployment definitions when a deployment change is approved.
@@ -526,8 +531,8 @@ publication risks.
   explicit unsupported periods.
 - Reverify the currently deployed Job schedules, wheels, App state, table
   counts, and permissions before making operational claims.
-- Decide whether to require the existing CI status check on `main`, and define
-  a clear manual remote-integration gate.
+- Verify the required `unit-tests` check on a new pull request, and define a
+  clear manual remote-integration gate.
 - Decide whether legacy News code and tables remain supported evidence or can
   be retired after live verification.
 - Replace scattered deployment manifests with a repeatable deployment source
