@@ -368,30 +368,37 @@ The first attempt encountered a Windows permission failure in pytest's default
 temporary directory. Re-running with a new workspace-local `--basetemp`
 succeeded. Pytest cache writes were disabled for the evidence run.
 
-### First-class reliability gap: no automated quality gates
+### First-class reliability gap: unenforced and incomplete quality gates
 
-The absence of CI and automated quality gates is a primary repository
-reliability gap.
+Correction verified on 2026-09-30: the committed `.github/workflows/ci.yml`
+already runs on pull requests and pushes to `main`. It selects Python 3.12,
+installs `.[dev,local_spark]`, and runs the local pytest gate excluding
+Databricks Connect and runtime markers. This workflow existed at the baseline
+reference revision; the original claim that CI was absent was incorrect. A
+[pull-request run](https://github.com/jeplante/vigie-industrie-databricks/actions/runs/34727417086)
+and a later [main push run](https://github.com/jeplante/vigie-industrie-databricks/actions/runs/36140553601)
+both succeeded. Their pytest logs show no skipped tests.
 
-- `.github/workflows` is empty.
-- No checked-in automation runs the 201-test local gate on changes.
+The remaining automated-quality gap is still a primary reliability concern:
+
+- GitHub reports `main` as unprotected, with no required status checks. A
+  failing CI run therefore does not itself block a merge or direct push.
 - Databricks Connect and runtime acceptance remain manual.
 - No coverage threshold identifies untested production paths.
 - No lint, format, import, or static-type gate detects basic regressions.
-- The supported test dependency set is not encoded as one reproducible CI
-  environment; Spark imports require careful optional-extra selection.
+- The CI job uses dependency ranges rather than a lockfile, so later runs may
+  resolve different versions.
 
-The current test suite is substantial, but without automation its protection
-depends on each contributor remembering and reproducing the correct gates.
-This gap does not authorize CI changes in this task, but future work should not
-treat the repository as continuously verified until a minimal automated gate
-exists.
+The historical local result above remains evidence for the discovery-time
+working tree only. The cited GitHub runs exercised committed revisions, not
+the uncommitted working-tree changes or verified production state.
 
 ## 11. Agent context baseline
 
 No repository `AGENTS.md`, Copilot instruction file, custom repository agent,
-custom skill, or CI workflow was found. Superpowers provides the development
-workflow externally and should not be duplicated in repository instructions.
+or custom skill was found. The CI workflow described above exists. Superpowers
+provides the development workflow externally and should not be duplicated in
+repository instructions.
 
 ### 11.1 Minimum permanent repository rules
 
@@ -459,8 +466,9 @@ read-only analysis rather than independent implementation tasks.
    package is `0.10.19`.
 8. The repository discusses Databricks Asset Bundle conventions, but
    `databricks.yml` contains no deployable resources.
-9. Documentation mentions GitHub CI dependency requirements, but no workflow
-   exists.
+9. This baseline originally said no CI workflow existed, although the
+   committed workflow predates its reference revision. The correction in
+   Section 10 records the verified state.
 10. Some documents call live Finance publication atomic, while its current
     implementation does not provide cross-table rollback.
 11. The original Gold News serving name remains the default in Python, while
@@ -474,7 +482,7 @@ is next modified. A repository-wide documentation rewrite is unnecessary.
 | Candidate | Concrete problem | Impact | Risk of change | Expected benefit | Blocks upcoming work? | Timing |
 | --- | --- | --- | --- | --- | --- | --- |
 | Canonical baseline | Existing documents conflict and mix historical checkpoints | Agents and maintainers can act on stale assumptions | Low | Reliable starting context | Yes, for dependable future planning | Addressed by this document |
-| Automated quality gates | No CI, coverage, lint, type, or automated remote gate | Regressions can merge without running the existing suite | Medium | Repeatable minimum assurance | Yes, before broad concurrent development | Prioritize as an early bounded task |
+| Automated quality gates | CI runs local pytest, but `main` has no required status check; coverage, lint, type, and automated remote gates are absent | Regressions can merge despite a failing or absent CI result | Medium | Enforced minimum assurance | Yes, before broad concurrent development | Add a required CI status check as a separate bounded task |
 | Live Finance transaction semantics | Bronze, Silver, and Gold advance sequentially without cross-table rollback | A mid-publication failure can leave inconsistent layer snapshots | High | Accurate last-known-good guarantee | Yes, before relying on atomicity or changing live publication | Address before the next live-publication change |
 | Deployment consolidation | Job definitions, paths, versions, IDs, and parameters drift across files | Deployments are difficult to reproduce or audit | Medium | One reviewable deployment contract | Blocks repeatable deployment, not local work | Address during the next deployment task |
 | P&C operationalization | Review publication is script-driven and staging writes are non-transactional | Scheduling would weaken current human-review safeguards | Medium | Safe repeatable P&C operation | Yes, for scheduling P&C | Keep manual until explicitly designed |
@@ -492,7 +500,8 @@ Use an evidence-first incremental migration:
 1. Use this baseline as the context for future Superpowers brainstorming.
 2. Add only the minimum permanent repository rules when agent instructions are
    introduced.
-3. Establish a small automated local test gate before broad development.
+3. Verify the existing CI gate on each change and decide whether its status
+   should be required before merging.
 4. Treat Live Finance transaction safety as its own high-risk bounded design;
    do not combine it with unrelated cleanup.
 5. Consolidate deployment definitions when a deployment change is approved.
@@ -517,7 +526,8 @@ publication risks.
   explicit unsupported periods.
 - Reverify the currently deployed Job schedules, wheels, App state, table
   counts, and permissions before making operational claims.
-- Establish a minimal CI gate and a clear manual remote-integration gate.
+- Decide whether to require the existing CI status check on `main`, and define
+  a clear manual remote-integration gate.
 - Decide whether legacy News code and tables remain supported evidence or can
   be retired after live verification.
 - Replace scattered deployment manifests with a repeatable deployment source
