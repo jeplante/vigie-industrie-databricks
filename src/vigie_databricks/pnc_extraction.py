@@ -286,10 +286,14 @@ def _aviva_canada_quarterly_cor(
     reported_period = f"20{header.group('year')}-Q{header.group('quarter')}"
     if target_period and reported_period != target_period:
         return None
-    table_body = re.split(
+    section = re.split(
         r"Discounted COR\s+Undiscounted COR", text[header.end():],
         maxsplit=1, flags=re.IGNORECASE,
     )[0]
+    total = re.search(r"\bTotal\s+\d{2,3}\.\d+\s*%", section, re.IGNORECASE)
+    if not total:
+        return None
+    table_body = section[:total.start()]
     match = re.search(
         r"(?:^|\s)Canada\s+"
         r"\d{2,3}\.\d+\s*%\s+\d{2,3}\.\d+\s*%\s+"

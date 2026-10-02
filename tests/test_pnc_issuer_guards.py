@@ -62,10 +62,22 @@ def test_aviva_does_not_borrow_canada_row_from_later_quarter_table():
     assert "combined_ratio" not in {row.metric_id for row in rows}
 
 
+def test_aviva_does_not_borrow_canada_row_after_total():
+    report = (
+        "Discounted COR Undiscounted COR Q124 Q123 Change Q124 Q123 Change "
+        "UK 93.9 % 95.1 % (1.2) pp 97.3 % 98.4 % (1.1) pp "
+        "Total 92.0 % 91.8 % 0.2 pp 95.8 % 95.4 % 0.4 pp "
+        "Other table Canada 89.4 % 88.6 % 0.8 pp 93.7 % 92.4 % 1.3 pp"
+    )
+    rows = extract_pnc_metrics("AV", report, CONTRACT, target_period="2024-Q1")
+    assert "combined_ratio" not in {row.metric_id for row in rows}
+
+
 def test_aviva_quarterly_candidate_passes_review_gate_with_scope_evidence():
     report = (
         "Discounted COR Undiscounted COR Q124 Q123 Change Q124 Q123 Change "
-        "Canada 89.4 % 88.6 % 0.8 pp 93.7 % 92.4 % 1.3 pp"
+        "Canada 89.4 % 88.6 % 0.8 pp 93.7 % 92.4 % 1.3 pp "
+        "Total 92.0 % 91.8 % 0.2 pp 95.8 % 95.4 % 0.4 pp"
     )
     metric = next(row for row in extract_pnc_metrics(
         "AV", report, CONTRACT, target_period="2024-Q1"
