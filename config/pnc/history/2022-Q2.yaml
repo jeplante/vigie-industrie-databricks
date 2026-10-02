@@ -1,0 +1,25 @@
+sources:
+  - company_id: IFC
+    period_id: 2022-Q2
+    source_url: https://newsroom.intactfc.com/2023-08-02-Intact-Financial-Corporation-reports-Q2-2023-results?asPDF=1
+    document_type: quarterly_report
+    disclosure_scope: Intact consolidated global P&C operations; Q2-2022 comparative column restated for IFRS 17
+    calendar_basis: calendar
+  - company_id: AV
+    period_id: 2022-Q2
+    unavailable_reason: no_quarterly_segment_disclosure
+    reference_url: https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2023/08/HY2023-results-announcement/
+    disclosure_scope: Aviva Canada HY23 COR is six-month; no isolated Q2 Canada result
+  - company_id: TD
+    period_id: 2022-Q2
+    source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2023/2023-q2-report-to-shareholders-en.pdf
+    document_type: quarterly_report
+    expected_no_candidate_reason: standalone_insurance_not_disclosed_in_quarterly_report
+    disclosure_scope: TD comparative Wealth Management and Insurance segment; fiscal Q2 2022 has no standalone Insurance KPI
+    calendar_basis: fiscal
+  - company_id: DFY
+    period_id: 2022-Q2
+    source_url: https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Financial-Corporation-Reports-Second-Quarter-2023-Results/default.aspx
+    document_type: quarterly_report
+    disclosure_scope: Definity consolidated Canadian P&C operations; Q2-2022 comparative column restated for IFRS 17
+    calendar_basis: calendar

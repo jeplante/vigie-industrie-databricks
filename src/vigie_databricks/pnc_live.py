@@ -36,7 +36,13 @@ def acquire_pnc_documents(contract, manifest, prior_by_url=None, *, persist_raw=
         source = contract.financial_sources[entry["company_id"]]
         if not re.fullmatch(r"20\d{2}-Q[1-4]", str(entry.get("period_id", ""))):
             raise ValueError("manifest requires a quarterly discovery period")
+        expected_gap = entry.get("expected_no_candidate_reason")
+        if expected_gap and (entry["company_id"] != "TD" or
+                             expected_gap != "standalone_insurance_not_disclosed_in_quarterly_report"):
+            raise ValueError("unsupported expected no-candidate reason")
         if entry.get("unavailable_reason"):
+            if expected_gap:
+                raise ValueError("unavailable source cannot also declare an expected no-candidate gap")
             if entry["unavailable_reason"] != "no_quarterly_segment_disclosure":
                 raise ValueError("unsupported unavailable reason")
             if entry.get("source_url") or entry.get("document_type"):
@@ -85,7 +91,9 @@ def acquire_pnc_documents(contract, manifest, prior_by_url=None, *, persist_raw=
                 )
             else:
                 text = text_extractor(content, content_type)
-            for metric in extract_pnc_metrics(company, text, contract):
+            for metric in extract_pnc_metrics(
+                company, text, contract, target_period=entry["period_id"]
+            ):
                 candidates.append({
                     "observation_id": f"{company}-{entry['period_id']}-{metric.metric_id}",
                     "company_id": company, "period_id": entry["period_id"],
