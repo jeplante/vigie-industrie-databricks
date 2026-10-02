@@ -35,7 +35,10 @@ review evidence; a new publication decision requires exact stored-byte and
 candidate readback, the reviewed-only dry-run, and independent Gold readback.
 Acquisition and publication remain manual and unscheduled.
 
-## Next implementation slices
+## Original phase-1 implementation slices (historical)
+
+The list below records the initial build plan; the dated checkpoint above
+documents later historical review and publication claims.
 
 1. Source discovery and document provenance dry-run. **Manifest checks only:**
    the source manifest covers IFC, AV, TD and DFY, and each URL is checked
