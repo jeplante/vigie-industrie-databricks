@@ -93,6 +93,9 @@ def validate_pnc_candidate(
     if not math.isfinite(parsed.value):
         return "rejected", "metric_value_not_finite"
     lower, upper = VALUE_RANGES[parsed.unit]
+    if metric_id == "net_income" and parsed.unit == "CAD_BILLION":
+        # A reviewed quarterly P&C net loss remains a valid observation.
+        lower = -20.0
     if not lower <= parsed.value <= upper:
         return "rejected", "metric_value_out_of_range"
     context = str(candidate.get("context") or "")

@@ -37,21 +37,32 @@ def main():
         prior = load_pnc_document_index(spark, args.namespace)
     result = acquire_pnc_documents(contract, manifest, prior, persist_raw=args.persist)
     unavailable = sorted(entry["company_id"] for entry in manifest if entry.get("unavailable_reason"))
+    expected_without_candidate = sorted(
+        entry["company_id"] for entry in manifest if entry.get("expected_no_candidate_reason")
+    )
+    candidate_companies = {row["company_id"] for row in result.candidates}
+    document_companies = {document.company_id for document in result.documents}
+    if set(expected_without_candidate) & candidate_companies:
+        raise ValueError("Expected no-candidate source produced a candidate; review the manifest")
     audit = None
     if args.persist:
         from vigie_databricks.pnc_storage import persist_pnc_acquisition
         audit = persist_pnc_acquisition(spark, args.namespace,
                                         args.run_id, result, contract.companies,
-                                        unavailable_sources=unavailable)
-    candidate_companies = {row["company_id"] for row in result.candidates}
+                                        unavailable_sources=unavailable + [
+                                            company for company in expected_without_candidate
+                                            if company in document_companies
+                                        ])
     missing = sorted(set(contract.companies) - candidate_companies)
-    unexpected_missing = sorted(set(missing) - set(unavailable))
+    known_gap = set(unavailable) | (set(expected_without_candidate) & document_companies)
+    unexpected_missing = sorted(set(missing) - known_gap)
     print(json.dumps({
         "status": "acquisition_failed" if result.errors else "extraction_incomplete" if unexpected_missing else "acquired_needs_review",
         "dry_run": not args.persist, "published": False, "ai_model_calls": 0,
         "audit": audit,
         "sources_without_candidates": missing,
         "explicitly_unavailable_sources": unavailable,
+        "expected_no_candidate_sources": expected_without_candidate,
         **asdict(result),
     }, default=str, sort_keys=True))
     if result.errors or unexpected_missing:

@@ -33,7 +33,13 @@ def checked_manifest(path: Path):
         if entry["period_id"] != path.stem:
             raise ValueError("Manifest period does not match the quarter")
         source = contract.financial_sources[entry["company_id"]]
+        expected_gap = entry.get("expected_no_candidate_reason")
+        if expected_gap and (entry["company_id"] != "TD" or
+                             expected_gap != "standalone_insurance_not_disclosed_in_quarterly_report"):
+            raise ValueError("Unsupported expected no-candidate reason")
         if entry.get("unavailable_reason"):
+            if expected_gap:
+                raise ValueError("Unavailable source cannot also declare an expected no-candidate gap")
             if entry["unavailable_reason"] != "no_quarterly_segment_disclosure":
                 raise ValueError("Unsupported unavailable reason")
             if entry.get("source_url") or entry.get("document_type"):

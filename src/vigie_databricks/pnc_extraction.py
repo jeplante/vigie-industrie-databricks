@@ -27,7 +27,9 @@ PNC_ALIASES = {
         "expense_ratio": ("expense ratio",),
         "catastrophe_losses": ("catastrophe losses",),
         "operating_income": ("operating net income",),
-        "net_income": ("net income attributable to common shareholders",),
+        "net_income": ("net income attributable to common shareholders",
+                       "net (loss) income attributable to common shareholders",
+                       "net income (loss) attributable to common shareholders"),
         "operating_roe": ("operating ROE",),
     },
     "AV": {
@@ -81,14 +83,18 @@ def _ifc_quarterly_highlight(
     section = re.search(
         r"Consolidated Highlights\s*\.?\s*"
         r"\(in millions of Canadian dollars except as otherwise noted\)\s*\.?\s*"
-        r"(?P<quarter>Q[1-4]-20\d{2})[.\s]+Q[1-4]-20\d{2}[.\s]+Change"
+        r"(?P<quarter>Q[1-4]-20\d{2})[.\s]+Q[1-4]-20\d{2}"
+        r"(?:[.\s]+Restated(?:[.\s]+\d+)?)?[.\s]+Change"
         r"(?P<body>.*?)Per share measures",
         text, re.IGNORECASE | re.DOTALL,
     )
     if not section:
         return None
-    match = re.search(r"(?<!\w)" + re.escape(row_label) +
-                      r"\s*(?:\.\s*)?(?:1\s+)?(?P<number>\d[\d,]*(?:\.\d+)?)(?=\s|\.)",
+    label = (r"Combined\s+ratio(?:\s*\(undiscounted\))?"
+             if metric_id == "combined_ratio" else re.escape(row_label))
+    match = re.search(r"(?<!\w)(?P<label>" + label + r")"
+                      r"\s*(?:\.\s*)?(?:[1-4](?:\s*,\s*[1-4])*\s+)?"
+                      r"(?P<number>\d[\d,]*(?:\.\d+)?)(?=\s|\.)",
                       section.group("body"), re.IGNORECASE)
     if not match:
         return None
@@ -97,9 +103,95 @@ def _ifc_quarterly_highlight(
     if value is None:
         return None
     context = (f"Consolidated Highlights {section.group('quarter')} "
-               f"{row_label} {match.group('number')}"
+               f"{match.group('label')} {match.group('number')}"
                f"{'%' if source_unit == '%' else ' million CAD'}")
     return ExtractedMetric(metric_id, value, expected_unit, match.group("number"), context)
+
+
+def _comparative_quarter_metric(
+    company_id: str, text: str, metric_id: str, expected_unit: str, target_period: str
+) -> ExtractedMetric | None:
+    """Read only an explicitly restated prior-quarter column in an issuer table."""
+    if company_id == "IFC":
+        section = re.search(
+            r"Consolidated Highlights\s*\.?\s*"
+            r"\(in millions of Canadian dollars except as otherwise noted\)\s*\.?\s*"
+            r"(?P<current>Q[1-4]-20\d{2})[.\s]+(?P<prior>Q[1-4]-20\d{2})"
+            r"(?P<restated>[.\s]+Restated(?:[.\s]+\d+)?)?[.\s]+Change"
+            r"(?P<body>.*?)Per share measures",
+            text, re.IGNORECASE | re.DOTALL,
+        )
+        labels = {
+            "combined_ratio": r"Combined\s+ratio\s*\(undiscounted\)",
+            "operating_income": r"Net operating income attributable to common shareholders",
+            "net_income": r"Net income",
+        }
+        footnote = r"(?:[1-4](?:\s*,\s*[1-4])*\s+)?"
+    elif company_id == "DFY":
+        section = re.search(
+            r"Consolidated Results\s*\.?\s*"
+            r"\(in millions of dollars, except as otherwise noted\)\s*\.?\s*"
+            r"(?P<current>Q[1-4] 20\d{2})\s+(?P<prior>Q[1-4] 20\d{2})"
+            r"(?P<restated>\s*\.?\s*\(Restated\))?\s+Change"
+            r"(?P<body>.*?)Per share measures",
+            text, re.IGNORECASE | re.DOTALL,
+        )
+        labels = {
+            "insurance_revenue": r"Insurance revenue",
+            "combined_ratio": r"Combined ratio",
+            "claims_ratio": r"Claims ratio",
+            "expense_ratio": r"Expense ratio",
+            "operating_income": r"Operating net income",
+            "net_income": (
+                r"Net\s+(?:\(loss\)\s+)?income(?:\s+\(loss\))?"
+                r"\s+attributable to common shareholders"
+            ),
+        }
+        footnote = ""
+    else:
+        return None
+    if not section or not section.group("restated") or metric_id not in labels:
+        return None
+    prior = section.group("prior")
+    if f"{prior[-4:]}-Q{prior[1]}" != target_period:
+        return None
+    match = re.search(
+        r"(?<!\w)(?P<label>" + labels[metric_id] + r")\s+" + footnote
+        + r"(?P<current_value>\(?\d[\d,]*(?:\.\d+)?\)?)\s*%?\s+"
+        + r"(?P<prior_value>\(?\d[\d,]*(?:\.\d+)?\)?)\s*%?",
+        section.group("body"), re.IGNORECASE,
+    )
+    if not match:
+        return None
+    raw = match.group("prior_value")
+    negative = raw.startswith("(") and raw.endswith(")")
+    source_unit = "%" if expected_unit == "PERCENT" else "million"
+    value = _normalized_value(raw[1:-1] if negative else raw, source_unit, expected_unit)
+    if value is None:
+        return None
+    if negative:
+        value = -value
+    context = (f"Restated comparative quarter {prior} {match.group('label')} "
+               f"{raw}{'%' if source_unit == '%' else ' million CAD'}")
+    return ExtractedMetric(metric_id, value, expected_unit, raw, context)
+
+
+def _reported_current_period(company_id: str, text: str) -> str | None:
+    if company_id == "IFC":
+        pattern = r"Consolidated Highlights.*?\b(Q[1-4]-20\d{2})\b"
+    elif company_id == "DFY":
+        pattern = r"Consolidated Results.*?\b(Q[1-4] 20\d{2})\b"
+    elif company_id == "TD":
+        match = re.search(r"Quarterly comparison\s*.\s*(Q[1-4])\s+(20\d{2})\s+vs", text,
+                          re.IGNORECASE | re.DOTALL)
+        return f"{match.group(2)}-{match.group(1)}" if match else None
+    else:
+        return None
+    match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None
+    quarter = re.search(r"Q([1-4])[- ](20\d{2})", match.group(1), re.IGNORECASE)
+    return f"{quarter.group(2)}-Q{quarter.group(1)}" if quarter else None
 
 
 def _td_quarterly_insurance_income(text: str, expected_unit: str) -> ExtractedMetric | None:
@@ -130,7 +222,8 @@ def _dfy_quarterly_insurance_revenue(text: str, expected_unit: str) -> Extracted
     section = re.search(
         r"Consolidated Results\s*\.?\s*"
         r"\(in millions of dollars, except as otherwise noted\)\s*\.?\s*"
-        r"(?P<quarter>Q[1-4] 20\d{2})\s+Q[1-4] 20\d{2}\s+Change"
+        r"(?P<quarter>Q[1-4] 20\d{2})\s+Q[1-4] 20\d{2}"
+        r"(?:\s*\.?\s*\(Restated\))?\s+Change"
         r"(?P<body>.*?)Per share measures",
         text, re.IGNORECASE | re.DOTALL,
     )
@@ -147,7 +240,9 @@ def _dfy_quarterly_insurance_revenue(text: str, expected_unit: str) -> Extracted
     return ExtractedMetric("insurance_revenue", value, expected_unit, match.group("number"), context)
 
 
-def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract) -> list[ExtractedMetric]:
+def extract_pnc_metrics(
+    company_id: str, content: str, contract: InsurerContract, *, target_period: str | None = None
+) -> list[ExtractedMetric]:
     """Extract only explicitly labelled P&C candidates from an issuer's report."""
     if company_id not in PNC_ALIASES or company_id not in contract.companies:
         raise ValueError("company_id has no configured P&C extractor")
@@ -159,6 +254,18 @@ def extract_pnc_metrics(company_id: str, content: str, contract: InsurerContract
         if metric_id not in contract.metrics:
             continue
         expected_unit = contract.metrics[metric_id].unit
+        if target_period and company_id in {"IFC", "DFY"}:
+            comparative = _comparative_quarter_metric(
+                company_id, text, metric_id, expected_unit, target_period
+            )
+            if comparative is not None:
+                extracted.append(comparative)
+                continue
+            if _reported_current_period(company_id, text) != target_period:
+                continue
+        if (target_period and company_id == "TD"
+                and _reported_current_period(company_id, text) not in {None, target_period}):
+            continue
         if company_id == "IFC" and metric_id in {"net_income", "operating_income", "combined_ratio"}:
             row_label = {"net_income": "Net income",
                          "operating_income": "Net operating income attributable to common shareholders",
