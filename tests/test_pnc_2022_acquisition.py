@@ -198,6 +198,139 @@ def test_2022_q4_acquisition_uses_comparative_not_current_column():
     assert all(row["period_id"] == "2022-Q4" for row in result.candidates)
 
 
+@pytest.mark.parametrize(
+    ("quarter", "current_ratio", "prior_ratio", "current_operating", "prior_operating",
+     "current_net", "prior_net"),
+    [
+        ("Q1", 91.9, 92.1, 537, 516, 377, 487),
+        ("Q2", 96.3, 90.2, 402, 581, 260, 1235),
+        ("Q3", 98.3, 91.7, 370, 488, 163, 375),
+    ],
+)
+def test_ifc_q1_to_q3_comparative_reads_restated_2022_values(
+    quarter, current_ratio, prior_ratio, current_operating, prior_operating, current_net, prior_net
+):
+    # Official IFC releases with 2022 restated comparatives:
+    # Q1 https://newsroom.intactfc.com/2023-05-10-Intact-Financial-Corporation-reports-Q1-2023-results-under-IFRS-17
+    # Q2 https://www.newswire.ca/news-releases/intact-financial-corporation-reports-q2-2023-results-803908690.html
+    # Q3 https://www.newswire.ca/news-releases/intact-financial-corporation-reports-q3-2023-results-882833147.html
+    cumulative = {
+        "Q2": ("H1-2023 H1-2022 Restated Change", 94.2, 91.2, 939, 1097, 637, 1722),
+        "Q3": ("YTD 2023 YTD 2022 Restated Change", 95.6, 91.3, 1309, 1585, 800, 2097),
+    }.get(quarter)
+    trailing_headers = ""
+    ratio_trailing = operating_trailing = net_trailing = ""
+    if cumulative:
+        (trailing_headers, ytd_current_ratio, ytd_prior_ratio, ytd_current_operating,
+         ytd_prior_operating, ytd_current_net, ytd_prior_net) = cumulative
+        ratio_trailing = f" {ytd_current_ratio:.1f} % {ytd_prior_ratio:.1f} % Change"
+        operating_trailing = f" {ytd_current_operating} {ytd_prior_operating} Change"
+        net_trailing = f" {ytd_current_net:,} {ytd_prior_net:,} Change"
+    report = (
+        "Consolidated Highlights (in millions of Canadian dollars except as otherwise noted) "
+        f"{quarter}-2023 {quarter}-2022 Restated Change {trailing_headers} "
+        f"Combined ratio (undiscounted) {current_ratio:.1f} % {prior_ratio:.1f} %{ratio_trailing} "
+        f"Net operating income attributable to common shareholders {current_operating} "
+        f"{prior_operating} Change{operating_trailing} "
+        f"Net income {current_net:,} {prior_net:,} Change{net_trailing} "
+        "Per share measures"
+    )
+    metrics = extract_pnc_metrics("IFC", report, CONTRACT, target_period=f"2022-{quarter}")
+    assert len(metrics) == 3
+    rows = {row.metric_id: row for row in metrics}
+    assert set(rows) == {"combined_ratio", "operating_income", "net_income"}
+    assert {metric: row.value for metric, row in rows.items()} == pytest.approx({
+        "combined_ratio": prior_ratio,
+        "operating_income": prior_operating / 1000,
+        "net_income": prior_net / 1000,
+    })
+    assert all(f"{quarter}-2022" in row.context for row in rows.values())
+
+
+@pytest.mark.parametrize(
+    ("quarter", "revenue", "claims", "expenses", "combined", "operating", "net"),
+    [
+        ("Q1", 814.3, 59.1, 33.3, 92.4, 63.3, -32.6),
+        ("Q2", 863.8, 63.3, 32.0, 95.3, 51.1, -77.2),
+        ("Q3", 895.9, 64.7, 32.0, 96.7, 45.8, 35.7),
+    ],
+)
+def test_definity_q1_to_q3_comparative_reads_restated_2022_values(
+    quarter, revenue, claims, expenses, combined, operating, net
+):
+    # Official Definity releases with 2022 restated comparatives:
+    # Q1 https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-First-Quarter-2023-Results/default.aspx
+    # Q2 https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Financial-Corporation-Reports-Second-Quarter-2023-Results/default.aspx
+    # Q3 https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-Third-Quarter-2023-Results/default.aspx
+    current = {
+        "Q1": (907.5, 62.6, 32.7, 95.3, 63.4, 100.9),
+        "Q2": (954.9, 63.7, 31.6, 95.3, 64.8, 71.6),
+        "Q3": (984.1, 72.9, 29.6, 102.5, 17.6, -48.3),
+    }[quarter]
+    ytd = {
+        "Q2": (1862.4, 1678.1, 63.2, 61.2, 32.1, 32.7, 95.3, 93.9,
+               128.2, 114.4, 172.5, -109.8),
+        "Q3": (2846.5, 2574.0, 66.5, 62.4, 31.3, 32.5, 97.8, 94.9,
+               145.8, 160.2, 124.2, -74.1),
+    }.get(quarter)
+    ytd_headers = ""
+    ytd_cells = {metric: "" for metric in
+                 ("revenue", "claims", "expenses", "combined", "operating", "net")}
+    if ytd:
+        (ytd_revenue, prior_ytd_revenue, ytd_claims, prior_ytd_claims,
+         ytd_expenses, prior_ytd_expenses, ytd_combined, prior_ytd_combined,
+         ytd_operating, prior_ytd_operating, ytd_net, prior_ytd_net) = ytd
+        ytd_headers = "<th>2023 YTD</th><th>2022 YTD<br>(Restated)</th><th>Change</th>"
+        ytd_cells = {
+            "revenue": f"<td>{ytd_revenue:.1f}</td><td>{prior_ytd_revenue:.1f}</td><td>Change</td>",
+            "claims": f"<td>{ytd_claims:.1f}%</td><td>{prior_ytd_claims:.1f}%</td><td>Change</td>",
+            "expenses": f"<td>{ytd_expenses:.1f}%</td><td>{prior_ytd_expenses:.1f}%</td><td>Change</td>",
+            "combined": f"<td>{ytd_combined:.1f}%</td><td>{prior_ytd_combined:.1f}%</td><td>Change</td>",
+            "operating": f"<td>{ytd_operating:.1f}</td><td>{prior_ytd_operating:.1f}</td><td>Change</td>",
+            "net": f"<td>{ytd_net:.1f}</td><td>{prior_ytd_net:.1f}</td><td>Change</td>",
+        }
+    current_revenue, current_claims, current_expenses, current_combined, current_operating, current_net = current
+    comparative_net = f"({abs(net):.1f})" if net < 0 else f"{net:.1f}"
+    current_net_text = f"({abs(current_net):.1f})" if current_net < 0 else f"{current_net:.1f}"
+    net_label = "Net income (loss)" if quarter in {"Q1", "Q2"} else "Net (loss) income"
+    report = (
+        "<h2>Consolidated Results</h2><p>(in millions of dollars, except as otherwise noted)</p>"
+        "<table><tr><th></th>"
+        f"<th>{quarter} 2023</th><th>{quarter} 2022<br>(Restated)</th><th>Change</th>"
+        f"{ytd_headers}</tr>"
+        f"<tr><td>Insurance revenue</td><td>{current_revenue:.1f}</td><td>{revenue:.1f}</td>"
+        f"<td>Change</td>{ytd_cells['revenue']}</tr>"
+        f"<tr><td>Claims ratio</td><td>{current_claims:.1f}%</td><td>{claims:.1f}%</td>"
+        f"<td>Change</td>{ytd_cells['claims']}</tr>"
+        f"<tr><td>Expense ratio</td><td>{current_expenses:.1f}%</td><td>{expenses:.1f}%</td>"
+        f"<td>Change</td>{ytd_cells['expenses']}</tr>"
+        f"<tr><td>Combined ratio</td><td>{current_combined:.1f}%</td><td>{combined:.1f}%</td>"
+        f"<td>Change</td>{ytd_cells['combined']}</tr>"
+        f"<tr><td>Operating net income</td><td>{current_operating:.1f}</td><td>{operating:.1f}</td>"
+        f"<td>Change</td>{ytd_cells['operating']}</tr>"
+        f"<tr><td>{net_label} attributable to common shareholders</td>"
+        f"<td>{current_net_text}</td><td>{comparative_net}</td><td>Change</td>"
+        f"{ytd_cells['net']}</tr></table>"
+        "<h2>Per share measures</h2>"
+    )
+    metrics = extract_pnc_metrics("DFY", report, CONTRACT, target_period=f"2022-{quarter}")
+    assert len(metrics) == 6
+    rows = {row.metric_id: row for row in metrics}
+    assert set(rows) == {
+        "insurance_revenue", "claims_ratio", "expense_ratio", "combined_ratio",
+        "operating_income", "net_income",
+    }
+    assert {metric: row.value for metric, row in rows.items()} == pytest.approx({
+        "insurance_revenue": revenue / 1000,
+        "claims_ratio": claims,
+        "expense_ratio": expenses,
+        "combined_ratio": combined,
+        "operating_income": operating / 1000,
+        "net_income": net / 1000,
+    })
+    assert all(f"{quarter} 2022" in row.context for row in rows.values())
+
+
 def test_2022_manifests_validate_and_gap_is_td_only(tmp_path, monkeypatch):
     for quarter in range(1, 5):
         path = ROOT / f"config/pnc/history/2022-Q{quarter}.yaml"
