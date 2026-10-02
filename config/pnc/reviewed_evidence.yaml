@@ -248,3 +248,391 @@ reviews:
       net_income: {value: 0.1524, unit: CAD_BILLION}
     exclusions:
       operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2024-Q1
+    period_end: 2024-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 8eb420428bc553474501c10ac16e9e4edbbc050d57ff3b952fbe7b54822ff260
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q1-2024 Combined Ratio (undiscounted), Net operating income attributable to common shareholders, and Net income rows
+    period_excerpt: Q1-2024
+    scope_excerpt: Intact Financial Corporation consolidated P&C performance across all geographies
+    metrics:
+      combined_ratio: {value: 91.2, unit: PERCENT}
+      operating_income: {value: 0.648, unit: CAD_BILLION}
+      net_income: {value: 0.673, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: AV
+    period_id: 2024-Q1
+    period_end: 2024-03-31
+    calendar_basis: calendar
+    disclosure_scope: canada_general_insurance
+    source_document_hash: f88fb13f40902924228b042be607c8fbf5d726242dc67fe11dd3a44bd2f9ecb7
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Canada General Insurance, Combined Operating Ratio table, Canada row, undiscounted Q1 2024 value
+    period_excerpt: Q1 2024
+    scope_excerpt: Aviva Canada general insurance Canada row; undiscounted combined operating ratio
+    metrics:
+      combined_ratio: {value: 93.7, unit: PERCENT}
+    exclusions:
+      discounted_combined_ratio: 89.4 percent; not the selected undiscounted series
+  - company_id: DFY
+    period_id: 2024-Q1
+    period_end: 2024-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: a5acd71e170a2b1f303f33cc7145e0ccd80e84c03a1ccc9819b0fd20ad13f46d
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Results, Q1 2024 first numeric column; earnings narrative
+    period_excerpt: Q1 2024
+    scope_excerpt: Definity Financial Corporation consolidated Canadian P&C results
+    metrics:
+      insurance_revenue: {value: 0.9919, unit: CAD_BILLION}
+      combined_ratio: {value: 93.9, unit: PERCENT}
+      claims_ratio: {value: 62.6, unit: PERCENT}
+      expense_ratio: {value: 31.3, unit: PERCENT}
+      operating_income: {value: 0.0752, unit: CAD_BILLION}
+      net_income: {value: 0.1052, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2024-Q2
+    period_end: 2024-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: da5e14b57925bc6b1e092dd5fb153f57e7c26e4cac8697a424d98d2f61b9e57d
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q2-2024 first numeric column
+    period_excerpt: Q2-2024
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 87.1, unit: PERCENT}
+      operating_income: {value: 0.866, unit: CAD_BILLION}
+      net_income: {value: 0.758, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: DFY
+    period_id: 2024-Q2
+    period_end: 2024-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 3500bda8efda90d48337b290c5f4f9ba1aefb3236e4d9a76180c843a283077b6
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Results, Q2 2024 first numeric column; earnings narrative
+    period_excerpt: Q2 2024
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.0461, unit: CAD_BILLION}
+      combined_ratio: {value: 90.1, unit: PERCENT}
+      claims_ratio: {value: 60.0, unit: PERCENT}
+      expense_ratio: {value: 30.1, unit: PERCENT}
+      operating_income: {value: 0.1091, unit: CAD_BILLION}
+      net_income: {value: 0.1038, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2024-Q3
+    period_end: 2024-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 678963a4e33716639ab2afe7d5d65202d7aa34ffc34dc383d39bf44a7f77b7ce
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q3-2024 first numeric column
+    period_excerpt: Q3-2024
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 103.9, unit: PERCENT}
+      operating_income: {value: 0.182, unit: CAD_BILLION}
+      net_income: {value: 0.212, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: DFY
+    period_id: 2024-Q3
+    period_end: 2024-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 2bcd9fdfccee8cc790f88515a1659b16df52000762079e76ad86bff8ded93f7e
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Consolidated Results, Q3 2024 first numeric column; earnings narrative
+    period_excerpt: Q3 2024
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.0955, unit: CAD_BILLION}
+      combined_ratio: {value: 103.4, unit: PERCENT}
+      claims_ratio: {value: 74.5, unit: PERCENT}
+      expense_ratio: {value: 28.9, unit: PERCENT}
+      operating_income: {value: 0.0146, unit: CAD_BILLION}
+      net_income: {value: 0.1048, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2024-Q4
+    period_end: 2024-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 70c68bf0c2f94a6c51cd3a914650bfc9fa0ca3f0750e3c57a771c9509b121d95
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q4-2024 first numeric column
+    period_excerpt: Q4-2024
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 86.5, unit: PERCENT}
+      operating_income: {value: 0.881, unit: CAD_BILLION}
+      net_income: {value: 0.667, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: DFY
+    period_id: 2024-Q4
+    period_end: 2024-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 12bc5301e82ddd1f0460fa89bfeaa2478b2aab12462c08345162f16f2acd18f6
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Consolidated Results, Q4 2024 first numeric column; earnings narrative
+    period_excerpt: Q4 2024
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.1249, unit: CAD_BILLION}
+      combined_ratio: {value: 90.3, unit: PERCENT}
+      claims_ratio: {value: 60.7, unit: PERCENT}
+      expense_ratio: {value: 29.6, unit: PERCENT}
+      operating_income: {value: 0.1104, unit: CAD_BILLION}
+      net_income: {value: 0.1166, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2025-Q1
+    period_end: 2025-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: ca58370db819c1c3356155ddac40bf001667afbf1426c9a80543271605ce11bc
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q1-2025 first numeric column
+    period_excerpt: Q1-2025
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 91.3, unit: PERCENT}
+      operating_income: {value: 0.717, unit: CAD_BILLION}
+      net_income: {value: 0.676, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: TD
+    period_id: 2025-Q1
+    period_end: 2025-01-31
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: 0d6f9821f369c50cf577807fc1edf0d461d3185834ba6df2d649b94a31e543df
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Earnings News Release page 15, Table 9 quarterly comparison narrative
+    period_excerpt: For the three months ended January 31 2025
+    scope_excerpt: Standalone Insurance net income
+    metrics:
+      net_income: {value: 0.168, unit: CAD_BILLION}
+    exclusions:
+      combined_wealth_insurance: combined_segment_not_comparable
+      prior_quarter_catastrophe_losses: Q4_2024_not_Q1_2025
+  - company_id: DFY
+    period_id: 2025-Q1
+    period_end: 2025-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 13358d597bf1d55cc2677279bafb1f2e4f7a9b638f1ddd0aa037c3dc2b800b7f
+    reviewed_by: codex-report-review-2026-09-26
+    basis: quarterly
+    source_locator: Consolidated Results, Q1 2025 first numeric column; earnings narrative
+    period_excerpt: Q1 2025
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.1119, unit: CAD_BILLION}
+      combined_ratio: {value: 94.5, unit: PERCENT}
+      claims_ratio: {value: 64.2, unit: PERCENT}
+      expense_ratio: {value: 30.3, unit: PERCENT}
+      operating_income: {value: 0.0759, unit: CAD_BILLION}
+      net_income: {value: 0.092, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2023-Q2
+    period_end: 2023-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: a442faa1e1a1d0e0799ebcccd781303a52bcb9b78b2b898f6e844f31db93806e
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q2-2023 combined ratio (undiscounted), net operating income attributable to common shareholders, and net income rows
+    period_excerpt: Q2-2023
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 96.3, unit: PERCENT}
+      operating_income: {value: 0.402, unit: CAD_BILLION}
+      net_income: {value: 0.260, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: DFY
+    period_id: 2023-Q2
+    period_end: 2023-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: d9689d8611360a3b365b3fd79714116dacedf05b777000cf810a7e7cfc573418
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Results, Q2 2023 first numeric column; earnings narrative
+    period_excerpt: Q2 2023
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 0.9549, unit: CAD_BILLION}
+      combined_ratio: {value: 95.3, unit: PERCENT}
+      claims_ratio: {value: 63.7, unit: PERCENT}
+      expense_ratio: {value: 31.6, unit: PERCENT}
+      operating_income: {value: 0.0648, unit: CAD_BILLION}
+      net_income: {value: 0.0716, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2023-Q3
+    period_end: 2023-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: e0fcbb66703a0bcb81acd95ac97621d8cea72df6268957ec79314f965b3b670e
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q3-2023 combined ratio (undiscounted), net operating income attributable to common shareholders, and net income rows
+    period_excerpt: Q3-2023
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 98.3, unit: PERCENT}
+      operating_income: {value: 0.370, unit: CAD_BILLION}
+      net_income: {value: 0.163, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: DFY
+    period_id: 2023-Q3
+    period_end: 2023-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: d75cc118541a1474eca34e54daef442ca952922c0ef21c4927544ffd7c19575b
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Results, Q3 2023 first numeric column; earnings narrative
+    period_excerpt: Q3 2023
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 0.9841, unit: CAD_BILLION}
+      combined_ratio: {value: 102.5, unit: PERCENT}
+      claims_ratio: {value: 72.9, unit: PERCENT}
+      expense_ratio: {value: 29.6, unit: PERCENT}
+      operating_income: {value: 0.0176, unit: CAD_BILLION}
+      net_income: {value: -0.0483, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2023-Q4
+    period_end: 2023-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 177e57ec7ddd2a3273a4c1f05d99f8105a872c34bdaa877eff0f700c22fdaf25
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q4-2023 Combined Ratio (undiscounted), Net operating income attributable to common shareholders, and Net income rows
+    period_excerpt: Q4-2023
+    scope_excerpt: Intact consolidated performance across Canada, UK&I and US
+    metrics:
+      combined_ratio: {value: 90.1, unit: PERCENT}
+      operating_income: {value: 0.752, unit: CAD_BILLION}
+      net_income: {value: 0.531, unit: CAD_BILLION}
+    exclusions:
+      claims_ratio: components relate to discounted combined ratio and are not comparable to selected undiscounted series
+      expense_ratio: components relate to discounted combined ratio and are not comparable to selected undiscounted series
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: DFY
+    period_id: 2023-Q4
+    period_end: 2023-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: f2df994386d649b1075f89d10d77c5ec72c8cc691606589e9e6f395925738270
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Results, Q4 2023 first numeric column; earnings narrative
+    period_excerpt: Q4 2023
+    scope_excerpt: Definity Financial Corporation consolidated results
+    metrics:
+      insurance_revenue: {value: 1.0038, unit: CAD_BILLION}
+      combined_ratio: {value: 90.6, unit: PERCENT}
+      claims_ratio: {value: 61.1, unit: PERCENT}
+      expense_ratio: {value: 29.5, unit: PERCENT}
+      operating_income: {value: 0.1007, unit: CAD_BILLION}
+      net_income: {value: 0.2259, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2023-Q1
+    period_end: 2023-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: dd3cd085461c3b980b04a45acd4f143faf762955632eb25ad5cfd21c7ed78df5
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Highlights, Q1-2023 undiscounted combined ratio, net operating income attributable to common shareholders, and net income rows
+    period_excerpt: Q1-2023
+    scope_excerpt: Intact Financial Corporation consolidated P&C performance across all geographies
+    metrics:
+      combined_ratio: {value: 91.9, unit: PERCENT}
+      operating_income: {value: 0.537, unit: CAD_BILLION}
+      net_income: {value: 0.377, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly
+      canada_segment_ratio: not_consolidated_ratio
+  - company_id: AV
+    period_id: 2023-Q1
+    period_end: 2023-03-31
+    calendar_basis: calendar
+    disclosure_scope: canada_general_insurance
+    source_document_hash: a56efedf46af8949cc0277fcfe765430c96ec69f94d3f25dbdd5297c4f70a64d
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Canada General Insurance, Q1 2023 trading update, Canada row, undiscounted COR value
+    period_excerpt: Q1 2023
+    scope_excerpt: Aviva Canada General Insurance; Canada row, undiscounted combined operating ratio
+    metrics:
+      combined_ratio: {value: 92.4, unit: PERCENT}
+    exclusions:
+      discounted_combined_ratio: 88.6 percent; not the selected undiscounted series
+  - company_id: DFY
+    period_id: 2023-Q1
+    period_end: 2023-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: f1cc73baaa89e1fdd2330c6dede76254f931ca8f3bc262b056affc344252ac92
+    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    basis: quarterly
+    source_locator: Consolidated Results Q1 2023 first numeric column; operating and net income rows in quarterly financial results
+    period_excerpt: Q1 2023
+    scope_excerpt: Definity Financial Corporation consolidated Canadian P&C results
+    metrics:
+      insurance_revenue: {value: 0.9075, unit: CAD_BILLION}
+      combined_ratio: {value: 95.3, unit: PERCENT}
+      claims_ratio: {value: 62.6, unit: PERCENT}
+      expense_ratio: {value: 32.7, unit: PERCENT}
+      operating_income: {value: 0.0634, unit: CAD_BILLION}
+      net_income: {value: 0.1009, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: trailing_twelve_months_not_quarterly

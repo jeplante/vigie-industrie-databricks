@@ -1,0 +1,26 @@
+sources:
+  - company_id: IFC
+    period_id: 2023-Q1
+    source_url: https://newsroom.intactfc.com/2023-05-10-Intact-Financial-Corporation-reports-Q1-2023-results-under-IFRS-17?asPDF=1
+    document_type: quarterly_report
+    disclosure_scope: Intact consolidated global P&C operations under IFRS 17; Q1-2023 column only
+    calendar_basis: calendar
+  - company_id: AV
+    period_id: 2023-Q1
+    source_url: https://static.aviva.io/content/dam/aviva-corporate/documents/investors/pdfs/results/2023/Aviva-Q1-trading-update.pdf
+    document_type: quarterly_report
+    disclosure_scope: Aviva Canada General Insurance; Q1 undiscounted combined operating ratio only
+    calendar_basis: calendar
+  - company_id: TD
+    period_id: 2023-Q1
+    source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/2023-q1-report-to-shareholders-en.pdf
+    document_type: quarterly_report
+    expected_no_candidate_reason: standalone_insurance_not_disclosed_in_quarterly_report
+    disclosure_scope: TD Wealth Management and Insurance combined segment; fiscal quarter ended January 31, 2023
+    calendar_basis: fiscal
+  - company_id: DFY
+    period_id: 2023-Q1
+    source_url: https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-First-Quarter-2023-Results/default.aspx
+    document_type: quarterly_report
+    disclosure_scope: Definity consolidated Canadian P&C operations; Q1 2023 column only
+    calendar_basis: calendar

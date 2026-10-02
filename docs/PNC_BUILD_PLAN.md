@@ -6,7 +6,7 @@ The P&C domain is isolated from the life-insurance domain. Its initial issuer co
 
 | Company | Basis |
 | --- | --- |
-| IFC | Canadian P&C group |
+| IFC | Consolidated global P&C group (Canada, UK&I and US) |
 | DFY | Canadian P&C group |
 | AV | Canada segment of Aviva plc |
 | TD | TD Insurance segment of TD Bank Group |
@@ -18,7 +18,27 @@ The P&C domain is isolated from the life-insurance domain. Its initial issuer co
 - P&C raw files, audit tables and Gold tables remain separate from the life domain.
 - Live collection is disabled until source and extraction validation succeeds for all four issuers.
 
-## Next implementation slices
+## Historical evidence checkpoint (recorded 2026-09-28)
+
+Nine period manifests from 2023-Q1 through 2025-Q1 and 21 issuer-period
+review records document 84 quarterly metrics: 10, 9, 9, 9, 10, 9, 9, 9 and
+10 by period. They preserve Aviva's unsupported non-Q1 quarters, TD's
+combined Wealth Management and Insurance gaps, fiscal versus calendar closes,
+and the exclusion of trailing-period ROE. See `PNC_SOURCE_REVIEW.md` for
+period coverage and `config/pnc/reviewed_evidence.yaml` for hash-bound values.
+
+Historical run notes report reviewed-only dry-runs, Gold MERGEs and independent
+SQL readbacks ending at 131 rows and 131 distinct observation IDs after
+2023-Q1 was added. These are dated reports of prior runs, not a fresh check of
+the live Volume, staging tables or Gold table. The current checkout contains
+review evidence; a new publication decision requires exact stored-byte and
+candidate readback, the reviewed-only dry-run, and independent Gold readback.
+Acquisition and publication remain manual and unscheduled.
+
+## Original phase-1 implementation slices (historical)
+
+The list below records the initial build plan; the dated checkpoint above
+documents later historical review and publication claims.
 
 1. Source discovery and document provenance dry-run. **Manifest checks only:**
    the source manifest covers IFC, AV, TD and DFY, and each URL is checked

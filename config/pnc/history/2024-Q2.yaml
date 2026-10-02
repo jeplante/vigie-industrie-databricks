@@ -1,0 +1,22 @@
+sources:
+  - company_id: IFC
+    period_id: 2024-Q2
+    source_url: https://newsroom.intactfc.com/2024-07-30-Intact-Financial-Corporation-reports-Q2-2024-results?asPDF=1
+    document_type: quarterly_report
+    disclosure_scope: Intact consolidated P&C operations; Q2 column only
+  - company_id: AV
+    period_id: 2024-Q2
+    unavailable_reason: no_quarterly_segment_disclosure
+    reference_url: https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2024/08/HY2024-results-announcement/
+    disclosure_scope: Aviva Canada half-year GBP premiums and COR are not isolated Q2
+  - company_id: TD
+    period_id: 2024-Q2
+    source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2024/q2/2024-q2-earnings-newsrelease-en.pdf
+    document_type: quarterly_report
+    expected_no_candidate_reason: standalone_insurance_not_disclosed_in_quarterly_report
+    disclosure_scope: TD Wealth Management and Insurance combined segment; verify Insurance standalone before publication
+  - company_id: DFY
+    period_id: 2024-Q2
+    source_url: https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2024/Definity-Reports-Second-Quarter-2024-Results/default.aspx
+    document_type: quarterly_report
+    disclosure_scope: Definity consolidated Canadian P&C operations; Q2 column only
