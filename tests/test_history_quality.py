@@ -20,3 +20,19 @@ def test_keeps_point_in_time_metrics_visible():
         {"company_id": "MFC", "period_id": "2023-Q4", "value": 150},
     ], "licat_ratio")
     assert all(row["display_quality"] == "accepted" for row in quality)
+
+
+def test_keeps_two_point_additive_history_visible():
+    rows = [
+        {"company_id": "MFC", "period_id": "2025-Q4", "value": 1.0},
+        {"company_id": "MFC", "period_id": "2026-Q1", "value": 3.0},
+    ]
+
+    quality = flag_suspicious_history(rows, "core_earnings")
+
+    assert [row["display_quality"] for row in quality] == ["accepted", "accepted"]
+    assert [row["display_value"] for row in quality] == [1.0, 3.0]
+    assert rows == [
+        {"company_id": "MFC", "period_id": "2025-Q4", "value": 1.0},
+        {"company_id": "MFC", "period_id": "2026-Q1", "value": 3.0},
+    ]
