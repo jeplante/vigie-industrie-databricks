@@ -38,7 +38,6 @@ PNC_ALIASES = {
         "operating_income": ("Canada operating profit",),
     },
     "TD": {
-        "catastrophe_losses": ("catastrophe claims",),
         "net_income": ("Insurance net income",),
         "operating_roe": ("Return on common equity – Insurance",),
     },
@@ -240,6 +239,76 @@ def _dfy_quarterly_insurance_revenue(text: str, expected_unit: str) -> Extracted
     return ExtractedMetric("insurance_revenue", value, expected_unit, match.group("number"), context)
 
 
+def _dfy_quarterly_net_income(text: str, expected_unit: str) -> ExtractedMetric | None:
+    """Read the current quarterly table column, including parenthesized losses."""
+    section = re.search(
+        r"Consolidated Results\s*\.?\s*"
+        r"\(in millions of dollars, except as otherwise noted\)\s*\.?\s*"
+        r"(?P<quarter>Q[1-4] 20\d{2})\s+Q[1-4] 20\d{2}"
+        r"(?:\s*\.?\s*\(Restated\))?\s+Change"
+        r"(?P<body>.*?)Per share measures",
+        text, re.IGNORECASE | re.DOTALL,
+    )
+    if not section:
+        return None
+    match = re.search(
+        r"(?:^|\.\s+)(?P<label>Net\s+(?:\(loss\)\s+)?income(?:\s+\(loss\))?"
+        r"\s+attributable to common shareholders)\s+"
+        r"(?P<number>\(?\d[\d,]*(?:\.\d+)?\)?)",
+        section.group("body"), re.IGNORECASE,
+    )
+    if not match:
+        return None
+    raw = match.group("number")
+    negative = raw.startswith("(") and raw.endswith(")")
+    value = _normalized_value(raw[1:-1] if negative else raw, "million", expected_unit)
+    if value is None:
+        return None
+    if negative:
+        value = -value
+    context = (f"Consolidated Results {section.group('quarter')} "
+               f"{match.group('label')} {raw} million CAD")
+    return ExtractedMetric("net_income", value, expected_unit, raw, context)
+
+
+def _aviva_canada_quarterly_cor(
+    text: str, expected_unit: str, target_period: str | None
+) -> ExtractedMetric | None:
+    """Select the current Canada undiscounted COR from Aviva's quarterly table."""
+    header = re.search(
+        r"Discounted COR\s+Undiscounted COR\s+"
+        r"Q(?P<quarter>[1-4])(?P<year>\d{2})\s+Q[1-4]\d{2}\s+Change\s+"
+        r"Q[1-4]\d{2}\s+Q[1-4]\d{2}\s+Change",
+        text, re.IGNORECASE,
+    )
+    if not header:
+        return None
+    reported_period = f"20{header.group('year')}-Q{header.group('quarter')}"
+    if target_period and reported_period != target_period:
+        return None
+    table_body = re.split(
+        r"Discounted COR\s+Undiscounted COR", text[header.end():],
+        maxsplit=1, flags=re.IGNORECASE,
+    )[0]
+    match = re.search(
+        r"(?:^|\s)Canada\s+"
+        r"\d{2,3}\.\d+\s*%\s+\d{2,3}\.\d+\s*%\s+"
+        r"(?:\(\s*\d+(?:\.\d+)?\s*\)|[-+]?\d+(?:\.\d+)?)\s*pp\s+"
+        r"(?P<undiscounted>\d{2,3}\.\d+)\s*%\s+"
+        r"\d{2,3}\.\d+\s*%\s+"
+        r"(?:\(\s*\d+(?:\.\d+)?\s*\)|[-+]?\d+(?:\.\d+)?)\s*pp",
+        table_body, re.IGNORECASE,
+    )
+    if not match:
+        return None
+    raw = match.group("undiscounted")
+    value = _normalized_value(raw, "%", expected_unit)
+    if value is None:
+        return None
+    context = f"Canada combined operating ratio (undiscounted COR) {raw}% {reported_period}"
+    return ExtractedMetric("combined_ratio", value, expected_unit, raw, context)
+
+
 def extract_pnc_metrics(
     company_id: str, content: str, contract: InsurerContract, *, target_period: str | None = None
 ) -> list[ExtractedMetric]:
@@ -266,6 +335,11 @@ def extract_pnc_metrics(
         if (target_period and company_id == "TD"
                 and _reported_current_period(company_id, text) not in {None, target_period}):
             continue
+        if company_id == "AV" and metric_id == "combined_ratio":
+            canada_cor = _aviva_canada_quarterly_cor(text, expected_unit, target_period)
+            if canada_cor is not None:
+                extracted.append(canada_cor)
+            continue
         if company_id == "IFC" and metric_id in {"net_income", "operating_income", "combined_ratio"}:
             row_label = {"net_income": "Net income",
                          "operating_income": "Net operating income attributable to common shareholders",
@@ -278,6 +352,10 @@ def extract_pnc_metrics(
                 # Narrative ratios can refer to Canada, a product line or a
                 # foreign segment. Never infer consolidated scope from them.
                 continue
+        if company_id == "IFC" and metric_id in {"claims_ratio", "expense_ratio"}:
+            # These components reconcile to the discounted ratio, while the
+            # comparable P&C combined ratio uses the undiscounted basis.
+            continue
         if company_id == "TD" and metric_id == "net_income":
             insurance_income = _td_quarterly_insurance_income(text, expected_unit)
             if insurance_income is not None:
@@ -289,6 +367,11 @@ def extract_pnc_metrics(
                 extracted.append(revenue)
             # Prose can describe YTD or group premiums; require the table.
             continue
+        if company_id == "DFY" and metric_id == "net_income":
+            net_income = _dfy_quarterly_net_income(text, expected_unit)
+            if net_income is not None:
+                extracted.append(net_income)
+                continue
         for alias in aliases:
             for match in re.finditer(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", text, re.IGNORECASE):
                 # TD's combined Wealth Management and Insurance segment is not
