@@ -237,3 +237,71 @@ ROE have zero published rows. TD's April 30 fiscal close is preserved. The
 App's P&C reader queries Gold directly, but the App runtime was `STOPPED`
 (`workspace or account status`) on this date, so browser visibility was not
 verified. No P&C schedule was enabled.
+
+## Historical 2023-Q1 through 2025-Q1 review records (2026-09-26 to 2026-09-28)
+
+The nine period manifests under `config/pnc/history/` declare one source or
+explicit unavailability for each issuer. The 21 new records in
+`config/pnc/reviewed_evidence.yaml` identify the reviewed quarterly values by
+company, period, exact document hash, accounting basis, close date, disclosure
+scope and unit. They contain 84 metric entries. Each record's document hash
+matches the hash stated in the historical source-review notes used to prepare
+this checkpoint; this local comparison cannot recheck the stored raw bytes.
+
+| Quarter | Official source | Reviewed document SHA-256 |
+| --- | --- | --- |
+| 2023-Q1 | [AV](https://static.aviva.io/content/dam/aviva-corporate/documents/investors/pdfs/results/2023/Aviva-Q1-trading-update.pdf) | `a56efedf46af8949cc0277fcfe765430c96ec69f94d3f25dbdd5297c4f70a64d` |
+| 2023-Q1 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-First-Quarter-2023-Results/default.aspx) | `f1cc73baaa89e1fdd2330c6dede76254f931ca8f3bc262b056affc344252ac92` |
+| 2023-Q1 | [IFC](https://newsroom.intactfc.com/2023-05-10-Intact-Financial-Corporation-reports-Q1-2023-results-under-IFRS-17?asPDF=1) | `dd3cd085461c3b980b04a45acd4f143faf762955632eb25ad5cfd21c7ed78df5` |
+| 2023-Q2 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Financial-Corporation-Reports-Second-Quarter-2023-Results/default.aspx) | `d9689d8611360a3b365b3fd79714116dacedf05b777000cf810a7e7cfc573418` |
+| 2023-Q2 | [IFC](https://newsroom.intactfc.com/2023-08-02-Intact-Financial-Corporation-reports-Q2-2023-results?asPDF=1) | `a442faa1e1a1d0e0799ebcccd781303a52bcb9b78b2b898f6e844f31db93806e` |
+| 2023-Q3 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-Third-Quarter-2023-Results/default.aspx) | `d75cc118541a1474eca34e54daef442ca952922c0ef21c4927544ffd7c19575b` |
+| 2023-Q3 | [IFC](https://newsroom.intactfc.com/2023-11-07-Intact-Financial-Corporation-reports-Q3-2023-results?asPDF=1) | `e0fcbb66703a0bcb81acd95ac97621d8cea72df6268957ec79314f965b3b670e` |
+| 2023-Q4 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2024/Definity-Financial-Corporation-Reports-Fourth-Quarter-and-Full-Year-2023-Results/default.aspx) | `f2df994386d649b1075f89d10d77c5ec72c8cc691606589e9e6f395925738270` |
+| 2023-Q4 | [IFC](https://newsroom.intactfc.com/2024-02-13-Intact-Financial-Corporation-reports-Q4-2023-results?asPDF=1) | `177e57ec7ddd2a3273a4c1f05d99f8105a872c34bdaa877eff0f700c22fdaf25` |
+| 2024-Q1 | [AV](https://static.aviva.io/content/dam/aviva-corporate/documents/investors/pdfs/results/2024/Aviva-Q1-2024-trading-update.pdf) | `f88fb13f40902924228b042be607c8fbf5d726242dc67fe11dd3a44bd2f9ecb7` |
+| 2024-Q1 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2024/Definity-Reports-First-Quarter-2024-Results/default.aspx) | `a5acd71e170a2b1f303f33cc7145e0ccd80e84c03a1ccc9819b0fd20ad13f46d` |
+| 2024-Q1 | [IFC](https://newsroom.intactfc.com/2024-05-07-Intact-Financial-Corporation-reports-Q1-2024-results?asPDF=1) | `8eb420428bc553474501c10ac16e9e4edbbc050d57ff3b952fbe7b54822ff260` |
+| 2024-Q2 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2024/Definity-Reports-Second-Quarter-2024-Results/default.aspx) | `3500bda8efda90d48337b290c5f4f9ba1aefb3236e4d9a76180c843a283077b6` |
+| 2024-Q2 | [IFC](https://newsroom.intactfc.com/2024-07-30-Intact-Financial-Corporation-reports-Q2-2024-results?asPDF=1) | `da5e14b57925bc6b1e092dd5fb153f57e7c26e4cac8697a424d98d2f61b9e57d` |
+| 2024-Q3 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2024/Definity-Reports-Third-Quarter-2024-Results/default.aspx) | `2bcd9fdfccee8cc790f88515a1659b16df52000762079e76ad86bff8ded93f7e` |
+| 2024-Q3 | [IFC](https://newsroom.intactfc.com/2024-11-05-Intact-Financial-Corporation-reports-Q3-2024-results?asPDF=1) | `678963a4e33716639ab2afe7d5d65202d7aa34ffc34dc383d39bf44a7f77b7ce` |
+| 2024-Q4 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2025/Definity-Financial-Corporation-Reports-Fourth-Quarter-and-Full-Year-2024-Results/default.aspx) | `12bc5301e82ddd1f0460fa89bfeaa2478b2aab12462c08345162f16f2acd18f6` |
+| 2024-Q4 | [IFC](https://newsroom.intactfc.com/2025-02-11-Intact-Financial-Corporation-reports-Q4-2024-results?asPDF=1) | `70c68bf0c2f94a6c51cd3a914650bfc9fa0ca3f0750e3c57a771c9509b121d95` |
+| 2025-Q1 | [DFY](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2025/Definity-Reports-First-Quarter-2025-Results/default.aspx) | `13358d597bf1d55cc2677279bafb1f2e4f7a9b638f1ddd0aa037c3dc2b800b7f` |
+| 2025-Q1 | [IFC](https://newsroom.intactfc.com/2025-05-06-Intact-Financial-Corporation-reports-Q1-2025-results?asPDF=1) | `ca58370db819c1c3356155ddac40bf001667afbf1426c9a80543271605ce11bc` |
+| 2025-Q1 | [TD](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q1/2025-q1-earnings-newsrelease-en.pdf) | `0d6f9821f369c50cf577807fc1edf0d461d3185834ba6df2d649b94a31e543df` |
+
+| Quarter | Reviewed issuer metrics | Explicit quarterly gaps | Historical new Gold rows |
+| --- | --- | --- | ---: |
+| 2023-Q1 | IFC 3, AV 1, DFY 6 | TD combined segment only | 10 |
+| 2023-Q2 | IFC 3, DFY 6 | AV half-year; TD combined segment | 9 |
+| 2023-Q3 | IFC 3, DFY 6 | AV nine-month Group result; TD combined segment | 9 |
+| 2023-Q4 | IFC 3, DFY 6 | AV full-year; TD combined segment | 9 |
+| 2024-Q1 | IFC 3, AV 1, DFY 6 | TD combined segment only | 10 |
+| 2024-Q2 | IFC 3, DFY 6 | AV half-year; TD combined segment | 9 |
+| 2024-Q3 | IFC 3, DFY 6 | AV nine-month Group result; TD combined segment | 9 |
+| 2024-Q4 | IFC 3, DFY 6 | AV full-year; TD combined segment | 9 |
+| 2025-Q1 | IFC 3, TD 1, DFY 6 | AV Group ratio and rounded GBP Canada premiums | 10 |
+
+IFC's selected combined ratio is consolidated and undiscounted across its
+geographies; it is not a Canada segment ratio. AV's reviewed Q1 combined
+operating ratios are undiscounted Canada General Insurance figures. TD's
+2025-Q1 Insurance income belongs to its fiscal quarter ended 2025-01-31;
+calendar reporters closed 2025-03-31. Definity's 2023-Q3 net loss is
+`-0.0483 CAD_BILLION` (CAD -48.3 million). Monetary review values use
+`CAD_BILLION`; ratio values use `PERCENT`. Annual, half-year, nine-month,
+combined-segment and trailing-year ROE figures remain absent from these
+quarterly review metrics.
+
+The source-review notes recorded bounded unscheduled staging runs and
+reviewed-only publication readbacks on 2026-09-26 to 2026-09-28. The reported
+period totals rose from 47 rows before this slice to 131 rows and 131 distinct
+observation IDs after the 2023-Q1 addition. That is historical evidence, not a
+fresh live verification. This checkout does not independently establish the
+Volume hashes, persisted candidate payloads, current Gold counts or deployed
+parser version. The historical notes describe parser corrections in local code
+changes outside this evidence-only branch; the manifests and reviews alone do
+not reproduce those staging runs from the current `origin/main` code. Recheck
+those against the live workspace before any further publication or present-day
+operational claim.
