@@ -15,6 +15,7 @@
 - Once a user authorizes a bounded slice, carry it through implementation, relevant tests, verification, review, and a reviewable handoff in one sustained run. Resolve routine choices from the repository, task constraints, and evidence; do not pause at each skill or task boundary.
 - For an end-to-end request, present the design, acceptance criteria, and plan before coding when applicable, then continue without a separate approval for each phase if they stay within the authorized scope. An explicit request to review or stop at a phase remains a stop point.
 - Stop for a decision only when the user must choose a material scope or behavior tradeoff, approve an irreversible or security-sensitive external action not already authorized, or provide access that is unavailable. Complete independent work first and present the concrete result and remaining decision.
+- The user has granted standing authorization to merge PRs created within an authorized task. Merge after required checks pass and review findings are resolved; do not pause solely for merge approval. Honor explicit review or stop points and repository branch protections.
 - Honor explicit stop points such as "plan only" or "stop before implementation." Keep each slice within its agreed scope.
 
 ## Agent and model routing
