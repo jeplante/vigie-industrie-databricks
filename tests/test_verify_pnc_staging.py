@@ -202,6 +202,3 @@ def test_cli_emits_baseline_and_post_run_json_without_writes(monkeypatch, capsys
     assert "run_id = '12345'" in statements.calls[-1]["statement"]
     assert not any("INSERT" in call["statement"].upper() or "MERGE" in call["statement"].upper()
                    for call in statements.calls)
-
-
-
