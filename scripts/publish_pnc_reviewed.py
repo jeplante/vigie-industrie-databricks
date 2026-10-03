@@ -7,7 +7,7 @@ import yaml
 
 from databricks.sdk import WorkspaceClient
 from vigie_databricks.insurer_contract import load_insurer_contract
-from vigie_databricks.pnc_review import attach_reviewed_evidence
+from vigie_databricks.pnc_review import attach_reviewed_evidence, select_reviewed_periods
 from vigie_databricks.pnc_publication import publish_pnc_candidates
 from review_pnc_staging import query
 
@@ -31,11 +31,17 @@ def execute(client, sql):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--publish", action="store_true")
+    parser.add_argument("--period", action="append", dest="periods",
+                        help="Limit publication to this reviewed quarter; may be repeated")
+    parser.add_argument("--profile", default="jeplante",
+                        help="Databricks auth profile (default: jeplante)")
     args = parser.parse_args()
-    client = WorkspaceClient(profile="jeplante")
     root = Path(__file__).resolve().parents[1]
     contract = load_insurer_contract(root / "config/pnc")
     reviews = yaml.safe_load((root / "config/pnc/reviewed_evidence.yaml").read_text())["reviews"]
+    reviews = select_reviewed_periods(reviews, args.periods)
+    selected_periods = sorted({review["period_id"] for review in reviews})
+    client = WorkspaceClient(profile=args.profile)
     candidates = query(client, "SELECT payload_json FROM workspace.vigie.pnc_candidates")
     documents = query(client, "SELECT to_json(struct(*)) FROM workspace.vigie.pnc_financial_documents")
     reviewed = [row for row in attach_reviewed_evidence(candidates, reviews) if row.get("basis_evidence")]
@@ -66,7 +72,8 @@ def main():
         by_id = {row["observation_id"]: row for row in actual}
         if len(by_id) != len(actual) or any(by_id.get(row["observation_id"]) != row for row in rows):
             raise RuntimeError("Publication readback differs from reviewed rows")
-    print(json.dumps({"published": args.publish, "reviewed_count": len(rows), "table": TABLE}))
+    print(json.dumps({"published": args.publish, "reviewed_count": len(rows),
+                      "periods": selected_periods, "table": TABLE}))
 
 
 if __name__ == "__main__":

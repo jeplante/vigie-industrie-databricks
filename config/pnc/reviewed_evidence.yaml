@@ -636,3 +636,164 @@ reviews:
       net_income: {value: 0.1009, unit: CAD_BILLION}
     exclusions:
       operating_roe: trailing_twelve_months_not_quarterly
+  - company_id: IFC
+    period_id: 2022-Q1
+    period_end: 2022-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 3f184a0db7befd54c5970b05e06369eb6050017baa6c9d0e03519359084e9d28
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q1 2023 results, Consolidated Highlights, restated Q1 2022 comparative column; combined ratio, net operating income attributable to common shareholders, and net income
+    period_excerpt: Restated comparative Q1-2022
+    scope_excerpt: Intact consolidated P&C performance across Canada, UK&I, and US; company-wide consolidated scope
+    metrics:
+      combined_ratio: {value: 92.1, unit: PERCENT}
+      operating_income: {value: 0.516, unit: CAD_BILLION}
+      net_income: {value: 0.487, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+      canada_segment_ratio: not substituted for consolidated ratio
+  - company_id: DFY
+    period_id: 2022-Q1
+    period_end: 2022-03-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 1c60cd5390361b10c43d8b5687e1fb2af1f4c9102f520947475740eec9fff331
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q1 2023 results, Consolidated Results, Q1 2022 restated comparative column; quarterly revenue, ratios, operating and net income
+    period_excerpt: Restated comparative Q1 2022
+    scope_excerpt: Definity consolidated Canadian P&C results; consolidated company scope
+    metrics:
+      insurance_revenue: {value: 0.8143, unit: CAD_BILLION}
+      claims_ratio: {value: 59.1, unit: PERCENT}
+      expense_ratio: {value: 33.3, unit: PERCENT}
+      combined_ratio: {value: 92.4, unit: PERCENT}
+      operating_income: {value: 0.0633, unit: CAD_BILLION}
+      net_income: {value: -0.0326, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+  - company_id: IFC
+    period_id: 2022-Q2
+    period_end: 2022-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: 6d072963ff97ed5c4373925bb8c0c41af20ff8a0c89dd238fe216d6f534f4512
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q2 2023 results, Consolidated Highlights, restated Q2 2022 comparative column; combined ratio, net operating income attributable to common shareholders, and net income
+    period_excerpt: Restated comparative Q2-2022
+    scope_excerpt: Intact consolidated P&C performance across Canada, UK&I, and US; company-wide consolidated scope
+    metrics:
+      combined_ratio: {value: 90.2, unit: PERCENT}
+      operating_income: {value: 0.581, unit: CAD_BILLION}
+      net_income: {value: 1.235, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+      canada_segment_ratio: not substituted for consolidated ratio
+  - company_id: DFY
+    period_id: 2022-Q2
+    period_end: 2022-06-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 999ea17b78126ecee77a366b1a90afb945070e5486f3d4ef45953134ac56b758
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q2 2023 results, Consolidated Results, Q2 2022 restated comparative column; quarterly revenue, ratios, operating and net income
+    period_excerpt: Restated comparative Q2 2022
+    scope_excerpt: Definity consolidated Canadian P&C results; consolidated company scope
+    metrics:
+      insurance_revenue: {value: 0.8638, unit: CAD_BILLION}
+      claims_ratio: {value: 63.3, unit: PERCENT}
+      expense_ratio: {value: 32.0, unit: PERCENT}
+      combined_ratio: {value: 95.3, unit: PERCENT}
+      operating_income: {value: 0.0511, unit: CAD_BILLION}
+      net_income: {value: -0.0772, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+  - company_id: IFC
+    period_id: 2022-Q3
+    period_end: 2022-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: dd4fece71ed8d3a4d3a9591dbdc965b28f81fbdb2d3ba7bf19934d73b151e9b3
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q3 2023 results, Consolidated Highlights, restated Q3 2022 comparative column; combined ratio, net operating income attributable to common shareholders, and net income
+    period_excerpt: Restated comparative Q3-2022
+    scope_excerpt: Intact consolidated P&C performance across Canada, UK&I, and US; company-wide consolidated scope
+    metrics:
+      combined_ratio: {value: 91.7, unit: PERCENT}
+      operating_income: {value: 0.488, unit: CAD_BILLION}
+      net_income: {value: 0.375, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+      canada_segment_ratio: not substituted for consolidated ratio
+  - company_id: DFY
+    period_id: 2022-Q3
+    period_end: 2022-09-30
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: 0a278049045a29330d5ea5d9ca8319b4d52aaa8176c306c06c9d6d9085338de2
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q3 2023 results, Consolidated Results, Q3 2022 restated comparative column; quarterly revenue, ratios, operating and net income
+    period_excerpt: Restated comparative Q3 2022
+    scope_excerpt: Definity consolidated Canadian P&C results; consolidated company scope
+    metrics:
+      insurance_revenue: {value: 0.8959, unit: CAD_BILLION}
+      claims_ratio: {value: 64.7, unit: PERCENT}
+      expense_ratio: {value: 32.0, unit: PERCENT}
+      combined_ratio: {value: 96.7, unit: PERCENT}
+      operating_income: {value: 0.0458, unit: CAD_BILLION}
+      net_income: {value: 0.0357, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+  - company_id: IFC
+    period_id: 2022-Q4
+    period_end: 2022-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_global
+    source_document_hash: a74d81120bac49d8df6523bbbb4dc0fd7806cf5fdf24a67dbbc8f9fa6502e1d3
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q4 and FY 2023 results, Consolidated Highlights, restated Q4 2022 comparative column; undiscounted combined ratio, net operating income attributable to common shareholders, and net income
+    period_excerpt: Restated comparative Q4-2022
+    scope_excerpt: Intact consolidated P&C performance across Canada, UK&I, and US; company-wide consolidated scope
+    metrics:
+      combined_ratio: {value: 93.2, unit: PERCENT}
+      operating_income: {value: 0.508, unit: CAD_BILLION}
+      net_income: {value: 0.353, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
+      discounted_combined_ratio: excluded in favor of undiscounted ratio
+      canada_segment_ratio: not substituted for consolidated ratio
+  - company_id: DFY
+    period_id: 2022-Q4
+    period_end: 2022-12-31
+    calendar_basis: calendar
+    disclosure_scope: consolidated_canada
+    source_document_hash: d1fd0d077ac27cf72a494883084918e8a585d822138877568886c7a56d1e2fec
+    reviewed_by: jerome.plante@hotmail.com
+    approval_reference: explicit user approval, 2026-10-03
+    basis: quarterly
+    source_locator: Q4 and FY 2023 results, Consolidated Results, Q4 2022 restated comparative column; quarterly revenue, ratios, operating and net income
+    period_excerpt: Restated comparative Q4 2022
+    scope_excerpt: Definity consolidated Canadian P&C results; consolidated company scope
+    metrics:
+      insurance_revenue: {value: 0.9117, unit: CAD_BILLION}
+      claims_ratio: {value: 59.5, unit: PERCENT}
+      expense_ratio: {value: 32.7, unit: PERCENT}
+      combined_ratio: {value: 92.2, unit: PERCENT}
+      operating_income: {value: 0.0766, unit: CAD_BILLION}
+      net_income: {value: 0.185, unit: CAD_BILLION}
+    exclusions:
+      operating_roe: comparative trailing-twelve-month measure, not quarterly
