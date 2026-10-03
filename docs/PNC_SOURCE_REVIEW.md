@@ -305,3 +305,69 @@ changes outside this evidence-only branch; the manifests and reviews alone do
 not reproduce those staging runs from the current `origin/main` code. Recheck
 those against the live workspace before any further publication or present-day
 operational claim.
+
+## Historical 2022 comparative P&C staging — pending human review (2026-10-03)
+
+Four one-time, unscheduled staging runs completed for 2022-Q1 through 2022-Q4. The saved pre-run baselines were empty for every quarter: zero earlier period document rows and zero candidate revisions were observed. Each fixed read-only verifier returned `verified`; each run audit was `needs_review`, with three documents, nine candidates, zero AI model calls, and empty errors. All candidates were scoped to the requested period and matched a document hash for the same issuer and period. Every quarter had zero duplicate observation keys, hash mismatches, and validation errors. Raw paths in the exact document inspections were under `/Volumes/workspace/vigie/pnc_finance_raw/`.
+
+All values below are staged candidates, and all source hashes are acquired-document hashes. Values, source hashes, and accounting bases are awaiting human source/accounting-basis review. The candidate payloads describe IFC and Definity observations as restated comparative quarter values for 2022. The values have not been approved for publication.
+
+| Quarter | Run ID | Issuer | Official source URL | Acquired SHA-256 | Document status |
+| --- | --- | --- | --- | --- | --- |
+| 2022-Q1 | `469751025901179` | IFC | [Intact Q1 2023 results](https://newsroom.intactfc.com/2023-05-10-Intact-Financial-Corporation-reports-Q1-2023-results-under-IFRS-17?asPDF=1) | `3f184a0db7befd54c5970b05e06369eb6050017baa6c9d0e03519359084e9d28` | fetched |
+| 2022-Q1 | `469751025901179` | DFY | [Definity Q1 2023 results](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-First-Quarter-2023-Results/default.aspx) | `1c60cd5390361b10c43d8b5687e1fb2af1f4c9102f520947475740eec9fff331` | fetched |
+| 2022-Q1 | `469751025901179` | TD | [TD Q1 2023 report to shareholders](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/2023-q1-report-to-shareholders-en.pdf) | `f036e331b0602db5d7638c0be25883e86d8fb9f9044882b13e03494d9406a382` | unchanged |
+| 2022-Q2 | `593042351860600` | IFC | [Intact Q2 2023 results](https://newsroom.intactfc.com/2023-08-02-Intact-Financial-Corporation-reports-Q2-2023-results?asPDF=1) | `6d072963ff97ed5c4373925bb8c0c41af20ff8a0c89dd238fe216d6f534f4512` | fetched |
+| 2022-Q2 | `593042351860600` | DFY | [Definity Q2 2023 results](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Financial-Corporation-Reports-Second-Quarter-2023-Results/default.aspx) | `999ea17b78126ecee77a366b1a90afb945070e5486f3d4ef45953134ac56b758` | fetched |
+| 2022-Q2 | `593042351860600` | TD | [TD Q2 2023 report to shareholders](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2023/2023-q2-report-to-shareholders-en.pdf) | `4949c1904a44ce76886811962ec8be538f0935ff32968b29a0672a01b6c85513` | unchanged |
+| 2022-Q3 | `571939574915613` | IFC | [Intact Q3 2023 results](https://newsroom.intactfc.com/2023-11-07-Intact-Financial-Corporation-reports-Q3-2023-results?asPDF=1) | `dd4fece71ed8d3a4d3a9591dbdc965b28f81fbdb2d3ba7bf19934d73b151e9b3` | fetched |
+| 2022-Q3 | `571939574915613` | DFY | [Definity Q3 2023 results](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2023/Definity-Reports-Third-Quarter-2023-Results/default.aspx) | `0a278049045a29330d5ea5d9ca8319b4d52aaa8176c306c06c9d6d9085338de2` | fetched |
+| 2022-Q3 | `571939574915613` | TD | [TD Q3 2023 earnings release](https://www.td.com/content/dam/tdcom/canada/about-td/pdf/2023-q3-earnings-news-release-en.pdf) | `e8efb8ca4c8e7ad998b1c03834d629e989a2310daf202d66ab0cf2fcdfdedc93` | unchanged |
+| 2022-Q4 | `943841249162001` | IFC | [Intact Q4 2023 results](https://newsroom.intactfc.com/2024-02-13-Intact-Financial-Corporation-reports-Q4-2023-results?asPDF=1) | `a74d81120bac49d8df6523bbbb4dc0fd7806cf5fdf24a67dbbc8f9fa6502e1d3` | fetched |
+| 2022-Q4 | `943841249162001` | DFY | [Definity Q4 and FY 2023 results](https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2024/Definity-Financial-Corporation-Reports-Fourth-Quarter-and-Full-Year-2023-Results/default.aspx) | `d1fd0d077ac27cf72a494883084918e8a585d822138877568886c7a56d1e2fec` | fetched |
+| 2022-Q4 | `943841249162001` | TD | [TD Q4 2022 earnings release](https://www.td.com/document/PDF/investor/2022/2022-Q4_Earnings_News_Release_F_EN.pdf) | `7cca539c210d80af9904ffc7b17828e810b9ca18c7d3c1c62c6c68f500c4d42e` | fetched |
+
+Candidate metrics, values, units, and payload context from each run-specific readback:
+
+| Quarter | Issuer | Metric | Candidate value | Unit | Context recorded in candidate |
+| --- | --- | --- | ---: | --- | --- |
+| 2022-Q1 | IFC | combined_ratio | 92.1 | PERCENT | Restated comparative Q1-2022; combined ratio, undiscounted |
+| 2022-Q1 | IFC | operating_income | 0.516 | CAD_BILLION | Restated comparative Q1-2022; net operating income attributable to common shareholders, CAD 516 million |
+| 2022-Q1 | IFC | net_income | 0.487 | CAD_BILLION | Restated comparative Q1-2022; net income, CAD 487 million |
+| 2022-Q1 | DFY | insurance_revenue | 0.8143 | CAD_BILLION | Restated comparative Q1 2022; insurance revenue, CAD 814.3 million |
+| 2022-Q1 | DFY | claims_ratio | 59.1 | PERCENT | Restated comparative Q1 2022; claims ratio |
+| 2022-Q1 | DFY | expense_ratio | 33.3 | PERCENT | Restated comparative Q1 2022; expense ratio |
+| 2022-Q1 | DFY | combined_ratio | 92.4 | PERCENT | Restated comparative Q1 2022; combined ratio |
+| 2022-Q1 | DFY | operating_income | 0.0633 | CAD_BILLION | Restated comparative Q1 2022; operating net income, CAD 63.3 million |
+| 2022-Q1 | DFY | net_income | -0.0326 | CAD_BILLION | Restated comparative Q1 2022; net income (loss) attributable to common shareholders, CAD (32.6) million |
+| 2022-Q2 | IFC | combined_ratio | 90.2 | PERCENT | Restated comparative Q2-2022; combined ratio, undiscounted |
+| 2022-Q2 | IFC | operating_income | 0.581 | CAD_BILLION | Restated comparative Q2-2022; net operating income attributable to common shareholders, CAD 581 million |
+| 2022-Q2 | IFC | net_income | 1.235 | CAD_BILLION | Restated comparative Q2-2022; net income, CAD 1,235 million |
+| 2022-Q2 | DFY | insurance_revenue | 0.8638 | CAD_BILLION | Restated comparative Q2 2022; insurance revenue, CAD 863.8 million |
+| 2022-Q2 | DFY | claims_ratio | 63.3 | PERCENT | Restated comparative Q2 2022; claims ratio |
+| 2022-Q2 | DFY | expense_ratio | 32.0 | PERCENT | Restated comparative Q2 2022; expense ratio |
+| 2022-Q2 | DFY | combined_ratio | 95.3 | PERCENT | Restated comparative Q2 2022; combined ratio |
+| 2022-Q2 | DFY | operating_income | 0.0511 | CAD_BILLION | Restated comparative Q2 2022; operating net income, CAD 51.1 million |
+| 2022-Q2 | DFY | net_income | -0.0772 | CAD_BILLION | Restated comparative Q2 2022; net income (loss) attributable to common shareholders, CAD (77.2) million |
+| 2022-Q3 | IFC | combined_ratio | 91.7 | PERCENT | Restated comparative Q3-2022; combined ratio, undiscounted |
+| 2022-Q3 | IFC | operating_income | 0.488 | CAD_BILLION | Restated comparative Q3-2022; net operating income attributable to common shareholders, CAD 488 million |
+| 2022-Q3 | IFC | net_income | 0.375 | CAD_BILLION | Restated comparative Q3-2022; net income, CAD 375 million |
+| 2022-Q3 | DFY | insurance_revenue | 0.8959 | CAD_BILLION | Restated comparative Q3 2022; insurance revenue, CAD 895.9 million |
+| 2022-Q3 | DFY | claims_ratio | 64.7 | PERCENT | Restated comparative Q3 2022; claims ratio |
+| 2022-Q3 | DFY | expense_ratio | 32.0 | PERCENT | Restated comparative Q3 2022; expense ratio |
+| 2022-Q3 | DFY | combined_ratio | 96.7 | PERCENT | Restated comparative Q3 2022; combined ratio |
+| 2022-Q3 | DFY | operating_income | 0.0458 | CAD_BILLION | Restated comparative Q3 2022; operating net income, CAD 45.8 million |
+| 2022-Q3 | DFY | net_income | 0.0357 | CAD_BILLION | Restated comparative Q3 2022; net (loss) income attributable to common shareholders, CAD 35.7 million |
+| 2022-Q4 | IFC | combined_ratio | 93.2 | PERCENT | Restated comparative Q4-2022; combined ratio, undiscounted |
+| 2022-Q4 | IFC | operating_income | 0.508 | CAD_BILLION | Restated comparative Q4-2022; net operating income attributable to common shareholders, CAD 508 million |
+| 2022-Q4 | IFC | net_income | 0.353 | CAD_BILLION | Restated comparative Q4-2022; net income, CAD 353 million |
+| 2022-Q4 | DFY | insurance_revenue | 0.9117 | CAD_BILLION | Restated comparative Q4 2022; insurance revenue, CAD 911.7 million |
+| 2022-Q4 | DFY | claims_ratio | 59.5 | PERCENT | Restated comparative Q4 2022; claims ratio |
+| 2022-Q4 | DFY | expense_ratio | 32.7 | PERCENT | Restated comparative Q4 2022; expense ratio |
+| 2022-Q4 | DFY | combined_ratio | 92.2 | PERCENT | Restated comparative Q4 2022; combined ratio |
+| 2022-Q4 | DFY | operating_income | 0.0766 | CAD_BILLION | Restated comparative Q4 2022; operating net income, CAD 76.6 million |
+| 2022-Q4 | DFY | net_income | 0.185 | CAD_BILLION | Restated comparative Q4 2022; net income attributable to common shareholders, CAD 185.0 million |
+
+The run audits list `AV` and `TD` as missing-source candidate gaps in every quarter. The manifests declare Aviva unavailable, with no quarterly Canada disclosure: the [2023 Q1 update](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2023/05/Q12023-trading-update/) gives Group COR and Canada premiums but no Canada quarterly COR; [HY23](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2023/08/HY2023-results-announcement/) has six-month figures and no isolated Q2 Canada result; the [Q3 2023 update](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2023/11/Q32023-trading-update/) gives nine-month Group COR rather than standalone Canada Q3 COR; [FY2022 results](https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2023/03/FY2022-results-announcement/) give annual Canada COR but no standalone Q4 Canada COR. These disclosures do not support an Aviva quarterly candidate. The same manifests declare TD's reports acquired as evidence but with no expected standalone Insurance KPI: each report's disclosed TD result is for a combined Wealth Management and Insurance segment, with TD's fiscal Q4 ending October 31, 2022. No TD candidates were present. Readback statuses were `unchanged` for TD in Q1-Q3 and `fetched` for TD in Q4; the report rows and hashes are retained above.
+
+No entries were added to `config/pnc/reviewed_evidence.yaml`, and no Gold values were changed or published. The staging audit, document, and candidate writes are sequential across tables; no cross-table atomicity is claimed. Review must confirm each report excerpt, comparative period, metric definition, accounting basis, scope, unit, value, and source hash before any evidence approval or publication.
