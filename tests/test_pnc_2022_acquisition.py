@@ -168,6 +168,10 @@ def test_2022_q4_acquisition_uses_comparative_not_current_column():
             "<h2>Consolidated Results</h2><p>(in millions of dollars, except as otherwise noted)</p>"
             "<table><tr><th>Q4 2023</th><th>Q4 2022 (Restated)</th><th>Change</th></tr>"
             "<tr><td>Insurance revenue</td><td>1,003.8</td><td>911.7</td></tr>"
+            "<tr><td>Claims ratio</td><td>61.1%</td><td>59.5%</td></tr>"
+            "<tr><td>Expense ratio</td><td>29.5%</td><td>32.7%</td></tr>"
+            "<tr><td>Combined ratio</td><td>90.6%</td><td>92.2%</td></tr>"
+            "<tr><td>Operating net income</td><td>100.7</td><td>76.6</td></tr>"
             "<tr><td>Net income attributable to common shareholders</td>"
             "<td>225.9</td><td>185.0</td></tr></table><h2>Per share measures</h2>"
         ).encode(),
@@ -193,8 +197,14 @@ def test_2022_q4_acquisition_uses_comparative_not_current_column():
         ("IFC", "operating_income"): 0.508,
         ("IFC", "net_income"): 0.353,
         ("DFY", "insurance_revenue"): 0.9117,
+        ("DFY", "claims_ratio"): 59.5,
+        ("DFY", "expense_ratio"): 32.7,
+        ("DFY", "combined_ratio"): 92.2,
+        ("DFY", "operating_income"): 0.0766,
         ("DFY", "net_income"): 0.185,
     })
+    assert len(result.candidates) == 9
+    assert not {row["company_id"] for row in result.candidates} & {"AV", "TD"}
     assert all(row["period_id"] == "2022-Q4" for row in result.candidates)
 
 
