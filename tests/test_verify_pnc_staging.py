@@ -54,6 +54,13 @@ def test_build_period_queries_selects_exact_run_audit():
     assert "run_id = '12345'" in queries["audit"]
 
 
+def test_period_queries_select_provenance_and_missing_source_fields():
+    queries = build_period_queries("workspace.vigie", "2022-Q2", "12345")
+    assert "source_url" in queries["documents"]
+    assert "raw_content_path" in queries["documents"]
+    assert "missing_sources_json" in queries["audit"]
+
+
 def test_verification_inputs_reject_unsafe_values():
     with pytest.raises(ValueError):
         build_period_queries("workspace.vigie; DROP TABLE pnc_candidates", "2022-Q2", None)
@@ -167,7 +174,8 @@ def test_cli_emits_baseline_and_post_run_json_without_writes(monkeypatch, capsys
     class Statements:
         def __init__(self):
             self.calls = []
-            self.rows = [[], [["IFC", "2022-Q1", "a" * 64, "doc-1", "fetched"]],
+            self.rows = [[], [["IFC", "2022-Q1", "a" * 64, "doc-1", "fetched",
+                               "https://example.com/report", "/tmp/report.pdf"]],
                          [["IFC", "2022-Q1", "a" * 64, "cand-1", "IFC-2022-Q1-net_income", "{}"]]]
 
         def execute_statement(self, **kwargs):
@@ -193,10 +201,14 @@ def test_cli_emits_baseline_and_post_run_json_without_writes(monkeypatch, capsys
     assert all("SELECT" in call["statement"].upper() for call in statements.calls)
 
     statements.rows[2] = statements.rows[1]
-    statements.rows.extend([statements.rows[1], [["12345", "needs_review", 1, 1, 0, "[]"]]])
+    statements.rows.extend([statements.rows[1],
+                            [["12345", "needs_review", 1, 1, 0, "[]", '["DOC-A"]']]])
     assert main(["--period", "2022-Q1", "--run-id", "12345"]) == 0
     post_run = json.loads(capsys.readouterr().out)
     assert post_run["audit"]["run_id"] == "12345"
+    assert post_run["audit"]["missing_sources_json"] == '["DOC-A"]'
+    assert post_run["documents"][0]["source_url"] == "https://example.com/report"
+    assert post_run["documents"][0]["raw_content_path"] == "/tmp/report.pdf"
     assert post_run["verification_status"] == "verified"
     assert len(statements.calls) == 5
     assert "run_id = '12345'" in statements.calls[-1]["statement"]

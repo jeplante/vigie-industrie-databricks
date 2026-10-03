@@ -25,7 +25,8 @@ def build_period_queries(namespace: str, period_id: str, run_id: str | None) -> 
 
     queries = {
         "documents": (
-            "SELECT company_id, reporting_period, content_hash, document_id, acquisition_status "
+            "SELECT company_id, reporting_period, content_hash, document_id, acquisition_status, "
+            "source_url, raw_content_path "
             f"FROM {tables['financial_documents']} WHERE reporting_period = '{period_id}'"
         ),
         "candidates": (
@@ -35,7 +36,8 @@ def build_period_queries(namespace: str, period_id: str, run_id: str | None) -> 
     }
     if run_id is not None:
         queries["audit"] = (
-            "SELECT run_id, status, documents_acquired, candidate_count, ai_model_calls, errors_json "
+            "SELECT run_id, status, documents_acquired, candidate_count, ai_model_calls, errors_json, "
+            "missing_sources_json "
             f"FROM {tables['run_audit']} WHERE run_id = '{run_id}'"
         )
     return queries
@@ -165,9 +167,11 @@ def main(argv=None):
     queries = build_period_queries(args.namespace, args.period, args.run_id)
     client = WorkspaceClient(profile=PROFILE)
     column_names = {
-        "documents": ["company_id", "reporting_period", "content_hash", "document_id", "acquisition_status"],
+        "documents": ["company_id", "reporting_period", "content_hash", "document_id",
+                      "acquisition_status", "source_url", "raw_content_path"],
         "candidates": ["company_id", "period_id", "source_document_hash", "candidate_id", "observation_id", "payload_json"],
-        "audit": ["run_id", "status", "documents_acquired", "candidate_count", "ai_model_calls", "errors_json"],
+        "audit": ["run_id", "status", "documents_acquired", "candidate_count", "ai_model_calls",
+                  "errors_json", "missing_sources_json"],
     }
     results = {key: _rows(_execute_query(client, statement), column_names[key])
                for key, statement in queries.items()}
