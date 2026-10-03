@@ -2,8 +2,28 @@
 
 from collections import defaultdict
 import math
+import re
 
 from vigie_databricks.pnc_history import validate_pnc_candidate, PNC_VALIDATED_STATUS
+
+
+def select_reviewed_periods(reviews, periods=None):
+    """Select review records for explicit quarterly periods, preserving order."""
+    reviews = list(reviews)
+    if periods is None:
+        return reviews
+    periods = list(periods)
+    if not periods or any(not isinstance(period, str) or
+                          not re.fullmatch(r"20\d{2}-Q[1-4]", period) for period in periods):
+        raise ValueError("period selection must contain valid quarterly period IDs")
+    if len(set(periods)) != len(periods):
+        raise ValueError("period selection contains duplicates")
+    selected = [review for review in reviews if review.get("period_id") in set(periods)]
+    matched = {review.get("period_id") for review in selected}
+    missing = set(periods) - matched
+    if missing:
+        raise ValueError(f"no reviewed evidence for requested periods: {', '.join(sorted(missing))}")
+    return selected
 
 
 def attach_reviewed_evidence(candidates, reviews):
