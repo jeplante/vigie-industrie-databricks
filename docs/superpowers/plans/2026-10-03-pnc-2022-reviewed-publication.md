@@ -61,10 +61,10 @@
 - No additional product files; append publication outcome to `docs/PNC_SOURCE_REVIEW.md` after verification.
 
 - [x] Run the Python 3.12 local test gate (`220 passed, 17 skipped`).
-- [ ] Run the publisher without `--publish` and with all four explicit `--period` arguments; require exactly 36 current observations and zero rejections.
-- [ ] Read-only inspect current Gold rows for the four periods and confirm no duplicate or conflicting observation IDs.
+- [x] Run the publisher without `--publish` and with all four explicit `--period` arguments; it returned exactly 36 reviewed observations and `published: false`.
+- [x] Read-only inspect current Gold rows for the four periods; the table exists and the period baseline is empty.
 - [ ] Publish with the same four periods only after identity, Gold table, and write access are confirmed.
 - [ ] Independently read back selected periods and verify 36 expected rows, unique observation IDs, exact metric/value/unit/hash/source URL, and evidence fields.
 - [ ] Record the Gold readback in the review ledger and run `git diff --check`.
 
-**Execution note (2026-10-03):** The local publisher dry-run could not authenticate because the Databricks OAuth token cache is absent. A temporary CLI login is pending. Remote verification and the Gold write are not complete. Confirm the authenticated principal and `MODIFY` on `workspace.vigie.pnc_gold_observations` before proceeding; the currently supplied grants show staging-table privileges only.
+**Execution note (2026-10-03):** The temporary OAuth profile authenticated as `jerome.plante@hotmail.com`. The exact-period dry-run returned 36 eligible rows. The four-period Gold baseline was empty. `SHOW GRANTS` lists only `SELECT` for the App principal; it lists no grant for the authenticated user. Publication and post-write readback remain blocked until `MODIFY` access is granted to the user or an authorized publisher principal is selected.
