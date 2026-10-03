@@ -51,8 +51,13 @@ def _errors_for_audit(audit: dict) -> list:
         parsed = json.loads(raw) if isinstance(raw, str) else raw
     except (TypeError, ValueError):
         return [f"audit errors_json is invalid: {raw}"]
+    if isinstance(parsed, dict):
+        return [
+            f"{key}: {value if isinstance(value, str) else json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False, default=str)}"
+            for key, value in sorted(parsed.items(), key=lambda item: str(item[0]))
+        ]
     if not isinstance(parsed, list):
-        return ["audit errors_json must contain a list"]
+        return ["audit errors_json must contain a list or object"]
     return [item if isinstance(item, str) else json.dumps(
         item, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str
     ) for item in parsed]

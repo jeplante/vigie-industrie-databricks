@@ -120,6 +120,24 @@ def test_readback_normalizes_audit_errors_to_strings():
     assert all(isinstance(error, str) for error in report["validation_errors"])
 
 
+def test_readback_accepts_empty_error_mapping():
+    audit_rows, document_rows, candidate_rows = sample_readback_rows()
+    audit_rows[0]["errors_json"] = "{}"
+    report = build_readback_report("2022-Q1", "12345", audit_rows,
+                                   document_rows, candidate_rows)
+    assert report["validation_errors"] == []
+    assert report["verification_status"] == "verified"
+
+
+def test_readback_normalizes_nonempty_error_mapping_deterministically():
+    audit_rows, document_rows, candidate_rows = sample_readback_rows()
+    audit_rows[0]["errors_json"] = '{"ZZZ":"ValueError","AAA":"TimeoutError"}'
+    report = build_readback_report("2022-Q1", "12345", audit_rows,
+                                   document_rows, candidate_rows)
+    assert report["validation_errors"] == ["AAA: TimeoutError", "ZZZ: ValueError"]
+    assert report["verification_status"] == "inconsistent"
+
+
 def test_readback_marks_non_review_audit_inconsistent():
     audit_rows, document_rows, candidate_rows = sample_readback_rows()
     audit_rows[0]["status"] = "extraction_incomplete"
