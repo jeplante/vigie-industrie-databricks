@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-02
 **Base revision:** `origin/main` at `7b9b874`
-**Status:** Design approved in chat; written-spec review pending
+**Status:** Approved by user on 2026-10-02
 
 ## Objective
 
@@ -104,11 +104,13 @@ provide. Record the period's pre-run staging state so any earlier revisions
 remain visible in the comparison.
 
 The existing `scripts/verify_pnc_staging.py` reports global aggregates. Extend
-it or add a focused read-only verifier with validated period and run-ID inputs
-to report:
+it or add a focused read-only verifier with a required validated period input
+and an optional validated run-ID input. Without a run ID, it records the
+period's pre-run baseline. With a run ID, it also selects that exact audit row
+and reports:
 
 - the exact audit row and its status, document count, candidate count, AI-call
-  count, missing-source list, and errors;
+  count, missing-source list, and errors when a run ID is supplied;
 - documents for the requested period, including issuer, source URL, content
   hash, acquisition status, and raw-content path;
 - candidates for the requested period grouped by issuer, metric, and source
@@ -140,9 +142,10 @@ in this slice.
   exact IFC and Definity metric keys, target-period context, and parenthesized
   negative net income. TD and Aviva remain zero-candidate cases for their
   declared reasons.
-- Read-only verifier tests cover valid and invalid period/run-ID input,
-  period-scoped result construction, exact audit selection, duplicate source
-  revisions, and candidate-to-document hash correspondence.
+- Read-only verifier tests cover pre-run mode without an audit ID, valid and
+  invalid period/run-ID input, period-scoped result construction, exact audit
+  selection, duplicate source revisions, and candidate-to-document hash
+  correspondence.
 - The documented Python 3.12 local pytest gate passes. GitHub's required
   `unit-tests` check passes on the PR.
 
