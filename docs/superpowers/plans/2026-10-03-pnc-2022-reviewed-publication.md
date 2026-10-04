@@ -63,8 +63,8 @@
 - [x] Run the Python 3.12 local test gate (`220 passed, 17 skipped`).
 - [x] Run the publisher without `--publish` and with all four explicit `--period` arguments; it returned exactly 36 reviewed observations and `published: false`.
 - [x] Read-only inspect current Gold rows for the four periods; the table exists and the period baseline is empty.
-- [ ] Publish with the same four periods only after identity, Gold table, and write access are confirmed.
-- [ ] Independently read back selected periods and verify 36 expected rows, unique observation IDs, exact metric/value/unit/hash/source URL, and evidence fields.
-- [ ] Record the Gold readback in the review ledger and run `git diff --check`.
+- [x] Publish with the same four periods only after identity, Gold table, and write access are confirmed.
+- [x] Independently read back selected periods and verify 36 expected rows, unique observation IDs, exact metric/value/unit/hash/source URL, and evidence fields.
+- [x] Record the Gold readback in the review ledger and run `git diff --check`.
 
-**Execution note (2026-10-03):** The temporary OAuth profile authenticated as `jerome.plante@hotmail.com`. The exact-period dry-run returned 36 eligible rows. The four-period Gold baseline was empty. `SHOW GRANTS` lists only `SELECT` for the App principal; it lists no grant for the authenticated user. Publication and post-write readback remain blocked until `MODIFY` access is granted to the user or an authorized publisher principal is selected.
+**Execution note (2026-10-03):** After the user granted `MODIFY` on `workspace.vigie.pnc_gold_observations`, the temporary OAuth profile authenticated as `jerome.plante@hotmail.com`. Databricks Connect 17.3.13 serverless dry-run returned 36 eligible rows for exactly 2022-Q1 through 2022-Q4. The runner rechecked the empty period baseline immediately before its single-table Delta `MERGE`. Publication returned `published: true`, 36 reviewed observations, and 36 unique IDs. A separate Connect session verified exactly nine rows per quarter, all matching the reviewed values, units, hashes, URLs, period/scope fields, and evidence JSON. No Life Finance, schedule, job, deployment, App, or other-period Gold rows were changed. No cross-table atomicity is claimed.
