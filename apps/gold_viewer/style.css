@@ -25,6 +25,7 @@
 .comparison-delta-period { display: block; color: #60788a; font-size: .68rem; margin-top: .15rem; }
 .comparison-delta.up { background: #e2f5ec; color: #087f5b; }.comparison-delta.down { background: #ffeaeb; color: #c3343b; }.comparison-delta.flat { background: #edf1f3; color: #526975; }
 .comparison-empty { color: #8ea0ac; vertical-align: middle !important; }
+.comparison-meta { color: #45616d; font-size: .8rem; white-space: nowrap; }
 [data-testid="stMetric"] { background: white; border: 1px solid #d7e0e5; border-top: 3px solid #146c7e; border-radius: .65rem; padding: 1rem; box-shadow: 0 10px 30px rgb(15 36 51 / 8%); height: 100%; }
 [data-testid="stMetricLabel"] { color: #5f6f7d; }
 [data-testid="stMetricValue"] { font-size: clamp(1.3rem,2.6vw,2.15rem); font-weight: 800; letter-spacing: -.04em; }
