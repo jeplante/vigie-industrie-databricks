@@ -99,8 +99,9 @@ def evaluate_operations(
 
 
 # --- P&C -------------------------------------------------------------------------------------------------
-# P&C KPIs are published only after a human review of the evidence, so a missing quarter here means
-# "a report is out and the review is still to do", not a pipeline failure: these alerts are warnings.
+# P&C KPIs are discovered, reviewed and published automatically by vigie-pnc-news (pnc_auto_review), so a
+# missing quarter means the report is not found yet or a candidate was rejected by the automatic review; the
+# Job's own output says which. These alerts are warnings.
 # Expected KPIs per issuer: what each one discloses quarterly and the review has validated so far
 # (Gold, 2026-10-07). Aviva Canada publishes no quarterly Canadian segment, so nothing is expected from it.
 PNC_EXPECTED_METRICS: dict[str, frozenset[str]] = {
@@ -177,7 +178,7 @@ def evaluate_pnc(
         if missing:
             alerts.append(OperationsAlert(
                 "pnc_quarter_incomplete", "warning", company,
-                f"{period}: KPI P&C non publiés: {', '.join(missing)}. Revue des preuves à faire avant publication.",
+                f"{period}: KPI P&C non publiés: {', '.join(missing)}. Rapport pas encore trouvé ou valeur rejetée par la validation automatique (voir le run vigie-pnc-news).",
             ))
     latest_by_company: dict[str, str] = {}
     for row in rows:
@@ -213,6 +214,6 @@ def evaluate_pnc(
             day = published_at.strftime("%Y-%m-%d") if hasattr(published_at, "strftime") else str(published_at or "")[:10]
             alerts.append(OperationsAlert(
                 "pnc_results_announced", "warning", company,
-                f"Résultats {period} annoncés le {day}; KPI non publiés. Revue des preuves à faire avant publication.",
+                f"Résultats {period} annoncés le {day}; KPI non publiés. Voir la validation automatique du run vigie-pnc-news.",
             ))
     return alerts

@@ -28,11 +28,11 @@ explicite, de preference un moment calme.
 | Job | Id | Cadence (America/Toronto) | Contenu |
 |---|---|---|---|
 | vigie-finance-live | 319208446632488 | 06:15 quotidien | acquisition et publication Finance vie |
-| vigie-pnc-news | 199998716914987 | 06:20 quotidien | salles de presse des 4 assureurs P&C et medias sectoriels |
+| vigie-pnc-news | 199998716914987 | 06:20 quotidien | actualites P&C, puis decouverte, acquisition et publication automatiques des KPI P&C |
 | vigie-app-start | 494550201015118 | 06:30 quotidien | demarre l'App si elle est arretee |
 | vigie-operations-monitor | 737745708117826 | 06:45 quotidien | alertes (App, Finance, trimestre vie et P&C, consommation) |
 | vigie-official-investor-news | 1118291153119927 | toutes les 6 h | actualites officielles vie et media sectoriel |
-| vigie-pnc-acquisition-review | 313136866676385 | manuel | acquisition des documents P&C vers le staging |
+| vigie-pnc-acquisition-review | 313136866676385 | manuel | acquisition P&C sur manifeste explicite (cas d'exception) |
 | vigie-finance-history-publish | 623558766235360 | manuel | reprise historique Finance (ponctuelle) |
 
 Les Jobs planifies envoient un courriel a l'echec. Le monitor **echoue volontairement** s'il detecte une alerte: son
@@ -42,14 +42,31 @@ courriel est le canal d'alerte.
 en echec garde ses derniers articles (le `MERGE` ne supprime jamais), l'audit la nomme et le run echoue pour que le Job
 alerte. Medias sectoriels: moins de 2 fils lus fait echouer le run, dans les deux univers.
 
-**Alertes P&C du monitor (depuis 0.10.15).** Les KPI P&C sont publies apres une revue humaine des preuves, donc:
+**Publication P&C automatique (depuis 0.10.16, decision du user du 2026-10-07).** Chaque matin, la tache `pnc_acquire` de
+`vigie-pnc-news` (apres les actualites):
+1. **decouvre** les nouveaux rapports (`pnc_discovery.py`): communique de resultats d'Intact et de Definity lu dans
+   `pnc_official_news`, adresse fixe du rapport TD sondee une fois le trimestre fiscal clos; Aviva toujours indisponible;
+   s'il n'y a rien de nouveau, le run s'arrete la (`nothing_new`);
+2. **acquiert** les documents trouves vers le staging (`pnc_financial_documents`, `pnc_candidates`);
+3. **valide** chaque candidat (`pnc_auto_review.py`): indicateur publiable pour l'assureur, trimestre du document, plages
+   des ratios, coherence avec le meme trimestre l'an dernier ou le trimestre precedent, identite sinistres + frais =
+   combine, valeur deja publiee identique ou differente; puis la porte de publication habituelle;
+4. **publie** les valeurs acceptees dans `pnc_gold_observations` et relit la table. Un candidat rejete n'est pas publie
+   et fait echouer le run (courriel).
+
+Teste sur tout l'historique (2026-10-07): les memes 169 valeurs que la revue humaine, les 2 erreurs d'extraction de
+2023 rejetees. Exception: apres inspection, une fiche manuelle dans `config/pnc/reviewed_evidence.yaml` et
+`scripts/publish_pnc_reviewed.py --period <trimestre> --publish` publient une valeur rejetee a tort. Essai sans ecriture:
+lancer le Job avec `dry_run=true` (decouverte, acquisition et decisions affichees, rien d'ecrit).
+
+**Alertes P&C du monitor (depuis 0.10.15).**
 - `pnc_quarter_incomplete` (avertissement): un KPI attendu manque pour le dernier trimestre clos depuis 50 jours, selon le
-  calendrier de l'assureur (exercice fiscal de TD: novembre a octobre). Aviva Canada n'est jamais attendu. Action: faire la
-  revue P&C et publier.
+  calendrier de l'assureur (exercice fiscal de TD: novembre a octobre). Aviva Canada n'est jamais attendu. Action: lire
+  la sortie de la tache `pnc_acquire` du dernier run `vigie-pnc-news` (rapport pas encore trouve, ou valeur rejetee).
 - `pnc_results_announced` (avertissement): un communique officiel annonce des resultats trimestriels plus recents que la
-  derniere publication de cet assureur. Action: meme revue, souvent avant que l'alerte precedente ne se declenche.
+  derniere publication de cet assureur. Action: meme lecture; normalement publie le matin suivant le communique.
 - `pnc_value_anomalous` (critique): un ratio publie sort de sa plage plausible, ou sinistres + frais ne donnent pas le
-  ratio combine (tolerance 0,5 pp). Action: verifier la preuve, corriger par une nouvelle publication revue.
+  ratio combine (tolerance 0,5 pp). Action: verifier le document, corriger par une publication manuelle.
 - `pnc_unreadable` (avertissement): le monitor n'a pas pu lire les tables P&C.
 
 ## 2. Verification quotidienne (5 minutes)

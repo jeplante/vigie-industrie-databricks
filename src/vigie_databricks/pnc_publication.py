@@ -39,3 +39,26 @@ def publish_pnc_candidates(candidates, documents, prior_published, contract: Ins
     merged = {row["observation_id"]: row for row in prior_published}
     merged.update({row["observation_id"]: row for row in accepted})
     return FinancePublicationResult(tuple(merged[key] for key in sorted(merged)), "current", ())
+
+
+GOLD_SCHEMA = ("observation_id STRING,company_id STRING,metric_id STRING,period_id STRING,"
+               "value DOUBLE,unit STRING,period_end STRING,calendar_basis STRING,disclosure_scope STRING,"
+               "source_url STRING,source_document_hash STRING,validation_status STRING,evidence_json STRING")
+
+
+def gold_rows(observations):
+    """Rows of pnc_gold_observations for validated observations, with their evidence as JSON."""
+    import json
+
+    rows = []
+    for row in observations:
+        evidence = row["basis_evidence"]
+        output = {key: row[key] for key in ("observation_id", "company_id", "metric_id", "period_id",
+                  "value", "unit", "source_url", "source_document_hash", "validation_status")}
+        for key in ("period_end", "calendar_basis", "disclosure_scope"):
+            if not evidence.get(key):
+                raise ValueError(f"Missing reviewed {key}")
+            output[key] = evidence[key]
+        output["evidence_json"] = json.dumps(evidence, sort_keys=True)
+        rows.append(output)
+    return rows

@@ -453,8 +453,9 @@ sont integrees. Etat au 2026-10-07:
   resultat net P&C en est exclu: la regle vie masquait 6 trimestres revus); medias sectoriels P&C dans
   `pnc_editorial_news` (Canadian Underwriter refuse les lecteurs automatises: non utilise); variations P&C colorees
   selon le sens favorable de `config/pnc/metrics.yaml`; meme regle de publication des actualites dans les deux
-  univers; alertes P&C du monitor (voir RUNBOOKS). Reste volontairement different: la publication P&C exige une
-  revue humaine des preuves, et les indicateurs different par nature.
+  univers; alertes P&C du monitor (voir RUNBOOKS). Reste volontairement different: les indicateurs, par nature.
+- Publication P&C automatique (0.10.16): la revue humaine par trimestre est remplacee par `pnc_auto_review.py` et la
+  recherche manuelle des rapports par `pnc_discovery.py`, dans la tache `pnc_acquire` de `vigie-pnc-news`.
 - Chat, ajouts du 2026-10-07 (PR #55): `reasoning_effort=low` aussi cote vie (mesure sur 12 appels reels: 784 a 411 jetons en
   moyenne, 4,1 s a 2,5 s); `answer_check.py` signale (sans bloquer) les chiffres avec unite qu'aucune valeur du contexte n'explique
   (0 faux positif sur 64 chiffres reels; il NE detecte PAS un vrai chiffre rattache au mauvais indicateur); reponses directes pour la
@@ -465,9 +466,9 @@ sont integrees. Etat au 2026-10-07:
   Le Job `vigie-official-investor-news` ecrit toujours une ligne d'audit, meme si une source echoue (lot non publie,
   dernier lot valide preserve), et la barre laterale vie nomme la source en echec.
 Decisions du 2026-10-07 (a ne pas rouvrir sans raison):
-- Collecte P&C des KPI: reste MANUELLE. La publication est revue par un humain par conception, Aviva (pas de COR
-  trimestriel isole hors Q1) et TD (segment combine) sont des lacunes structurelles; le Job `vigie-pnc-news` sert de
-  signal (communique de resultats ou d'estimation de pertes) pour lancer `vigie-pnc-acquisition-review` a la main.
+- Collecte P&C des KPI: d'abord gardee manuelle, puis RENDUE AUTOMATIQUE le meme jour a la demande du user (revue
+  humaine jugee superflue): voir RUNBOOKS, « Publication P&C automatique ». Aviva (pas de COR trimestriel isole hors Q1)
+  et TD (segment combine) restent des lacunes structurelles.
 - Quota: aucun changement. La Free Edition ne publie pas son quota (depassement = calcul arrete le reste de la
   journee); des journees a 17-19 DBU ont eu lieu sans arret. L'alerte `usage_spike` est le voyant. Reduire
   `vigie-app-start` aux jours ouvrables seulement si un Job echoue pour cause de ressources.
