@@ -381,6 +381,32 @@ du schedule. Conserver le mode fixture comme acceptance reproductible.
 - deploiement App `01f1a957840b1ca7b7768a039ab34854` SUCCEEDED et App RUNNING,
   verifies le 5 septembre; schedule et notifications d'echec confirmes via API.
 
+### Etat live observe - 6 octobre 2026 (lecture seule)
+
+Jobs (workspace `dbc-aa63f707-8316`) :
+
+| Job | Schedule | Derniers runs observes |
+|---|---|---|
+| vigie-finance-live | 06:15 UNPAUSED | SUCCESS du 3 au 6 octobre; audit `current`, 4/4 sources |
+| vigie-official-investor-news | toutes les 6 h UNPAUSED | SUCCESS (4 runs du 6 octobre) |
+| vigie-operations-monitor | 06:45 UNPAUSED | FAILED du 3 au 6 octobre au moins (voir ci-dessous) |
+| vigie-editorial-news | 06:30 PAUSED | dernier run SUCCESS le 15 septembre |
+| vigie-pnc-acquisition-review | aucun | 2 derniers runs FAILED (20 et 21 septembre) |
+| vigie-finance-history-publish | aucun | non examine |
+
+Le monitor d'exploitation echouait par conception : il exigeait les KPI du
+dernier trimestre civil termine des le lendemain de sa fin. Des le 1er octobre
+il reclamait donc le 2026-Q3 (publie en novembre) et levait 4 alertes critiques
+par jour pour MFC, SLF, GWO et IAG, ce qui noyait la vraie alerte
+`app_unavailable` (App arretee a 06:45 le 6 octobre, RUNNING plus tard le meme
+jour). Correctif fusionne (PR #21) : le trimestre attendu est celui termine
+depuis au moins 50 jours (`REPORTING_LAG_DAYS`). **Le Job deploye garde
+l'ancienne logique tant que le wheel n'est pas reconstruit et redeploye.**
+
+L'App : cache `st.cache_data` de 300 s sur les lectures publiees et sur les
+audits/alertes (PR #19); rerun apres 60 s de 6,2 s a 1,3 s. Le premier
+chargement local reste d'environ 11 s (connexion).
+
 ## 11. Instruction exacte de reprise
 
 ```text

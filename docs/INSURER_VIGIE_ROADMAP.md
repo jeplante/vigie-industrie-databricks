@@ -1,7 +1,7 @@
 # Feuille de route - Vigie assurance de personnes dans Databricks
 
-**Statut :** Slices 10 a 14 integrees localement; acceptation Databricks et acquisition live en attente
-**Date :** 2026-09-04
+**Statut :** Slices 10 a 14 integrees; acquisition Finance live et planifiee, actualites officielles planifiees, monitor d'exploitation en place (voir `PROJECT_HANDOFF.md`, etat observe du 2026-10-06). Les statuts des Slices 15 a 17 ne sont pas reverifies ici.
+**Date :** 2026-09-04 (statut mis a jour le 2026-10-06)
 **But produit :** transposer dans Databricks la vigie des quatre grands
 assureurs de personnes canadiens : Manuvie (MFC), Sun Life (SLF),
 Great-West Lifeco (GWO) et iA Groupe financier (IAG).
