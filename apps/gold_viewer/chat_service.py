@@ -155,13 +155,17 @@ def ask(question: str, context: dict[str, Any], history: list[dict[str, str]]) -
     response.raise_for_status()
     parsed = _response_object(response.json()["choices"][0]["message"]["content"])
     allowed = {item.get("source_url") for item in context.get("news", [])} | {item.get("source_url") for item in context.get("documents", [])}
-    parsed["citations"] = [item for item in parsed.get("citations", []) if isinstance(item, dict) and item.get("url") in allowed][:6]
+    citations = {}
+    for item in parsed.get("citations") or []:
+        if isinstance(item, dict) and item.get("url") in allowed:
+            citations.setdefault(item["url"], item)
+    parsed["citations"] = list(citations.values())[:6]
     allowed_kpis = {
         (row.get("company_id"), row.get("metric_id"), row.get("current_period_id"))
         for row in context.get("comparisons", [])
     }
     parsed["used_kpis"] = [
-        item for item in parsed.get("used_kpis", [])
+        item for item in parsed.get("used_kpis") or []
         if isinstance(item, dict)
         and (item.get("company_id"), item.get("metric_id"), item.get("period_id")) in allowed_kpis
     ][:12]

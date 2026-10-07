@@ -150,3 +150,47 @@ def test_fallback_answer_uses_only_published_core_earnings():
     ], "documents": []})
     assert "MFC : 1.9" in answer["answer"]
     assert answer["used_kpis"] == [{"company_id": "MFC", "metric_id": "core_earnings", "period_id": "2026-Q2"}]
+
+
+def _ask_with_model_content(monkeypatch, content, context):
+    chat = _chat_service()
+
+    class ConfigStub:
+        host = "https://workspace.example"
+
+        @staticmethod
+        def authenticate():
+            return {}
+
+    class ResponseStub:
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"choices": [{"message": {"content": content}}]}
+
+    monkeypatch.setattr(chat, "Config", ConfigStub)
+    monkeypatch.setattr(chat.requests, "post", lambda *args, **kwargs: ResponseStub())
+    return chat.ask("Quel est le résultat?", context, [])
+
+
+def test_ask_deduplicates_citations_by_url(monkeypatch):
+    url = "https://official.example/report"
+    answer = _ask_with_model_content(
+        monkeypatch,
+        '{"answer":"ok","citations":[{"label":"A","url":"%s"},{"label":"B","url":"%s"}],"caveat":null}' % (url, url),
+        {"news": [], "documents": [{"source_url": url}]},
+    )
+    assert answer["citations"] == [{"label": "A", "url": url}]
+
+
+def test_ask_tolerates_null_citations_and_kpis(monkeypatch):
+    answer = _ask_with_model_content(
+        monkeypatch,
+        '{"answer":"ok","citations":null,"used_kpis":null,"caveat":null}',
+        {"news": [], "documents": []},
+    )
+    assert answer["citations"] == []
+    assert answer["used_kpis"] == []
