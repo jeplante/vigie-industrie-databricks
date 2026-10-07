@@ -1,4 +1,5 @@
 import importlib.util
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import nullcontext
@@ -203,9 +204,10 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
     ]
     view = View()
     module.render_pnc_preview(view, rows)
-    (history,) = view.tables
+    history = next(table for table in view.tables if table[0] and "Trimestre" in table[0][0])
     assert "<strong>0.279 G$</strong>" in _row_html(view.html, "TD Insurance")
-    assert [row["Trimestre"] for row in history[0]] == ["2026-Q2", "2026-Q1", "2026-Q1"]
+    assert [row["Trimestre"] for row in history[0]] == ["2026-Q2", "2026-Q1"]  # TD only: its own panel
+    assert {row["Compagnie"] for row in history[0]} == {"TD Insurance"}
     q1_td = next(row for row in history[0] if row["Compagnie"] == "TD Insurance" and row["Trimestre"] == "2026-Q1")
     assert q1_td["Valeur"] == "0.183 G$"
     assert q1_td["Clôture"] == "2026-01-31"
@@ -257,13 +259,13 @@ def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
     ]
     view = View()
     module.render_pnc_preview(view, rows)
-    assert view.tab_labels == [["Synthèse", "Historique validé"]]
+    assert view.tab_labels == [["Synthèse", "Par compagnie"], ["IFC", "AV", "TD", "DFY"]]
     assert ("Assureurs de dommages", "2 / 4") in view.metrics
     assert "Période de référence : 2026-Q2" in view.captions
     assert "<strong>IFC</strong><span class='source-text'>2026-Q2 · 1 KPI · clôture 2026-06-30 · Civil" in view.html
     assert "source-na'><span class='source-state'>N/A</span><strong>AV</strong>" in view.html
     assert "source-na'><span class='source-state'>N/A</span><strong>DFY</strong>" in view.html
-    assert any("plusieurs trimestres" in message for message in view.infos)  # a single period: no history table
+    assert any("Aucun indicateur validé pour 2026-Q2" in message for message in view.infos)  # AV and DFY panels
 
 
 def test_pnc_acquisition_is_read_only_and_validates_the_namespace():
@@ -400,3 +402,66 @@ def test_pnc_news_tab_lists_articles_and_filters_by_issuer_source_and_category(m
     empty = View()
     module.render_pnc_news(empty, [])
     assert any("Aucune actualité officielle" in caption for caption in empty.captions)
+
+
+def test_company_table_mirrors_the_life_columns_and_keeps_the_na_semantics():
+    module = _load_pnc_view()
+    current = [
+        dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q2", period_end="2026-06-30", calendar_basis="calendar", value=94.9, unit="PERCENT", source_url="u"),
+        dict(company_id="IFC", metric_id="net_income", period_id="2026-Q2", period_end="2026-06-30", calendar_basis="calendar", value=0.867, unit="CAD_BILLION", source_url="u"),
+    ]
+    history = current + [
+        dict(company_id="IFC", metric_id="combined_ratio", period_id="2025-Q2", period_end="2025-06-30", calendar_basis="calendar", value=86.1, unit="PERCENT", source_url="u"),
+        dict(company_id="IFC", metric_id="net_income", period_id="2025-Q2", period_end="2025-06-30", calendar_basis="fiscal", value=0.5, unit="CAD_BILLION", source_url="u"),
+    ]
+    table = {row["Indicateur"]: row for row in module.pnc_company_table(current, history, "2026-Q2")}
+    assert set(next(iter(table.values()))) == {"Indicateur", "Période", "Valeur", "Variation annuelle", "Comparaison"}
+    assert table["Ratio combiné"]["Valeur"] == "94.9 %" and table["Ratio combiné"]["Variation annuelle"] == "▲ +8.8 pp"
+    assert table["Résultat net"]["Valeur"] == "0.867 G$" and table["Résultat net"]["Variation annuelle"] == "N/A"  # fiscal vs civil: blocked
+    assert table["Résultat net"]["Comparaison"] == "vs 2025-Q2"
+    assert table["Ratio de sinistres"]["Valeur"] == "N/A" and table["Ratio de sinistres"]["Variation annuelle"] == "N/A"
+    assert module.pnc_company_table([], [], None)[0]["Période"] == "N/A"
+
+
+def test_company_panel_shows_provenance_history_news_and_the_aviva_gap():
+    module = _load_pnc_view()
+
+    class View:
+        def __init__(self):
+            self.infos, self.captions, self.links, self.tables, self.html = [], [], [], [], ""
+            self.column_config = SimpleNamespace(LinkColumn=lambda *args, **kwargs: kwargs)
+        def subheader(self, text): self.captions.append(text)
+        def info(self, text): self.infos.append(text)
+        def caption(self, text): self.captions.append(text)
+        def link_button(self, label, url, key=None): self.links.append((label, key))
+        def dataframe(self, rows, **kwargs): self.tables.append(rows)
+        def markdown(self, text, **kwargs): self.html += text
+        def columns(self, count): return [SimpleNamespace(multiselect=lambda *a, **k: []) for _ in range(count)]
+        def write(self, text): pass
+
+    current = [dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q2", period_end="2026-06-30", calendar_basis="calendar", value=94.9, unit="PERCENT", source_url="https://example.com/ifc")]
+    older = [dict(current[0], period_id="2025-Q2", period_end="2025-06-30", value=86.1)]
+    news = [{"article_id": "n1", "company_id": "IFC", "source": "intact_newsroom", "source_url": "https://newsroom.intactfc.com/a", "title": "Catastrophe loss estimate",
+             "summary": "", "published_at": None, "categories": ["Communiqué"]},
+            {"article_id": "n2", "company_id": "DFY", "source": "definity_newsroom", "source_url": "https://www.definityfinancial.com/b", "title": "Other issuer", "summary": "", "published_at": None, "categories": []}]
+    view = View()
+    module.render_pnc_company(view, "IFC", "Intact Financial", "Groupe consolidé", current, current + older, "2026-Q2", news)
+    assert "Périmètre : Groupe consolidé" in view.captions and any("Clôture : 2026-06-30 · Calendrier : Civil" in c for c in view.captions)
+    assert ("Consulter le rapport officiel ↗", "pnc-report-IFC-0") in view.links
+    assert any("Ratio combiné : 94.9 % (▲ +8.8 pp vs 2025-Q2)" in info for info in view.infos)
+    assert len(view.tables) == 2 and "Trimestre" in view.tables[1][0]  # indicators, then its own two-quarter history
+    assert "#### Actualités" in view.html and "Catastrophe loss estimate" in view.html and "Other issuer" not in view.html
+    aviva = View()
+    module.render_pnc_company(aviva, "AV", "Aviva Canada", "Segment Canada", [], [], "2026-Q2", [])
+    assert any("Aucun indicateur validé pour 2026-Q2" in info for info in aviva.infos) and any("six mois" in info for info in aviva.infos)
+    assert any(key == "pnc-company-aviva-hy26" for _label, key in aviva.links) and len(aviva.tables) == 1
+    assert any("Aucune actualité pertinente" in caption for caption in aviva.captions)
+
+
+def _load_pnc_view():
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    sys.path.insert(0, str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
