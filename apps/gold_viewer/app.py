@@ -10,6 +10,7 @@ from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer, fallback_answer
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
 from history_quality import flag_suspicious_history, year_to_date_values
+from news_filter import filter_articles, news_facets
 from pnc_data import fetch_pnc_published
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit
 
@@ -236,6 +237,15 @@ with company_tab:
             articles.sort(key=lambda article: str(article.get("published_at") or ""), reverse=True)
             if not articles:
                 st.caption("Aucune actualité pertinente n’est encore disponible pour cet assureur.")
+            if articles:
+                kind_options, source_options, category_options = news_facets(articles, NEWS_SOURCE_LABELS)
+                kind_column, source_column, category_column = st.columns(3)
+                chosen_kinds = kind_column.multiselect("Type", kind_options, key=f"news-kind-{company}")
+                chosen_sources = source_column.multiselect("Source", source_options, key=f"news-source-{company}")
+                chosen_categories = category_column.multiselect("Catégorie", category_options, key=f"news-category-{company}")
+                articles = filter_articles(articles, NEWS_SOURCE_LABELS, chosen_kinds, chosen_sources, chosen_categories)
+                if not articles:
+                    st.caption("Aucune actualité ne correspond aux filtres choisis.")
             for article in articles[:20]:
                 source = NEWS_SOURCE_LABELS.get(article["source"], article["source"])
                 metadata = [source, article["news_kind"]]
