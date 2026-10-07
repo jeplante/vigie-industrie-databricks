@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from source_status import SidebarSection, alert_rows, pnc_sources, render_sidebar
+
 from shared_ui import (
     delta_badge,
     empty_cell,
@@ -141,20 +143,7 @@ def pnc_history_table(rows):
              "Rapport officiel": row["source_url"]} for row in ordered]
 
 
-def _render_sidebar(st, period, published_rows):
-    """Source-status sidebar, same skeleton as the life universe, from data already read."""
-    published = {row["company_id"] for row in published_rows}
-    with st.sidebar:
-        st.caption("État des sources")
-        st.metric("Assureurs de dommages", f"{len(published)} / {len(COMPANIES)}")
-        if period:
-            st.caption(f"Période de référence : {period}")
-        absent = [name for company, name, _ in COMPANIES if company not in published]
-        if published and absent:
-            st.caption("N/A : " + ", ".join(absent) + " (aucune valeur validée).")
-
-
-def render_pnc_preview(st, published_rows=()):
+def render_pnc_preview(st, published_rows=(), operations_alerts=()):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
     period, published_rows = current_pnc_rows(all_rows)
@@ -163,7 +152,13 @@ def render_pnc_preview(st, published_rows=()):
                      "IFC · AV · TD · DFY — résultats et actualités"),
         unsafe_allow_html=True,
     )
-    _render_sidebar(st, period, published_rows)
+    coverage = pnc_sources([(company, name) for company, name, _ in COMPANIES], published_rows, all_rows, period)
+    render_sidebar(
+        st,
+        [SidebarSection("Assureurs de dommages", f"{sum(row.level == 'ok' for row in coverage)} / {len(COMPANIES)}",
+                        f"Période de référence : {period}" if period else None, coverage)],
+        alert_rows(operations_alerts),
+    )
     st.caption("Intact Financial · Aviva Canada · TD Insurance · Definity Financial")
     if not published_rows:
         st.info("Les données P&C sont en cours de validation. Aucun KPI n’est encore publié dans cette vue.")

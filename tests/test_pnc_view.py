@@ -222,7 +222,7 @@ def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
 
     class View:
         def __init__(self):
-            self.metrics, self.captions, self.tab_labels, self.infos = [], [], [], []
+            self.metrics, self.captions, self.tab_labels, self.infos, self.html = [], [], [], [], ""
             self.column_config = SimpleNamespace(LinkColumn=lambda *args, **kwargs: kwargs)
 
         sidebar = nullcontext()
@@ -233,6 +233,9 @@ def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
 
         def metric(self, label, value, *args, **kwargs):
             self.metrics.append((label, value))
+
+        def markdown(self, html, **kwargs):
+            self.html += html
 
         def caption(self, message):
             self.captions.append(message)
@@ -255,5 +258,8 @@ def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
     module.render_pnc_preview(view, rows)
     assert view.tab_labels == [["Synthèse", "Historique validé"]]
     assert ("Assureurs de dommages", "2 / 4") in view.metrics
-    assert any("Aviva Canada" in c and "Definity Financial" in c and "N/A" in c for c in view.captions)
+    assert "Période de référence : 2026-Q2" in view.captions
+    assert "<strong>IFC</strong><span class='source-text'>2026-Q2 · 1 KPI · clôture 2026-06-30 · Civil" in view.html
+    assert "source-na'><span class='source-state'>N/A</span><strong>AV</strong>" in view.html
+    assert "source-na'><span class='source-state'>N/A</span><strong>DFY</strong>" in view.html
     assert any("plusieurs trimestres" in message for message in view.infos)  # a single period: no history table

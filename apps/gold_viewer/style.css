@@ -34,6 +34,7 @@
 .source-ok { border-left-color: #087f5b; } .source-ok .source-state { background: #e2f5ec; color: #087f5b; }
 .source-warn { border-left-color: #b7791f; } .source-warn .source-state { background: #fff4d6; color: #8a5a00; }
 .source-error { border-left-color: #c3343b; } .source-error .source-state { background: #ffeaeb; color: #a12a31; }
+.source-na { border-left-color: #8ea0ac; } .source-na .source-state { background: #edf1f3; color: #526975; }
 [data-testid="stMetric"] { background: white; border: 1px solid #d7e0e5; border-top: 3px solid #146c7e; border-radius: .65rem; padding: 1rem; box-shadow: 0 10px 30px rgb(15 36 51 / 8%); height: 100%; }
 [data-testid="stMetricLabel"] { color: #5f6f7d; }
 [data-testid="stMetricValue"] { font-size: clamp(1.3rem,2.6vw,2.15rem); font-weight: 800; letter-spacing: -.04em; }
