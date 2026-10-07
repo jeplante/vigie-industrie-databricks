@@ -7,7 +7,7 @@ import yaml
 
 from databricks.sdk import WorkspaceClient
 from vigie_databricks.insurer_contract import load_insurer_contract
-from vigie_databricks.pnc_review import attach_reviewed_evidence, select_reviewed_periods
+from vigie_databricks.pnc_review import attach_reviewed_evidence, collapse_identical_candidates, select_reviewed_periods
 from vigie_databricks.pnc_publication import publish_pnc_candidates
 from review_pnc_staging import query
 
@@ -44,7 +44,8 @@ def main():
     client = WorkspaceClient(profile=args.profile)
     candidates = query(client, "SELECT payload_json FROM workspace.vigie.pnc_candidates")
     documents = query(client, "SELECT to_json(struct(*)) FROM workspace.vigie.pnc_financial_documents")
-    reviewed = [row for row in attach_reviewed_evidence(candidates, reviews) if row.get("basis_evidence")]
+    reviewed = collapse_identical_candidates(
+        [row for row in attach_reviewed_evidence(candidates, reviews) if row.get("basis_evidence")])
     expected = sum(len(review["metrics"]) for review in reviews)
     if len(reviewed) != expected:
         raise ValueError("Not every recorded review matches exactly one candidate")

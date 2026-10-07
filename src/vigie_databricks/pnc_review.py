@@ -51,6 +51,24 @@ def attach_reviewed_evidence(candidates, reviews):
     return result
 
 
+def collapse_identical_candidates(candidates):
+    """Drop re-persisted copies of one candidate, keeping the first occurrence.
+
+    Repeated acquisition runs append the same extraction to staging. Only rows that agree
+    on observation, document revision, value and unit are collapsed; a conflicting value or
+    a different revision under the same observation is kept so the publication guard rejects it.
+    """
+    seen, result = set(), []
+    for candidate in candidates:
+        key = (candidate.get("observation_id"), candidate.get("source_document_hash"),
+               candidate.get("value"), candidate.get("unit"))
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(candidate)
+    return result
+
+
 def review_pnc_candidates(candidates, documents, contract):
     """Keep revisions visible and evaluate every candidate independently.
 

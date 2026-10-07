@@ -114,3 +114,12 @@ def test_2022_approved_evidence_passes_the_reviewed_publication_gate():
     }
     assert all(row["basis_evidence"]["reviewed_by"] == "jerome.plante@hotmail.com"
                for row in result.observations)
+
+
+def test_identical_repersisted_candidates_collapse_but_conflicts_survive():
+    from vigie_databricks.pnc_review import collapse_identical_candidates
+    base = dict(observation_id="TD-2026-Q2-net_income", source_document_hash="h1", value=0.279, unit="CAD_BILLION")
+    rows = [dict(base, candidate_id="a"), dict(base, candidate_id="b")]
+    assert [row["candidate_id"] for row in collapse_identical_candidates(rows)] == ["a"]
+    conflicting = rows + [dict(base, candidate_id="c", value=0.28), dict(base, candidate_id="d", source_document_hash="h2")]
+    assert [row["candidate_id"] for row in collapse_identical_candidates(conflicting)] == ["a", "c", "d"]
