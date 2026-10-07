@@ -242,19 +242,21 @@ def collect_pnc_editorial(
     now = now or datetime.now(UTC)
     cutoff = now - timedelta(days=lookback_days)
     result = NewsResult()
+    seen: set[str] = set()  # MERGE refuses two source rows for one article; a feed can repeat an item
     for source in sources:
         try:
             items = [item for item in parse_rss(fetch(source.url, source.allowed_hosts)) if host_allowed(item["url"], source.allowed_hosts)]
             kept = 0
             for item in items:
                 companies = mentioned_issuers(f"{item['title']} {item['summary']}")
-                if not companies or item["published"] is None or item["published"] < cutoff:
+                article_id = hashlib.sha256(item["url"].encode("utf-8")).hexdigest()[:32]
+                if not companies or item["published"] is None or item["published"] < cutoff or article_id in seen:
                     continue
+                seen.add(article_id)
                 summary = item["summary"][:500]
                 digest = hashlib.sha256("|".join((item["title"], summary, item["published"].isoformat())).encode("utf-8")).hexdigest()
                 result.rows.append({
-                    "article_id": hashlib.sha256(item["url"].encode("utf-8")).hexdigest()[:32], "source": source.source_id,
-                    "source_type": "editorial_insurance", "source_url": item["url"], "title": item["title"], "summary": summary,
+                    "article_id": article_id, "source": source.source_id, "source_type": "editorial_insurance", "source_url": item["url"], "title": item["title"], "summary": summary,
                     "published_at": item["published"], "relevant_company_ids": companies, "categories": ["Médias assurance"],
                     "enrichment_status": "succeeded", "fetched_at": now, "content_hash": digest,
                 })

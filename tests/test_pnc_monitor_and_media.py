@@ -81,6 +81,7 @@ def test_sector_media_keeps_only_dated_articles_naming_a_pnc_issuer():
 <item><title>Aviva and TD Insurance join a coalition</title><link>https://media.example.com/c</link><pubDate>Mon, 05 Oct 2026 10:00:00 +0000</pubDate></item>
 <item><title>Definity old news</title><link>https://media.example.com/d</link><pubDate>Mon, 01 Jan 2024 10:00:00 +0000</pubDate></item>
 <item><title>Definity off-host</title><link>https://other.example.org/e</link><pubDate>Mon, 05 Oct 2026 10:00:00 +0000</pubDate></item>
+<item><title>Intact Financial buys a broker</title><link>https://media.example.com/a</link><pubDate>Tue, 06 Oct 2026 10:00:00 +0000</pubDate></item>
 </channel></rss>"""
     sources = [EditorialSource("media", "https://media.example.com/feed", ("media.example.com",)),
                EditorialSource("down", "https://down.example.com/feed", ("down.example.com",))]
@@ -93,7 +94,7 @@ def test_sector_media_keeps_only_dated_articles_naming_a_pnc_issuer():
     result = collect_pnc_editorial(sources, fetch=fetch, now=datetime(2026, 10, 7, tzinfo=UTC))
     assert [(row["title"], row["relevant_company_ids"]) for row in result.rows] == [
         ("Intact Financial buys a broker", ["IFC"]), ("Aviva and TD Insurance join a coalition", ["AV", "TD"])]
-    assert result.per_source["media"] == {"status": "ok", "items": 4, "articles": 2}
+    assert result.per_source["media"] == {"status": "ok", "items": 5, "articles": 2}  # the repeated item is kept once
     assert result.per_source["down"]["status"] == "failed" and "timeout" in result.per_source["down"]["error"]
     assert mentioned_issuers("TD Bank Group results") == [] and mentioned_issuers("Economical Insurance") == ["DFY"]
 
