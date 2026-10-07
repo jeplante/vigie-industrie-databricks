@@ -305,7 +305,7 @@ if question:
     with st.chat_message("assistant"):
         with st.spinner("Analyse des données publiées..."):
             try:
-                answer = deterministic_answer(question, context) or ask(question, context, st.session_state.chat_messages[:-1])
+                answer = deterministic_answer(question, context) or ask(question, context, st.session_state.chat_messages[:-1], reasoning_effort="low")
                 st.write(answer["answer"])
                 used_kpis = [f"{row.get('company_id')} {row.get('metric_id')} {row.get('period_id')}" for row in answer.get("used_kpis") or []]
                 if used_kpis:

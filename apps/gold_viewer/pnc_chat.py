@@ -12,6 +12,8 @@ import re
 import unicodedata
 from typing import Any, Iterable, Mapping
 
+from chat_intents import asks_for_explanation, question_intent
+from pnc_yoy import pnc_yoy, prior_year_period, prior_year_row
 from shared_ui import format_value
 
 PNC_SYSTEM = """You are Vigie, a French financial-information assistant for four Canadian P&C insurers: IFC (Intact Financial, consolidated), AV (Aviva Canada, Canada segment), TD (TD Insurance, segment) and DFY (Definity Financial, consolidated). Answer only from CONTEXT.
@@ -123,12 +125,54 @@ def _gap_answer(normalized: str, context: Mapping[str, Any]) -> dict[str, Any] |
     return None
 
 
+def _citations(companies: list[str], selected: Mapping[str, Mapping[str, Any]], context: Mapping[str, Any], period: str) -> list[dict[str, str]]:
+    urls = _report_urls(context, period)
+    return [{"label": f"Rapport officiel {company}", "url": urls[company]} for company in companies if company in selected and urls.get(company)][:4]
+
+
+def _variation_answer(metric_id: str, period: str, companies: list[str], selected: Mapping[str, Mapping[str, Any]], context: Mapping[str, Any], kind: str) -> dict[str, Any]:
+    """Year-over-year change per issuer, with the same guardrails as the page (same quarter, same calendar basis)."""
+    observations = context.get("observations", [])
+    lines = []
+    for company in companies:
+        row = selected.get(company)
+        if row is None:
+            lines.append(f"{company} : N/A (aucune valeur validée)")
+            continue
+        yoy = pnc_yoy(row, observations)
+        prior = prior_year_row(row, observations)
+        if yoy is None or prior is None:
+            lines.append(f"{company} : variation annuelle N/A (le même trimestre de l’année précédente n’est pas disponible avec la même base de calendrier)")
+        else:
+            text, symbol, prior_period = yoy
+            lines.append(f"{company} : {format_value(row.get('value'), kind)} vs {format_value(prior.get('value'), kind)} en {prior_period} ({symbol} {text})")
+    used = [{"company_id": company, "metric_id": metric_id, "period_id": period} for company in companies if company in selected]
+    return {"answer": f"Variation annuelle — {LABELS[metric_id]} {period} : " + "; ".join(lines) + ".",
+            "citations": _citations(companies, selected, context, period), "used_kpis": used,
+            "caveat": "Variation calculée seulement contre le même trimestre de l’année précédente et la même base de calendrier; neutre quant à ce qui est favorable. Ce n’est pas un conseil financier."}
+
+
+def _ranking_answer(metric_id: str, period: str, companies: list[str], selected: Mapping[str, Mapping[str, Any]], context: Mapping[str, Any], kind: str) -> dict[str, Any]:
+    """Issuers ordered by published value; for a ratio the lowest comes first because it is the most favourable."""
+    ratio = metric_id in RATIOS
+    present = sorted((company for company in companies if company in selected), key=lambda company: float(selected[company]["value"]), reverse=not ratio)
+    parts = [f"{company} : {format_value(selected[company].get('value'), kind)} (clôture {selected[company].get('period_end')}, {_basis(selected[company])})" for company in present]
+    parts += [f"{company} : N/A (aucune valeur validée)" for company in companies if company not in selected]
+    order = "du plus favorable (le plus bas) au moins favorable" if ratio else "du plus élevé au plus bas"
+    used = [{"company_id": company, "metric_id": metric_id, "period_id": period} for company in present]
+    return {"answer": f"{LABELS[metric_id]} {period}, {order} — " + "; ".join(parts) + ".",
+            "citations": _citations(companies, selected, context, period), "used_kpis": used,
+            "caveat": "Clôtures, calendriers et périmètres différents selon l’assureur; ce classement n’est pas un conseil financier."}
+
+
 def deterministic_answer(question: str, context: Mapping[str, Any]) -> dict[str, Any] | None:
     """Answer a plain published-value lookup locally, keeping the citation guardrail."""
     normalized = _normalize(question)
     gap = _gap_answer(normalized, context)
     if gap:
         return gap
+    if asks_for_explanation(normalized):
+        return None
     metric_id = next((metric for metric, aliases in METRIC_ALIASES if any(_mentions(normalized, alias) for alias in aliases)), None)
     if not metric_id:
         return None
@@ -147,6 +191,11 @@ def deterministic_answer(question: str, context: Mapping[str, Any]) -> dict[str,
         return {"answer": "Aucune valeur publiée ne correspond à cette période, à cet indicateur et à ces assureurs.", "citations": [],
                 "caveat": "N/A signifie qu'aucune valeur validée n'est publiée pour ce trimestre."}
     kind = "billion" if next(iter(selected.values())).get("unit") == "CAD_BILLION" else "percent"
+    intent = question_intent(normalized)
+    if intent == "variation":
+        return _variation_answer(metric_id, period, companies, selected, context, kind)
+    if intent == "ranking" and sum(company in selected for company in companies) > 1:
+        return _ranking_answer(metric_id, period, companies, selected, context, kind)
     parts = []
     for company in companies:
         row = selected.get(company)
