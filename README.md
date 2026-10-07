@@ -43,7 +43,8 @@ Le point d'entrée `finance_live` découvre un seul rapport récent par assureur
 télécharge chaque document avec des limites strictes et des requêtes
 conditionnelles ETag/Last-Modified, puis conserve le contenu par hash dans
 `/Volumes/workspace/vigie/finance_raw`. L'extraction PDF est déterministe;
-Model Serving n'est appelé que si elle ne produit aucun KPI. Un échec d'une
+Model Serving n'est appelé que pour les KPI qu'elle n'a pas trouvés, un appel par KPI
+dans la limite du budget par run. Un échec d'une
 source bloque toute publication et toute activation du schedule.
 
 Les périodes assurance utilisent `YYYY-Q1` à `YYYY-Q4` ou `YYYY-AN`. Silver et

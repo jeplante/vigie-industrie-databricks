@@ -89,7 +89,7 @@ def acquire_live_finance(
     persist_raw: bool,
     page_fetcher: Callable = acquire_discovery_page,
     document_fetcher: Callable = acquire_financial_document,
-    ai_fallback: Callable[[str, str, str, str, str], list[dict[str, Any]]] | None = None,
+    ai_fallback: Callable[[str, str, str, str, str, list[str]], list[dict[str, Any]]] | None = None,
 ) -> LiveFinanceResult:
     documents: list[FinancialDocument] = []
     candidates: list[dict[str, Any]] = []
@@ -140,10 +140,19 @@ def acquire_live_finance(
                     document = persist_raw_content(contract.finance_policy.raw_content_volume, document, content)
             text = extract_document_text(content, document.content_type or "application/pdf")
             metrics = extract_finance_metrics(company_id, text, contract)
-            ai_candidates = [] if metrics or ai_fallback is None else ai_fallback(company_id, period_id, selected.source_url, document.content_hash, text)
+            # The AI fallback is asked only for the metrics deterministic extraction missed.
+            deterministic_metrics = {metric.metric_id for metric in metrics}
+            requested_metrics = sorted(EXPECTED_METRICS[company_id] - deterministic_metrics)
+            ai_candidates = (
+                ai_fallback(company_id, period_id, selected.source_url, document.content_hash, text, requested_metrics)
+                if requested_metrics and ai_fallback is not None else []
+            )
+            ai_metrics = [str(row.get("metric_id")) for row in ai_candidates]
+            if len(ai_metrics) != len(set(ai_metrics)) or not set(ai_metrics) <= set(requested_metrics):
+                raise ValueError("ai_candidates_outside_requested_metrics")
             if not metrics and not ai_candidates:
                 raise ValueError("deterministic_extraction_empty")
-            present_metrics = {metric.metric_id for metric in metrics} | {str(row.get("metric_id")) for row in ai_candidates}
+            present_metrics = deterministic_metrics | set(ai_metrics)
             missing_metrics = EXPECTED_METRICS[company_id] - present_metrics
             if missing_metrics:
                 raise ValueError("incomplete_metric_set_" + "_".join(sorted(missing_metrics)))

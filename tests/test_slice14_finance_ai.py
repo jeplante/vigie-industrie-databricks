@@ -23,3 +23,26 @@ def test_finance_ai_invocation_is_opt_in_and_budget_aware():
     assert invoke_finance_ai({}, "text", contract, enabled=False, remaining_calls=1, invoke=calls.append) is None
     assert invoke_finance_ai({}, "text", contract, enabled=True, remaining_calls=0, invoke=calls.append) is None
     assert calls == []
+
+
+def _ai_response(candidate, excerpt):
+    import json
+    return {"choices": [{"message": {"content": json.dumps({"candidate": candidate, "source_excerpt": excerpt})}}]}
+
+
+def test_finance_ai_may_only_fill_the_requested_candidate_value():
+    contract = load_insurer_contract(ROOT / "config")
+    skeleton = {"observation_id": "MFC-2026-Q1-licat_ratio", "company_id": "MFC", "metric_id": "licat_ratio",
+                "period_id": "2026-Q1", "value": 0.0, "unit": contract.metrics["licat_ratio"].unit,
+                "source_url": "https://www.manulife.com/ca/en/about-us/investors/results-and-reports",
+                "source_document_hash": "x", "quality_status": "candidate"}
+    text = "The LICAT ratio was 140%."
+    filled = dict(skeleton, value=140.0)
+    parsed = invoke_finance_ai(skeleton, text, contract, enabled=True, remaining_calls=1,
+                               invoke=lambda payload: _ai_response(filled, "LICAT ratio was 140%"))
+    assert parsed["candidate"]["value"] == 140.0
+
+    other_period = dict(filled, observation_id="MFC-2025-Q4-licat_ratio", period_id="2025-Q4")
+    with pytest.raises(ValueError, match="identity"):
+        invoke_finance_ai(skeleton, text, contract, enabled=True, remaining_calls=1,
+                          invoke=lambda payload: _ai_response(other_period, "LICAT ratio was 140%"))
