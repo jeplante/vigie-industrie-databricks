@@ -246,6 +246,27 @@ attention.
 **Sortie :** Jobs, couts, qualite et reprise sont exploitables sans intervention
 manuelle quotidienne et avec un rollback documente.
 
+### Etat observe au 6 octobre 2026 (Slices 15 a 17)
+
+Lecture seule du code, des Jobs, des tables et du CI. Observation datee, pas une
+garantie; chaque ligne indique ce qui a ete verifie.
+
+| Slice | Exigence | Etat observe |
+|---|---|---|
+| 15 | News officielles des 4 assureurs, `company_id`, categories, dedoublonnage | Table `official_news` avec `company_id`, `relevant_company_ids`, `categories`, `content_hash`; 12 articles (MFC 1, SLF 3, GWO 4, IAG 4); 0 appel IA. |
+| 15 | Filtres par assureur, source et categorie, lien vers l'original | Lien vers la source present; l'App affiche les categories mais n'offre pas de filtre par source ou categorie. |
+| 15/17 | News toutes les 6 h | Le Job `vigie-official-investor-news` est planifie (6 h) et ses 30 derniers runs sont `SUCCESS`, **mais son parametre `dry_run` vaut `true`: rien n'est persiste**. Dernier audit en base: 2026-09-15. |
+| 16 | Selection compagnie/periode, KPI avec unite, tendance, source, fraicheur | Presents (onglets Synthese et Par compagnie, historique, rapport source, fraicheur). |
+| 16 | Fil News separant officiel et externe | `news_kind` officiel/editorial; le Job editorial est en pause (dernier run 2026-09-15). |
+| 16 | Service principal SELECT only | Test d'acces dans `tests/test_slice5_gold_data.py`. |
+| 16 | Export des observations Gold | Absent; a decider seulement si le besoin est valide. |
+| 17 | Cadences separees Finance / News | Finance: quotidien 06:15; News: 6 h (voir dry-run ci-dessus). |
+| 17 | Alertes (source, stale, publication attendue) | Monitor d'exploitation quotidien 06:45; correctif de la fenetre de publication (50 jours) deploye le 6 octobre; `email_notifications` vide, donc aucun courriel d'echec. |
+| 17 | Alerte budget IA | Plafond d'appels modele dans le code News; pas d'alerte dediee observee. |
+| 17 | Tableau de bord couts/volumes | Absent. `system.billing.usage` est lisible avec le profil courant (environ 1,4 DBU/jour du 4 au 6 octobre). |
+| 17 | Runbooks de rollback | Pas de runbook dedie; des fichiers de retour arriere des Jobs ont ete produits le 6 octobre (hors depot). |
+| 17 | CI | GitHub Actions: tests unitaires uniquement (`unit-tests`); Databricks Connect reste manuel. |
+
 ## 4. Ordre et gates
 
 `10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17`

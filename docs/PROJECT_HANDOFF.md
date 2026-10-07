@@ -407,16 +407,35 @@ L'App : cache `st.cache_data` de 300 s sur les lectures publiees et sur les
 audits/alertes (PR #19); rerun apres 60 s de 6,2 s a 1,3 s. Le premier
 chargement local reste d'environ 11 s (connexion).
 
+### Mesures de performance de l'App - 6 octobre 2026
+
+Cache `st.cache_data` de 300 s (PR #19). Avec le warehouse chaud, ouvrir la
+connexion coute environ 1,7 s (profil 0,95 s, session 0,7 s) et chaque requete
+0,2 a 0,5 s; le premier chargement de la page vie reste de l'ordre de 5 s. Le
+surcout de 8 a 10 s observe en debut de journee etait le demarrage a froid du
+warehouse serverless arrete. Executer 8 requetes sur 4 threads avec une seule
+connexion fonctionne (3,6 s a 2,2 s), mais le gain est trop faible pour justifier
+un changement de `gold_data.py` maintenant.
+
 ## 11. Instruction exacte de reprise
 
 ```text
 Reprends vigie-industrie-databricks avec docs/PROJECT_HANDOFF.md.
 
-Verifie d'abord Git. Les Slices 7, 8 et 9 sont terminees et verifiees ;
-aucune nouvelle slice n'est cadree.
+Verifie d'abord Git (main synchronise, aucune PR ouverte) puis l'etat live en
+lecture seule: Jobs, derniers runs, operations_monitor_audit. Les Slices 10 a 18
+sont integrees. Points ouverts, dans cet ordre:
+1. Verifier les runs de 06:30 (vigie-app-start) et 06:45 (monitor): le monitor
+   doit etre SUCCESS sans alerte tant que l'App est active.
+2. Le Job vigie-official-investor-news tourne toutes les 6 h avec dry_run=true:
+   aucune actualite n'est persistee depuis le 2026-09-15. Passer dry_run a false
+   est une decision du user (action live).
+3. Aucun courriel d'echec n'est configure sur le monitor.
+4. Le staging pnc_candidates accumule des doublons identiques (le publisher les
+   regroupe); un nettoyage serait destructif.
+5. La collecte P&C reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
 
-Les feeds Fabrication et Commerce international du Quotidien de Statistique
-Canada sont approuves, deployes et planifies. Preserve le pipeline
-financier, les Jobs independants, le cleanup Unity Catalog, l'idempotence
-IA et le plafond d'appels modele.
+Preserve le pipeline financier, les Jobs independants, le cleanup Unity Catalog,
+l'idempotence IA et le plafond d'appels modele. Aucune publication, aucun
+schedule ni aucun changement de Job sans autorisation explicite.
 ```
