@@ -150,8 +150,25 @@ def fetch_metric_history(connection: Any, config: GoldConfig, metric_id: str) ->
     )
 
 
+OFFICIAL_NEWS_HOSTS = "('www.manulife.com', 'www.sunlife.com', 'www.greatwestlifeco.com', 'ia.ca')"
+
+
+def _official_news_filters() -> list[str]:
+    # Official articles are stored without a parsed publication date, so the window falls back to
+    # the collection time; a plain `published_at >= ...` silently dropped every one of them.
+    return [
+        "enrichment_status = 'succeeded'",
+        "COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 365 DAYS",
+        f"parse_url(source_url, 'HOST') IN {OFFICIAL_NEWS_HOSTS}",
+    ]
+
+
+def _news_table(config: GoldConfig) -> str:
+    return ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.news_table))
+
+
 def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = None) -> list[dict[str, Any]]:
-    filters = ["enrichment_status = 'succeeded'", "published_at >= current_timestamp() - INTERVAL 365 DAYS", "parse_url(source_url, 'HOST') IN ('www.manulife.com', 'www.sunlife.com', 'www.greatwestlifeco.com', 'ia.ca')"]
+    filters = _official_news_filters()
     parameters: list[Any] = []
     if company_id:
         filters.append("array_contains(relevant_company_ids, ?)")
@@ -161,12 +178,46 @@ def fetch_news(connection: Any, config: GoldConfig, company_id: str | None = Non
         f"""
         SELECT article_id, source, source_url, title, published_at,
                summary, categories, relevant_company_ids
-        FROM {".".join(f"`{part}`" for part in (config.catalog, config.schema, config.news_table))}
+        FROM {_news_table(config)}
         WHERE {' AND '.join(filters)}
-        ORDER BY published_at DESC NULLS LAST, article_id
+        ORDER BY published_at DESC NULLS LAST, fetched_at DESC, article_id
         LIMIT 20
         """,
         parameters,
+    )
+
+
+def fetch_official_news_counts(connection: Any, config: GoldConfig) -> list[dict[str, Any]]:
+    """Articles the App can show, per company, with the latest collection time (sidebar status)."""
+    return _query(
+        connection,
+        f"""
+        SELECT company_id, count(*) AS n, max(fetched_at) AS last_fetch
+        FROM (
+            SELECT explode(relevant_company_ids) AS company_id, fetched_at
+            FROM {_news_table(config)}
+            WHERE {' AND '.join(_official_news_filters())}
+        )
+        GROUP BY company_id
+        """,
+    )
+
+
+def fetch_latest_finance_attempts(connection: Any, config: GoldConfig) -> list[dict[str, Any]]:
+    """Latest acquisition attempt per company, whatever its status, to show which source failed."""
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    return _query(
+        connection,
+        f"""
+        SELECT company_id, reporting_period, acquisition_status, error_code, fetched_at
+        FROM (
+            SELECT company_id, reporting_period, acquisition_status, error_code, fetched_at,
+                   row_number() OVER (PARTITION BY company_id ORDER BY fetched_at DESC, document_id DESC) AS attempt_rank
+            FROM {table}
+            WHERE company_id IN ('MFC', 'SLF', 'GWO', 'IAG')
+        )
+        WHERE attempt_rank = 1
+        """,
     )
 
 
