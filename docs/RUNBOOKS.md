@@ -144,7 +144,8 @@ deployee identique a `apps/gold_viewer` (`export-dir` puis comparaison fichier p
 Le service principal de l'App (client id dans `scripts/grant_pnc_app_read.json`) ne recoit que `SELECT`. Accorder:
 `databricks grants update table workspace.vigie.<table> --json "@scripts/grant_pnc_app_read.json"`.
 Tables P&C lisibles: `pnc_gold_observations`, `pnc_run_audit`, `pnc_financial_documents`, `pnc_official_news`,
-`pnc_news_audit`. Verifier: `SELECT grantee, privilege_type FROM workspace.information_schema.table_privileges WHERE table_name = '<table>'`.
+`pnc_news_audit`, `pnc_editorial_news`. **Toute nouvelle table lue par l'App doit recevoir ce droit au moment de sa
+creation**: le droit est donne table par table, pas sur le schema (oubli vecu le 2026-10-07 avec `pnc_editorial_news`). Verifier: `SELECT grantee, privilege_type FROM workspace.information_schema.table_privileges WHERE table_name = '<table>'`.
 L'isolation P&C est une regle du depot: ne pas accorder de droit croise vie/P&C et ne pas melanger les tables.
 
 **Secrets.** Il n'y a aucun secret externe a faire tourner: l'authentification est le profil OAuth du CLI

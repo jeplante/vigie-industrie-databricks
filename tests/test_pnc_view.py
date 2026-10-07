@@ -418,8 +418,9 @@ def test_pnc_sector_media_read_tolerates_a_missing_table_and_numpy_arrays():
     assert editorial == [{"article_id": "a1", "relevant_company_ids": ["IFC", "DFY"], "categories": ["Médias assurance"]}]
     assert type(editorial[0]["relevant_company_ids"]) is list
     assert module.fetch_pnc_news(Connection(missing=True), "workspace", "vigie")[3] == []
-    with pytest.raises(RuntimeError):  # any other failure is not silenced
-        module.fetch_pnc_news(Connection(broken=True), "workspace", "vigie")
+    # a missing grant must not hide the official newsroom items read just before
+    articles, counts, audit, editorial = module.fetch_pnc_news(Connection(broken=True), "workspace", "vigie")
+    assert editorial == [] and articles == [] and counts == []
 
 
 def test_pnc_news_tab_lists_articles_and_filters_by_issuer_source_and_category(monkeypatch):
