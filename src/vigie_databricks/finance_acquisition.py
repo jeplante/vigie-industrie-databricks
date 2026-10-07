@@ -62,6 +62,9 @@ def acquire_financial_document(
     request = Request(source_url, headers=headers)
     try:
         with urlopen(request, timeout=timeout_seconds) as response:
+            final_url = urlparse(response.geturl())
+            if final_url.scheme != "https" or final_url.hostname not in contract.financial_sources[company_id].allowed_hosts:
+                raise ValueError("Financial document redirect host is not approved")
             content_type = response.headers.get_content_type().lower()
             if content_type not in ALLOWED_DOCUMENT_CONTENT_TYPES:
                 raise ValueError(f"Unsupported financial document content type: {content_type}")

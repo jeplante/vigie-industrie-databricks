@@ -71,13 +71,18 @@ def main() -> None:
             + "; ".join(publication.rejection_reasons)
         )
 
-    bronze = load_bronze_observations(spark, publication.observations, arguments.bronze_object)
-    silver = load_silver_observations(spark, arguments.bronze_object, arguments.silver_object)
-    if silver.reconciliation_delta != 0:
-        raise ValueError("Finance Silver reconciliation failed; Gold publication was not advanced")
-    gold = load_gold_observations(spark, arguments.silver_object, arguments.gold_object)
-    if gold.reconciliation_delta != 0:
-        raise ValueError("Finance Gold reconciliation failed")
+    try:
+        bronze = load_bronze_observations(spark, publication.observations, arguments.bronze_object)
+        silver = load_silver_observations(spark, arguments.bronze_object, arguments.silver_object)
+        if silver.reconciliation_delta != 0:
+            raise ValueError("Finance Silver reconciliation failed; Gold publication was not advanced")
+        gold = load_gold_observations(spark, arguments.silver_object, arguments.gold_object)
+        if gold.reconciliation_delta != 0:
+            raise ValueError("Finance Gold reconciliation failed")
+    except Exception:
+        # Without this row the App would keep showing the previous run as current.
+        upsert_finance_run_audit(spark, arguments.audit_object, {**audit, "quality_status": "stale"})
+        raise
     upsert_finance_run_audit(spark, arguments.audit_object, audit)
     print(
         json.dumps(
