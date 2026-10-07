@@ -10,6 +10,9 @@ from typing import Any
 import requests
 from databricks.sdk.core import Config
 
+from answer_check import unsupported_figures
+from chat_intents import asks_for_explanation, question_intent
+
 DEFAULT_MODEL = "databricks-gpt-oss-20b"
 SYSTEM = """You are Vigie, a French financial-information assistant. Answer only from CONTEXT.
 Never invent values, dates, or sources; do not provide investment advice. Keep the answer under 160 French words. Return strict JSON:
@@ -50,9 +53,53 @@ def compact_context(
     }
 
 
+PERCENT_METRICS = {"licat_ratio", "solvency_ratio", "core_roe"}
+DETERMINISTIC_CAVEAT = "Réponse déterministe fondée sur les valeurs publiées; ce n’est pas un conseil financier."
+
+
+def _prior_year(period: str | None) -> str | None:
+    match = re.fullmatch(r"(20\d{2})-Q([1-4])", str(period or ""))
+    return f"{int(match.group(1)) - 1}-Q{match.group(2)}" if match else None
+
+
+def _citations_and_used(rows: list[dict[str, Any]], metric_id: str, context: dict[str, Any]) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+    urls = {document.get("company_id"): document.get("source_url") for document in context.get("documents", [])}
+    citations = [{"label": f"Rapport officiel {row['company_id']}", "url": urls[row["company_id"]]} for row in rows if urls.get(row["company_id"])]
+    used = [{"company_id": row["company_id"], "metric_id": metric_id, "period_id": row.get("current_period_id")} for row in rows]
+    return citations[:4], used
+
+
+def _variation_answer(rows: list[dict[str, Any]], metric_id: str, label: str, context: dict[str, Any]) -> dict[str, Any]:
+    """Year-over-year change, only against the same quarter of the prior year."""
+    lines = []
+    for row in rows:
+        current, previous = row.get("current_value"), row.get("previous_value")
+        legitimate = previous is not None and current is not None and row.get("previous_period_id") == _prior_year(row.get("current_period_id"))
+        if not legitimate:
+            lines.append(f"{row['company_id']} : variation annuelle N/A (le même trimestre de l’année précédente n’est pas disponible)")
+        elif metric_id in PERCENT_METRICS:
+            lines.append(f"{row['company_id']} : {current} vs {previous} en {row['previous_period_id']} ({float(current) - float(previous):+.1f} pp)")
+        elif float(previous) == 0:
+            lines.append(f"{row['company_id']} : variation annuelle N/A (valeur antérieure nulle)")
+        else:
+            lines.append(f"{row['company_id']} : {current} vs {previous} en {row['previous_period_id']} ({(float(current) - float(previous)) / float(previous) * 100:+.1f} %)")
+    citations, used = _citations_and_used(rows, metric_id, context)
+    return {"answer": f"Variation annuelle — {label.capitalize()} : " + "; ".join(lines) + ".", "citations": citations, "used_kpis": used, "caveat": DETERMINISTIC_CAVEAT}
+
+
+def _ranking_answer(rows: list[dict[str, Any]], metric_id: str, label: str, context: dict[str, Any]) -> dict[str, Any]:
+    """Companies ordered from the highest to the lowest published value."""
+    ordered = sorted((row for row in rows if row.get("current_value") is not None), key=lambda row: float(row["current_value"]), reverse=True)
+    values = "; ".join(f"{row['company_id']} : {row.get('current_value')} ({row.get('current_period_id')})" for row in ordered)
+    citations, used = _citations_and_used(ordered, metric_id, context)
+    return {"answer": f"{label.capitalize()}, du plus élevé au moins élevé — {values}.", "citations": citations, "used_kpis": used, "caveat": DETERMINISTIC_CAVEAT}
+
+
 def deterministic_answer(question: str, context: dict[str, Any]) -> dict[str, Any] | None:
     """Answer simple KPI lookups locally, retaining the same citation guardrail."""
     normalized = unicodedata.normalize("NFKD", question).encode("ascii", "ignore").decode().lower()
+    if asks_for_explanation(normalized):
+        return None
     metric_aliases = {
         "core_eps": ("bpa", "eps", "benefice par action"),
         "core_earnings": ("benefice de base", "benefices de base", "core earnings", "resultat des activites de base", "benefices des 4"),
@@ -90,6 +137,11 @@ def deterministic_answer(question: str, context: dict[str, Any]) -> dict[str, An
     if not rows:
         return {"answer": "Aucune valeur publiée ne correspond à cette période et à cet indicateur.", "citations": [], "caveat": "Les périodes disponibles diffèrent selon l’assureur."}
     labels = {"core_eps": "BPA de base", "core_earnings": "résultat des activités de base", "net_income": "résultat net", "licat_ratio": "ratio de solvabilité", "core_roe": "ROE de base", "assets_under_management": "actifs sous gestion", "assets_under_administration": "actifs sous administration", "total_client_assets": "actifs clients totaux"}
+    intent = question_intent(normalized)
+    if intent == "variation":
+        return _variation_answer(rows, metric_id, labels[metric_id], context)
+    if intent == "ranking" and len(rows) > 1:
+        return _ranking_answer(rows, metric_id, labels[metric_id], context)
     values = "; ".join(f"{row['company_id']} : {row.get('current_value')} ({row.get('current_period_id')})" for row in rows)
     urls = {document.get("company_id"): document.get("source_url") for document in context.get("documents", [])}
     citations = [{"label": f"Rapport officiel {row['company_id']}", "url": urls[row["company_id"]]} for row in rows if urls.get(row["company_id"])]
@@ -182,4 +234,10 @@ def ask(
         if isinstance(item, dict)
         and (item.get("company_id"), item.get("metric_id"), item.get("period_id")) in allowed_kpis
     ][:12]
+    unverified = unsupported_figures(parsed.get("answer", ""), context)
+    if unverified:
+        # Not a proof of an error (a rounded or derived figure may escape the check), so it is shown, not blocked.
+        parsed["unverified_figures"] = unverified
+        notice = "Vérification : ces chiffres n’ont pas été retrouvés dans les données publiées : " + ", ".join(unverified) + ". Vérifiez-les avant usage."
+        parsed["caveat"] = f"{parsed['caveat']} {notice}" if parsed.get("caveat") else notice
     return parsed

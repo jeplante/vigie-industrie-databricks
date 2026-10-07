@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from news_filter import filter_articles, news_facets
+from pnc_yoy import kind_of as _kind, pnc_yoy, prior_year_period as _prior_year_period
 from source_status import SidebarSection, alert_rows, pnc_acquisition_rows, pnc_news_rows, pnc_sources, render_sidebar
 
 from shared_ui import (
@@ -148,50 +149,6 @@ def render_pnc_news(st, articles, company=None):
         if article.get("summary"):
             st.write(article["summary"])
         st.link_button("Consulter la source ↗", article["source_url"], key=f"pnc-news-{suffix}-{article['article_id']}")
-
-
-def _kind(row: dict[str, Any]) -> str:
-    """Billions for CAD amounts, percent for ratios — drives the shared formatter."""
-    return "billion" if row.get("unit") == "CAD_BILLION" else "percent"
-
-
-def _prior_year_period(period_id: str) -> str | None:
-    if len(period_id) == 7 and period_id[4:6] == "-Q":
-        return f"{int(period_id[:4]) - 1}{period_id[4:]}"
-    return None
-
-
-def pnc_yoy(current_row: dict[str, Any], all_rows) -> tuple[str, str, str] | None:
-    """(change text, direction symbol, prior period) only when the comparison is legitimate.
-
-    Legitimate means: a prior-year same-quarter reviewed observation exists for
-    the same company and metric, with the same calendar basis. Otherwise None.
-    """
-    prior_period = _prior_year_period(str(current_row.get("period_id", "")))
-    if not prior_period:
-        return None
-    prior = next(
-        (row for row in all_rows
-         if row.get("company_id") == current_row.get("company_id")
-         and row.get("metric_id") == current_row.get("metric_id")
-         and row.get("period_id") == prior_period
-         and row.get("calendar_basis") == current_row.get("calendar_basis")),
-        None,
-    )
-    if prior is None or prior.get("value") is None or current_row.get("value") is None:
-        return None
-    current_value = float(current_row["value"])
-    prior_value = float(prior["value"])
-    if _kind(current_row) == "percent":
-        change = current_value - prior_value
-        text = f"{change:+.1f} pp"
-    else:
-        if prior_value == 0:
-            return None
-        change = (current_value - prior_value) / prior_value * 100
-        text = f"{change:+.1f} %"
-    symbol = "▲" if change > 0 else "▼" if change < 0 else "•"
-    return text, symbol, prior_period
 
 
 def pnc_delta(current_row: dict[str, Any], all_rows) -> str:
