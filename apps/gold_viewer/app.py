@@ -12,8 +12,8 @@ from chat_service import ask, compact_context, deterministic_answer, fallback_an
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
 from history_quality import flag_suspicious_history, year_to_date_values
 from news_filter import filter_articles, news_facets
-from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SourceRow,
-                           alert_rows, audit_freshness_row, finance_sources, news_sources, source_list_html)
+from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SidebarSection, SourceRow,
+                           alert_rows, audit_freshness_row, finance_sources, news_sources, render_sidebar)
 from pnc_data import fetch_pnc_published
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit, fetch_official_news_counts
 
@@ -61,6 +61,13 @@ def official_news_counts(config): return fetch_official_news_counts(connection()
 @st.cache_data(ttl=300, show_spinner=False)
 def pnc_published(catalog, schema): return fetch_pnc_published(connection(), catalog, schema)
 
+def _safe(call, default):
+    try:
+        return call()
+    except Exception:
+        return default
+
+
 # Enable P&C only in workspaces where its reviewed Gold table and App grant exist.
 if os.environ.get("PNC_PREVIEW_ENABLED", "false").lower() == "true":
     universe = st.radio("Univers", ["Assurance vie", "Assurance de dommages"], horizontal=True, key="industry_universe")
@@ -73,7 +80,7 @@ if os.environ.get("PNC_PREVIEW_ENABLED", "false").lower() == "true":
             logging.getLogger(__name__).exception("P&C publication unavailable")
             st.warning("Les données P&C publiées sont temporairement indisponibles.")
             pnc_rows = []
-        render_pnc_preview(st, pnc_rows)
+        render_pnc_preview(st, pnc_rows, _safe(lambda: operations_alerts_status(pnc_config), []))
         st.stop()
 
 st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)
@@ -99,40 +106,27 @@ current_rows = rows_for_period(all_rows, current_period)
 SOURCE_COMPANIES = ("MFC", "SLF", "GWO", "IAG")
 
 
-def _safe(call, default):
-    try:
-        return call()
-    except Exception:
-        return default
-
-
 now = datetime.now(UTC)
 finance_audit = _safe(lambda: finance_audit_status(config), None)
 news_audit = _safe(lambda: news_audit_status(config), None)
 attempts = {row["company_id"]: row for row in _safe(lambda: finance_attempts(config), [])}
 news_counts = {row["company_id"]: row for row in _safe(lambda: official_news_counts(config), [])}
 operations_alerts = _safe(lambda: operations_alerts_status(config), [])
-with st.sidebar:
-    st.caption("État des sources")
-    finance_rows = [row for row in (audit_freshness_row("Finance", finance_audit, now, FINANCE_WARN_HOURS, FINANCE_ERROR_HOURS),) if row]
-    if finance_audit and finance_audit.get("quality_status") != "current":
-        finance_rows.append(SourceRow("Validation", "warn", "La dernière validation n'est pas `current`; la dernière publication fiable reste affichée."))
-    finance_rows += finance_sources(SOURCE_COMPANIES, latest_documents, attempts, current_period)
-    if finance_audit:
-        st.metric("Finance", f"{finance_audit['sources_succeeded']} / 4")
-        st.caption(f"Vérifié : {finance_audit['observed_at']}")
-    st.markdown(source_list_html(finance_rows), unsafe_allow_html=True)
-    news_rows = [row for row in (audit_freshness_row("Actualités", news_audit, now, NEWS_WARN_HOURS, NEWS_ERROR_HOURS),) if row]
-    news_rows += news_sources(SOURCE_COMPANIES, news_counts, news_audit)
-    if news_audit:
-        st.metric("Actualités officielles", f"{news_audit['sources_succeeded']} / 4")
-    st.markdown(source_list_html(news_rows), unsafe_allow_html=True)
-    st.caption("Alertes d'exploitation")
-    alerts = alert_rows(operations_alerts)
-    if alerts:
-        st.markdown(source_list_html(alerts), unsafe_allow_html=True)
-    else:
-        st.success("Aucune alerte d'exploitation.")
+finance_rows = [row for row in (audit_freshness_row("Finance", finance_audit, now, FINANCE_WARN_HOURS, FINANCE_ERROR_HOURS),) if row]
+if finance_audit and finance_audit.get("quality_status") != "current":
+    finance_rows.append(SourceRow("Validation", "warn", "La dernière validation n'est pas `current`; la dernière publication fiable reste affichée."))
+finance_rows += finance_sources(SOURCE_COMPANIES, latest_documents, attempts, current_period)
+news_rows = [row for row in (audit_freshness_row("Actualités", news_audit, now, NEWS_WARN_HOURS, NEWS_ERROR_HOURS),) if row]
+news_rows += news_sources(SOURCE_COMPANIES, news_counts, news_audit)
+render_sidebar(
+    st,
+    [
+        SidebarSection("Finance", f"{finance_audit['sources_succeeded']} / 4" if finance_audit else None,
+                       f"Vérifié : {finance_audit['observed_at']}" if finance_audit else None, finance_rows),
+        SidebarSection("Actualités officielles", f"{news_audit['sources_succeeded']} / 4" if news_audit else None, None, news_rows),
+    ],
+    alert_rows(operations_alerts),
+)
 
 summary_tab, company_tab = st.tabs(["Synthèse", "Par compagnie"])
 with summary_tab:

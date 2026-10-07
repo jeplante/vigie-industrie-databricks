@@ -10,14 +10,23 @@ OK_ACQUISITION = {"fetched", "unchanged"}
 # Finance runs daily, official news every six hours.
 FINANCE_WARN_HOURS, FINANCE_ERROR_HOURS = 36, 96
 NEWS_WARN_HOURS, NEWS_ERROR_HOURS = 18, 72
-LEVEL_LABEL = {"ok": "OK", "warn": "À vérifier", "error": "Problème"}
+LEVEL_LABEL = {"ok": "OK", "warn": "À vérifier", "error": "Problème", "na": "N/A"}
 
 
 @dataclass(frozen=True)
 class SourceRow:
     name: str
-    level: str  # "ok" | "warn" | "error"
+    level: str  # "ok" | "warn" | "error" | "na" (no validated value; neither a failure nor a success)
     text: str
+
+
+@dataclass(frozen=True)
+class SidebarSection:
+    """One block of the source sidebar, shared by the life and P&C universes."""
+    label: str
+    value: str | None
+    caption: str | None
+    rows: list
 
 
 def format_time(value: Any) -> str:
@@ -101,9 +110,60 @@ def news_sources(
     return rows
 
 
+def pnc_sources(
+    companies: Iterable[tuple[str, str]],
+    published_rows: Iterable[Mapping[str, Any]],
+    all_rows: Iterable[Mapping[str, Any]],
+    current_period: str | None,
+) -> list[SourceRow]:
+    """P&C publication coverage per issuer, from the reviewed Gold rows the App can read.
+
+    No value for the reference period is `N/A` rather than a failure: the App cannot tell a late
+    report from a structural gap (for example Aviva Canada's missing quarterly segment), and it
+    has no read access to the P&C acquisition audit.
+    """
+    published, history = list(published_rows), list(all_rows)
+    rows = []
+    for company, _name in companies:
+        mine = [row for row in published if row.get("company_id") == company]
+        if mine:
+            ends = sorted({str(row.get("period_end")) for row in mine})
+            basis = "Fiscal" if any(row.get("calendar_basis") == "fiscal" for row in mine) else "Civil"
+            rows.append(SourceRow(company, "ok", f"{current_period} · {len(mine)} KPI · clôture {', '.join(ends)} · {basis}"))
+            continue
+        earlier = sorted({str(row.get("period_id")) for row in history if row.get("company_id") == company})
+        if current_period is None:
+            rows.append(SourceRow(company, "na", "Aucune donnée publiée"))
+        elif earlier:
+            rows.append(SourceRow(company, "na", f"Aucune valeur validée pour {current_period} (dernière publiée : {earlier[-1]})"))
+        else:
+            rows.append(SourceRow(company, "na", f"Aucune valeur validée pour {current_period}"))
+    return rows
+
+
 def alert_rows(alerts: Iterable[Mapping[str, Any]]) -> list[SourceRow]:
     return [SourceRow(str(alert.get("entity") or "Exploitation"), "error", str(alert.get("message") or ""))
             for alert in alerts if alert.get("status") == "alert"]
+
+
+def render_sidebar(st: Any, sections: Iterable[SidebarSection], alerts: Iterable[SourceRow]) -> None:
+    """Single sidebar layout for every universe, so the two read as one product."""
+    with st.sidebar:
+        st.caption("État des sources")
+        for section in sections:
+            if section.value is not None:
+                st.metric(section.label, section.value)
+            if section.caption:
+                st.caption(section.caption)
+            html = source_list_html(section.rows)
+            if html:
+                st.markdown(html, unsafe_allow_html=True)
+        st.caption("Alertes d'exploitation")
+        alerts = list(alerts)
+        if alerts:
+            st.markdown(source_list_html(alerts), unsafe_allow_html=True)
+        else:
+            st.success("Aucune alerte d'exploitation.")
 
 
 def worst_level(rows: Iterable[SourceRow]) -> str:
