@@ -257,7 +257,11 @@ def fetch_latest_news_ai_audit(connection: Any, config: GoldConfig) -> dict[str,
 
 def fetch_official_news_audit(connection: Any, config: GoldConfig) -> dict[str, Any] | None:
     table = f'`{config.catalog}`.`{config.schema}`.`official_news_audit`'
-    rows = _query(connection, f'SELECT run_id, observed_at, sources_succeeded, articles, inserted_rows, updated_rows, model_calls FROM {table} ORDER BY observed_at DESC LIMIT 1')
+    base = 'run_id, observed_at, sources_succeeded, articles, inserted_rows, updated_rows, model_calls'
+    try:
+        rows = _query(connection, f'SELECT {base}, per_source_json FROM {table} ORDER BY observed_at DESC LIMIT 1')
+    except Exception:  # the per-source column only exists once a run has recorded it
+        rows = _query(connection, f'SELECT {base} FROM {table} ORDER BY observed_at DESC LIMIT 1')
     return rows[0] if rows else None
 
 

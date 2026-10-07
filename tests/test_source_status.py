@@ -142,3 +142,36 @@ def test_pnc_news_status_names_the_failing_source_and_flags_a_stale_run():
     assert by_name(pnc_news_rows(["IFC"], counts, old, NOW))["Actualités"].level == "error"
     assert pnc_news_rows(["IFC"], {}, None, NOW)[0].level == "na"
     assert by_name(pnc_news_rows(["IFC"], counts, dict(audit, per_source_json="oops"), NOW))["IFC"].level == "warn"
+
+
+def test_life_news_names_the_failing_source_when_the_audit_records_it_per_source():
+    counts = {"MFC": {"n": 1, "last_fetch": "2026-09-06T20:26:46+00:00"}, "GWO": {"n": 4, "last_fetch": "2026-09-15T20:58:48+00:00"}}
+    audit = {"sources_succeeded": 3, "per_source_json": '{"MFC": {"status": "ok"}, "GWO": {"status": "failed", "error": "HTTPError: 503"}}'}
+    rows = by_name(news_sources(["MFC", "GWO"], counts, audit))
+    assert rows["GWO"].level == "error" and "HTTPError: 503" in rows["GWO"].text  # named, although articles exist from an older batch
+    assert rows["MFC"].level == "ok" and "Dernier run" not in rows  # no generic "3/4" row once the audit is detailed
+    legacy = by_name(news_sources(["MFC"], counts, {"sources_succeeded": 3}))
+    assert legacy["Dernier run"].level == "warn" and "n'est pas détaillée" in legacy["Dernier run"].text  # rows recorded before the column
+    assert by_name(news_sources(["MFC"], counts, {"sources_succeeded": 4, "per_source_json": "broken"}))["MFC"].level == "ok"
+
+
+def test_audit_read_falls_back_when_the_per_source_column_does_not_exist_yet():
+    from apps.gold_viewer.gold_data import GoldConfig, fetch_official_news_audit
+
+    class Cursor:
+        def __init__(self, owner): self.owner = owner; self.description = [("run_id",)]
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def execute(self, statement, parameters=()):
+            self.owner.statements.append(statement)
+            if "per_source_json" in statement:
+                raise RuntimeError("UNRESOLVED_COLUMN per_source_json")
+        def fetchall(self): return [("r1",)]
+
+    class Connection:
+        def __init__(self): self.statements = []
+        def cursor(self): return Cursor(self)
+
+    connection = Connection()
+    assert fetch_official_news_audit(connection, GoldConfig("workspace", "vigie", "gold_observations")) == {"run_id": "r1"}
+    assert len(connection.statements) == 2 and "per_source_json" in connection.statements[0] and "per_source_json" not in connection.statements[1]

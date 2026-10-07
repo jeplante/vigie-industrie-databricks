@@ -4,9 +4,16 @@ from datetime import UTC, datetime
 import json
 from uuid import uuid4
 from pyspark.sql import SparkSession
-from vigie_databricks.official_news import acquire_official_news, acquire_manulife_news
+from vigie_databricks.official_news import acquire_official_news, acquire_manulife_news, per_source_status
 
+COMPANIES = ('MFC', 'SLF', 'GWO', 'IAG')
+AUDIT_TABLE = 'workspace.vigie.official_news_audit'
 SCHEMA = 'article_id string,source string,source_url string,title string,summary string,published_at timestamp,company_id string,relevant_company_ids array<string>,categories array<string>,enrichment_status string,fetched_at timestamp,content_hash string'
+
+
+def append_audit(spark, audit):
+    # mergeSchema adds the per_source_json column to the existing audit table on first use.
+    spark.createDataFrame([audit]).write.format('delta').mode('append').option('mergeSchema', 'true').saveAsTable(AUDIT_TABLE)
 
 
 def main():
@@ -16,13 +23,18 @@ def main():
     p.add_argument('--run-id', default=None)
     args = p.parse_args()
     rows, errors = [], {}
-    for company in ('MFC', 'SLF', 'GWO', 'IAG'):
+    for company in COMPANIES:
         try:
             rows.extend(acquire_manulife_news(args.config_directory) if company == 'MFC' else acquire_official_news(company))
         except Exception as exc:
             errors[company] = type(exc).__name__ + ': ' + str(exc)[:200]
-    print(json.dumps({'sources_succeeded': 4-len(errors), 'articles': len(rows), 'errors': errors, 'model_calls': 0}), flush=True)
+    per_source = per_source_status(COMPANIES, rows, errors)
+    print(json.dumps({'sources_succeeded': 4-len(errors), 'articles': len(rows), 'errors': errors, 'model_calls': 0, 'per_source': per_source}), flush=True)
     if errors:
+        if args.dry_run == 'false':  # the batch is not published, but the failing source is recorded
+            append_audit(SparkSession.builder.getOrCreate(), {'run_id': args.run_id or uuid4().hex, 'observed_at': datetime.now(UTC),
+                         'sources_succeeded': 4-len(errors), 'articles': 0, 'inserted_rows': 0, 'updated_rows': 0, 'model_calls': 0,
+                         'per_source_json': json.dumps(per_source, sort_keys=True)})
         raise ValueError('Official News source gate failed; last-known-good preserved')
     if args.dry_run == 'true':
         return
@@ -41,8 +53,9 @@ def main():
     finally:
         spark.catalog.dropTempView(view)
     audit = {'run_id': args.run_id or uuid4().hex, 'observed_at': datetime.now(UTC), 'sources_succeeded': 4,
-             'articles': len(rows), 'inserted_rows': inserted, 'updated_rows': updated, 'model_calls': 0}
-    spark.createDataFrame([audit]).write.format('delta').mode('append').saveAsTable('workspace.vigie.official_news_audit')
+             'articles': len(rows), 'inserted_rows': inserted, 'updated_rows': updated, 'model_calls': 0,
+             'per_source_json': json.dumps(per_source, sort_keys=True)}
+    append_audit(spark, audit)
     print(json.dumps(audit, default=str), flush=True)
 
 

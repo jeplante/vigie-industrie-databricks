@@ -1,4 +1,5 @@
 """Bounded official investor news, with source excerpts and no model calls."""
+from collections import Counter
 from datetime import UTC, datetime
 from hashlib import sha256
 from html.parser import HTMLParser
@@ -66,6 +67,14 @@ def make_row(company, url, title, summary, published=None):
             'company_id': company, 'relevant_company_ids': [company], 'categories': ['Relations investisseurs'],
             'enrichment_status': 'succeeded', 'fetched_at': datetime.now(UTC),
             'content_hash': sha256((title + '\n' + summary).encode()).hexdigest()}
+
+
+def per_source_status(companies, rows, errors):
+    """Status of each source in one batch, so a failing source can be named in the audit."""
+    counts = Counter(row['company_id'] for row in rows)
+    return {company: ({'status': 'failed', 'articles': 0, 'error': errors[company]} if company in errors
+                      else {'status': 'ok', 'articles': counts.get(company, 0)})
+            for company in companies}
 
 
 def acquire_manulife_news(config_directory):

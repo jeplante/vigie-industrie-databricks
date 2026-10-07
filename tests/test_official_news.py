@@ -28,3 +28,13 @@ def test_hash_is_stable_across_fetches():
     b = make_row('MFC', 'https://www.manulife.com/report.pdf', 'Results', 'Excerpt')
     assert a['content_hash'] == b['content_hash']
     assert a['article_id'] == b['article_id']
+
+
+def test_per_source_status_names_the_failing_source_and_counts_the_rest():
+    from vigie_databricks.official_news import per_source_status
+
+    rows = [{"company_id": "SLF"}, {"company_id": "SLF"}, {"company_id": "IAG"}]
+    status = per_source_status(("MFC", "SLF", "GWO", "IAG"), rows, {"GWO": "HTTPError: 503"})
+    assert status["SLF"] == {"status": "ok", "articles": 2} and status["IAG"] == {"status": "ok", "articles": 1}
+    assert status["MFC"] == {"status": "ok", "articles": 0}
+    assert status["GWO"] == {"status": "failed", "articles": 0, "error": "HTTPError: 503"}
