@@ -9,7 +9,7 @@ import json
 from databricks.sdk import WorkspaceClient
 from pyspark.sql import SparkSession
 
-from vigie_databricks.operations_monitor import evaluate_operations, latest_completed_quarter
+from vigie_databricks.operations_monitor import MAX_DAILY_DBUS, evaluate_cost, evaluate_operations, latest_completed_quarter
 
 
 AUDIT_SCHEMA = "run_id string,observed_at timestamp,status string,alert_type string,severity string,entity string,message string"
@@ -22,6 +22,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--validated-object", default="workspace.vigie.finance_history_validated")
     parser.add_argument("--audit-object", default="workspace.vigie.operations_monitor_audit")
     parser.add_argument("--app-name", default="vigie-gold-viewer")
+    parser.add_argument("--max-daily-dbus", type=float, default=MAX_DAILY_DBUS)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--dry-run", choices=("true", "false"), default="true")
     return parser.parse_args()
@@ -48,6 +49,14 @@ def main() -> None:
         gold_rows, finance_audit, rejected_current, expected_period=expected_period,
         app_state=app_state, compute_state=compute_state,
     )
+    try:
+        usage = [(row["usage_date"], row["dbus"]) for row in spark.sql(
+            "SELECT usage_date, sum(usage_quantity) AS dbus FROM system.billing.usage "
+            "WHERE usage_unit = 'DBU' AND usage_date >= date_sub(current_date(), 3) GROUP BY usage_date"
+        ).collect()]
+        alerts += evaluate_cost(usage, observed_at.date(), args.max_daily_dbus)
+    except Exception as error:  # billing tables may be unreadable; never fail the monitor for that
+        print(json.dumps({"cost_check": "unavailable", "reason": str(error)[:200]}))
     rows = [
         {
             "run_id": args.run_id, "observed_at": observed_at, "status": "alert",

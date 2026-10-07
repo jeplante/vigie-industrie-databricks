@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Iterable
 
 from vigie_databricks.finance_extraction import EXPECTED_METRICS
@@ -30,6 +30,27 @@ def latest_completed_quarter(now: datetime, reporting_lag_days: int = REPORTING_
     if current_quarter == 1:
         return f"{reference.year - 1}-Q4"
     return f"{reference.year}-Q{current_quarter - 1}"
+
+
+# Observed consumption (2026-10): about 1.5 DBU per day for the Jobs alone, plus 0.5 DBU per hour
+# while the App runs (up to 12 per day) and SQL warehouse time when it is used, so a normal day can
+# reach 15 to 20. The threshold sits above that to flag a runaway Job or cluster, not normal variation.
+MAX_DAILY_DBUS = 30.0
+
+
+def evaluate_cost(daily_dbus: Iterable[tuple[date, float]], today: date, max_daily_dbus: float = MAX_DAILY_DBUS) -> list[OperationsAlert]:
+    """Alert when the latest complete day (yesterday) consumed more than ``max_daily_dbus`` DBUs.
+
+    Today is partial and ignored. A missing day is not an alert: absence of data is not overspending.
+    """
+    yesterday = today - timedelta(days=1)
+    consumed = sum(float(quantity) for day, quantity in daily_dbus if day == yesterday)
+    if consumed > max_daily_dbus:
+        return [OperationsAlert(
+            "cost_spike", "warning", "databricks",
+            f"{yesterday}: {consumed:.1f} DBU consommées (seuil {max_daily_dbus:.0f}).",
+        )]
+    return []
 
 
 def evaluate_operations(
