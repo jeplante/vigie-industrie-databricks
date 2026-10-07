@@ -234,8 +234,8 @@ reviews:
     period_end: 2026-06-30
     calendar_basis: calendar
     disclosure_scope: consolidated_canada
-    source_document_hash: 967d8c321a32218a8c06cc73ca2d4c027e9076e36c3ec6c8ad0423b29f78f799
-    reviewed_by: codex-exact-volume-report-review-2026-09-28
+    source_document_hash: a68a8af68fffde14b3217748f239020f11ca589e4b2896da6ae837f2a27b7757
+    reviewed_by: stored-bytes-rebind-2026-10-06
     basis: quarterly
     source_locator: Consolidated Results, Q2 2026 first numeric column, Insurance revenue row; income narrative cross-check
     period_excerpt: Q2 2026
