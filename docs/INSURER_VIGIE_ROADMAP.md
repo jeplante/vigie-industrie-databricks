@@ -254,7 +254,7 @@ garantie; chaque ligne indique ce qui a ete verifie.
 | Slice | Exigence | Etat observe |
 |---|---|---|
 | 15 | News officielles des 4 assureurs, `company_id`, categories, dedoublonnage | Table `official_news` avec `company_id`, `relevant_company_ids`, `categories`, `content_hash`; 12 articles (MFC 1, SLF 3, GWO 4, IAG 4); 0 appel IA. |
-| 15 | Filtres par assureur, source et categorie, lien vers l'original | Lien present; filtres Type, Source et Categorie par assureur ajoutes le 2026-10-07 (PR #38), pas encore deployes dans l'App. |
+| 15 | Filtres par assureur, source et categorie, lien vers l'original | Lien present; filtres Type, Source et Categorie par assureur ajoutes le 2026-10-07 (PR #38) et deployes. Le volet dommages a ses propres actualites officielles (Job `vigie-pnc-news`, onglet Actualites, filtres Assureur/Source/Categorie). |
 | 15/17 | News toutes les 6 h | Le Job `vigie-official-investor-news` etait en `dry_run=true` du 2026-09-15 au 2026-10-07 (rien persiste). Corrige le 2026-10-07: run persistant verifie (officielles 12 a 16, editoriales 123 a 161, 0 appel IA), defaut `dry_run=false`. |
 | 16 | Selection compagnie/periode, KPI avec unite, tendance, source, fraicheur | Presents (onglets Synthese et Par compagnie, historique, rapport source, fraicheur). |
 | 16 | Fil News separant officiel et externe | `news_kind` officiel/editorial; le Job editorial est en pause (dernier run 2026-09-15). |
