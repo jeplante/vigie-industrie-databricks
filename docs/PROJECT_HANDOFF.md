@@ -431,8 +431,7 @@ sont integrees. Etat au 2026-10-07:
   (`usage_spike`, seuil empirique de 30 DBU/jour, argument --max-daily-dbus; workspace en Free Edition, donc
   quota d'usage et non facture) et envoie un courriel d'echec, comme
   vigie-app-start, vigie-finance-live et vigie-official-investor-news.
-- vigie-official-investor-news persiste (dry_run=false) depuis le 2026-10-07;
-  verifier l'idempotence au prochain run (inserted_rows et updated_rows a 0).
+- vigie-official-investor-news persiste (dry_run=false) depuis le 2026-10-07 (wheel 0.10.13); idempotent (0 insertion, 0 mise a jour).
 - vigie-finance-live tourne sur le wheel 0.10.9 (correctifs de la revue Codex).
 - Actualites P&C: Job `vigie-pnc-news` (199998716914987, 06:20 quotidien, dry_run=false, courriel d'echec,
   wheel 0.10.12 dans `vigie_pnc/0.10.12/`). Quatre salles de presse approuvees (`config/pnc/news_sources.yaml`:
@@ -445,12 +444,25 @@ sont integrees. Etat au 2026-10-07:
 - Audit des actualites vie: `official_news_audit.per_source_json` (colonne ajoutee par mergeSchema le 2026-10-07, wheel 0.10.13).
   Le Job `vigie-official-investor-news` ecrit toujours une ligne d'audit, meme si une source echoue (lot non publie,
   dernier lot valide preserve), et la barre laterale vie nomme la source en echec.
+Decisions du 2026-10-07 (a ne pas rouvrir sans raison):
+- Collecte P&C des KPI: reste MANUELLE. La publication est revue par un humain par conception, Aviva (pas de COR
+  trimestriel isole hors Q1) et TD (segment combine) sont des lacunes structurelles; le Job `vigie-pnc-news` sert de
+  signal (communique de resultats ou d'estimation de pertes) pour lancer `vigie-pnc-acquisition-review` a la main.
+- Quota: aucun changement. La Free Edition ne publie pas son quota (depassement = calcul arrete le reste de la
+  journee); des journees a 17-19 DBU ont eu lieu sans arret. L'alerte `usage_spike` est le voyant. Reduire
+  `vigie-app-start` aux jours ouvrables seulement si un Job echoue pour cause de ressources.
+- Sources d'actualites P&C: relues; `robots.txt` des 4 sites autorise les chemins lus (Definity et TD demandent un delai
+  de 10 s entre requetes: une seule requete par source et par run).
+- Job herite `vigie-editorial-news`: supprime (sa tache editoriale vit dans `vigie-official-investor-news`);
+  configuration de recreation sauvegardee hors depot.
+- Staging `pnc_candidates`: 216 lignes dont un seul groupe en double (contenus differents); aucun nettoyage necessaire,
+  le publisher regroupe les identiques.
+- Export des observations Gold (Slice 16): non realise, le besoin n'est pas valide.
+- Performance: premier chargement du volet vie ramene de 12,8 s a 5,4 s par regroupement des requetes (26 a 17).
 Points ouverts:
-1. Le staging pnc_candidates accumule des doublons identiques (le publisher les
-   regroupe); un nettoyage serait destructif.
-2. La collecte P&C des KPI reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
-3. Pas de tableau de bord de consommation ni de runbooks dedies (l'alerte de pic suffit
-   pour l'instant).
+1. Les runs planifies du 2026-10-08 (06:15 finance, 06:20 actualites P&C, 06:30 App, 06:45 monitor) sont les
+   premiers sur les derniers wheels; les relire.
+2. Les procedures de pause, de `RESTORE` et de retour arriere de docs/RUNBOOKS.md n'ont jamais ete executees.
 
 Procedures de reprise (pause, relance, restauration, retour arriere, droits, exercice de panne): docs/RUNBOOKS.md.
 
