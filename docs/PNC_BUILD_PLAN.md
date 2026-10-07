@@ -57,7 +57,12 @@ publication remain manual. Repeated runs append identical candidates to
 Since the earlier checkpoints: the 2022 comparative backfill was published
 (PR #17), 2026-Q2 acquisition sources were added (PR #20), and the App renders
 P&C through the shared presentation module with the same page skeleton as the
-life universe (PR #18, #22). `PNC_PREVIEW_ENABLED` remains the activation gate.
+life universe (PR #18, #22). Since 0.10.15 the P&C page is no longer behind an activation flag
+(`PNC_PREVIEW_ENABLED` was removed): both universes are always offered, each reading only its own tables.
+It has the life page's history chart (year-to-date for flows, TD on its own fiscal year), sector media
+articles that name a P&C issuer (table `pnc_editorial_news`, written by `vigie-pnc-news`), deltas coloured
+by each metric's favourable trend, and P&C completeness, plausibility and announced-results alerts in the
+operations monitor. Publication still requires the human evidence review.
 Aviva Canada stays `N/A` outside Q1 (no isolated Canada quarterly COR) and TD
 Insurance stays gap-flagged where TD reports a combined Wealth Management and
 Insurance segment. This is a dated observation, not a standing guarantee.

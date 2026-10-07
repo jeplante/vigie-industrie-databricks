@@ -1,12 +1,13 @@
-"""Bounded, allowlisted collection of official P&C issuer news.
+"""Bounded, allowlisted collection of P&C issuer news: official newsrooms and sector media.
 
 News is context only: it never feeds or alters a KPI. Each source is read independently, every
 article URL must be https on an approved host, and one failing source never hides the others.
+Sector media articles are kept only when they name a P&C issuer, as on the life page.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 import hashlib
 import html
@@ -21,7 +22,18 @@ import yaml
 SCHEMA = ("article_id string,source string,source_url string,title string,summary string,published_at timestamp,"
           "company_id string,relevant_company_ids array<string>,categories array<string>,enrichment_status string,"
           "fetched_at timestamp,content_hash string")
+EDITORIAL_SCHEMA = ("article_id string,source string,source_type string,source_url string,title string,summary string,"
+                    "published_at timestamp,relevant_company_ids array<string>,categories array<string>,"
+                    "enrichment_status string,fetched_at timestamp,content_hash string")
 PNC_COMPANIES = ("IFC", "AV", "TD", "DFY")
+# Names that identify a P&C issuer in sector media. "Intact" alone is an ordinary English word, and TD Bank
+# news is not insurance news, so both need their full name.
+ISSUER_TERMS = {
+    "IFC": ("intact financial", "intact insurance"),
+    "AV": ("aviva",),
+    "TD": ("td insurance",),
+    "DFY": ("definity", "economical insurance", "sonnet insurance"),
+}
 KINDS = ("rss", "aviva_list", "td_list")
 FINANCIAL = re.compile(r"results|earnings|dividend|catastrophe|debenture|subordinated|acquisition|guidance|\bcapital\b", re.I)
 MAX_BYTES = 2_000_000
@@ -38,6 +50,13 @@ class NewsSource:
     url: str
     allowed_hosts: tuple[str, ...]
     include_terms: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class EditorialSource:
+    source_id: str
+    url: str
+    allowed_hosts: tuple[str, ...]
 
 
 @dataclass
@@ -66,6 +85,27 @@ def load_news_sources(path: str | Path) -> list[NewsSource]:
         seen.add(source.company_id)
         sources.append(source)
     return sources
+
+
+def load_editorial_sources(path: str | Path) -> list[EditorialSource]:
+    """Sector media RSS feeds, from the same file; each must be https on its own allowed hosts."""
+    entries = yaml.safe_load(Path(path).read_text(encoding="utf-8")).get("editorial_sources") or []
+    sources, seen = [], set()
+    for entry in entries:
+        source = EditorialSource(entry["source_id"], entry["url"], tuple(entry["allowed_hosts"]))
+        if source.source_id in seen:
+            raise ValueError(f"duplicate editorial source: {source.source_id}")
+        if not host_allowed(source.url, source.allowed_hosts):
+            raise ValueError(f"editorial source URL is not https on an allowed host: {source.url}")
+        seen.add(source.source_id)
+        sources.append(source)
+    return sources
+
+
+def mentioned_issuers(text: str) -> list[str]:
+    lowered = text.lower()
+    return [company for company in PNC_COMPANIES
+            if any(re.search(rf"\b{re.escape(term)}\b", lowered) for term in ISSUER_TERMS[company])]
 
 
 def http_get(url: str, hosts: Iterable[str], timeout: float = 20) -> str:
@@ -185,4 +225,44 @@ def collect_pnc_news(
         except Exception as error:  # one source down must not hide the others
             result.per_source[source.company_id] = {"source_id": source.source_id, "status": "failed", "articles": 0,
                                                     "error": f"{type(error).__name__}: {str(error)[:160]}"}
+    return result
+
+
+def collect_pnc_editorial(
+    sources: Iterable[EditorialSource],
+    *,
+    lookback_days: int = 365,
+    fetch: Callable[[str, Iterable[str]], str] = http_get,
+    now: datetime | None = None,
+) -> NewsResult:
+    """Read each sector feed independently and keep the dated articles that name a P&C issuer.
+
+    ``per_source`` is keyed by source id; a failing feed is recorded and never raised.
+    """
+    now = now or datetime.now(UTC)
+    cutoff = now - timedelta(days=lookback_days)
+    result = NewsResult()
+    seen: set[str] = set()  # MERGE refuses two source rows for one article; a feed can repeat an item
+    for source in sources:
+        try:
+            items = [item for item in parse_rss(fetch(source.url, source.allowed_hosts)) if host_allowed(item["url"], source.allowed_hosts)]
+            kept = 0
+            for item in items:
+                companies = mentioned_issuers(f"{item['title']} {item['summary']}")
+                article_id = hashlib.sha256(item["url"].encode("utf-8")).hexdigest()[:32]
+                if not companies or item["published"] is None or item["published"] < cutoff or article_id in seen:
+                    continue
+                seen.add(article_id)
+                summary = item["summary"][:500]
+                digest = hashlib.sha256("|".join((item["title"], summary, item["published"].isoformat())).encode("utf-8")).hexdigest()
+                result.rows.append({
+                    "article_id": article_id, "source": source.source_id, "source_type": "editorial_insurance", "source_url": item["url"], "title": item["title"], "summary": summary,
+                    "published_at": item["published"], "relevant_company_ids": companies, "categories": ["Médias assurance"],
+                    "enrichment_status": "succeeded", "fetched_at": now, "content_hash": digest,
+                })
+                kept += 1
+            result.per_source[source.source_id] = {"status": "ok", "items": len(items), "articles": kept}
+        except Exception as error:  # one feed down must not hide the others
+            result.per_source[source.source_id] = {"status": "failed", "items": 0, "articles": 0,
+                                                   "error": f"{type(error).__name__}: {str(error)[:160]}"}
     return result

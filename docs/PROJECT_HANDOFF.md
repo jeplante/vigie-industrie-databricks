@@ -448,6 +448,13 @@ sont integrees. Etat au 2026-10-07:
   et les KPI inconnus sont supprimes; la prose du modele n'est PAS verifiee (erreur observee: un ratio combine pris pour un
   ratio de sinistres sur une question ouverte; les comparaisons chiffrees passent d'abord par le repondeur deterministe).
   Le chat vie est inchange (sans reasoning_effort).
+- Parite vie / dommages (0.10.15): page dommages sans drapeau d'activation; graphique d'historique commun
+  (`history_chart.py`, specification Vega-Lite, couleurs de marque) avec cumul annuel et reperage des pics (le
+  resultat net P&C en est exclu: la regle vie masquait 6 trimestres revus); medias sectoriels P&C dans
+  `pnc_editorial_news` (Canadian Underwriter refuse les lecteurs automatises: non utilise); variations P&C colorees
+  selon le sens favorable de `config/pnc/metrics.yaml`; meme regle de publication des actualites dans les deux
+  univers; alertes P&C du monitor (voir RUNBOOKS). Reste volontairement different: la publication P&C exige une
+  revue humaine des preuves, et les indicateurs different par nature.
 - Chat, ajouts du 2026-10-07 (PR #55): `reasoning_effort=low` aussi cote vie (mesure sur 12 appels reels: 784 a 411 jetons en
   moyenne, 4,1 s a 2,5 s); `answer_check.py` signale (sans bloquer) les chiffres avec unite qu'aucune valeur du contexte n'explique
   (0 faux positif sur 64 chiffres reels; il NE detecte PAS un vrai chiffre rattache au mauvais indicateur); reponses directes pour la

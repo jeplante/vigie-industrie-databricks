@@ -8,6 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
+# Direction in which a change is favourable, mirrored from config/pnc/metrics.yaml (a test keeps them equal):
+# amounts are better higher, ratios better lower.
+FAVORABLE_TREND = {
+    "insurance_revenue": "up", "combined_ratio": "down", "claims_ratio": "down", "expense_ratio": "down",
+    "catastrophe_losses": "down", "operating_income": "up", "net_income": "up", "operating_roe": "up",
+}
+
 
 def kind_of(row: dict[str, Any]) -> str:
     """Billions for CAD amounts, percent for ratios — drives the shared formatter."""
@@ -51,3 +58,15 @@ def pnc_yoy(current_row: dict[str, Any], all_rows) -> tuple[str, str, str] | Non
         text = f"{change:+.1f} %"
     symbol = "▲" if change > 0 else "▼" if change < 0 else "•"
     return text, symbol, prior["period_id"]
+
+
+def favourability(metric_id: str, symbol: str) -> str:
+    """"up" when the change is favourable for this metric, "down" when unfavourable, "flat" otherwise.
+
+    The returned word is the badge tone of the shared table (green, red, grey), the same colours the
+    life table uses; the arrow in the badge still shows the actual direction of the value.
+    """
+    trend = FAVORABLE_TREND.get(metric_id)
+    if trend is None or symbol not in ("▲", "▼"):
+        return "flat"
+    return "up" if (symbol == "▲") == (trend == "up") else "down"

@@ -23,3 +23,20 @@ news_sources:
     allowed_hosts: [stories.td.com]
     # TD Bank Group publishes all of its news here; keep only TD Insurance items.
     include_terms: ["td insurance", "td general insurance", "td home and auto insurance"]
+
+# Sector media, read for context like the life page's "Média sectoriel" items. An article is kept only when it
+# names a P&C issuer (pnc_news.ISSUER_TERMS). Canadian Underwriter refuses automated readers (HTTP 403, 2026-10-07)
+# and is not used.
+editorial_sources:
+  - source_id: insurance_journal
+    url: https://www.insurancejournal.com/rss/news
+    allowed_hosts: [www.insurancejournal.com]
+  - source_id: insurance_canada
+    url: https://www.insurance-canada.ca/blog/feed/
+    allowed_hosts: [www.insurance-canada.ca, insurance-canada.ca]
+  - source_id: artemis
+    url: https://www.artemis.bm/feed/
+    allowed_hosts: [www.artemis.bm]
+  - source_id: reinsurance_news
+    url: https://www.reinsurancene.ws/feed/
+    allowed_hosts: [www.reinsurancene.ws]

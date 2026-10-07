@@ -8,15 +8,16 @@ from typing import Any
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 
 
-def flag_suspicious_history(rows: list[dict[str, Any]], metric_id: str) -> list[dict[str, Any]]:
+def flag_suspicious_history(rows: list[dict[str, Any]], metric_id: str, additive_metrics=ADDITIVE_METRICS) -> list[dict[str, Any]]:
     """Flag isolated annual-looking spikes without changing published observations.
 
     A point is hidden only when it has two usable immediate neighbours and is
     at least 2.5x their median for an additive metric. It remains available in
-    the source data.
+    the source data. ``additive_metrics`` names the flow metrics of the universe
+    being drawn (life by default).
     """
     ordered = sorted((dict(row) for row in rows), key=lambda row: (row["company_id"], row["period_id"]))
-    if metric_id not in ADDITIVE_METRICS:
+    if metric_id not in additive_metrics:
         return [row | {"display_quality": "accepted", "display_value": row.get("value")} for row in ordered]
     by_company: dict[str, list[dict[str, Any]]] = {}
     for row in ordered:
