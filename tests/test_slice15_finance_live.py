@@ -88,6 +88,51 @@ def test_live_finance_rejects_ai_candidates_for_unrequested_metrics():
     assert set(result.source_errors.values()) == {"valueerror_ai_candidates_outside_requested_metrics"}
 
 
+FULL_PAYLOAD = PAYLOAD_WITHOUT_LICAT.replace(b"</p>", b" LICAT ratio 140%. Solvency ratio 140%.</p>")
+
+
+def _unchanged_run(tmp_path, cached_bytes):
+    import hashlib
+    from vigie_databricks.finance_acquisition import FinancialDocumentFetch
+
+    contract = load_insurer_contract(ROOT / "config")
+    content_hash = hashlib.sha256(FULL_PAYLOAD).hexdigest()
+    raw_path = tmp_path / "cached.html"
+    raw_path.write_bytes(cached_bytes)
+    prior = {"content_hash": content_hash, "raw_content_path": str(raw_path), "content_type": "text/html"}
+
+    def document_fetcher(contract, company_id, document_type, source_url, **kwargs):
+        document = create_financial_document(contract, company_id, document_type, source_url, "unchanged",
+                                             known_content_hash=kwargs["known_content_hash"])
+        return FinancialDocumentFetch(document, None)
+
+    class PriorForEveryUrl(dict):
+        def get(self, key, default=None):
+            return prior
+
+    def page_fetcher(source):
+        return '<a href="/reports/2026-q1.pdf">Q1 2026 report</a>'
+
+    prior_by_url = PriorForEveryUrl()
+    return acquire_live_finance(contract, prior_by_url, persist_raw=False, page_fetcher=page_fetcher,
+                                document_fetcher=document_fetcher)
+
+
+def test_unchanged_document_reuses_cached_bytes_with_their_content_type(tmp_path):
+    result = _unchanged_run(tmp_path, FULL_PAYLOAD)
+
+    assert result.sources_succeeded == 4, result.source_errors
+    assert result.documents_unchanged == 4
+    assert {document.content_type for document in result.documents} == {"text/html"}
+
+
+def test_unchanged_document_rejects_cached_bytes_with_a_different_hash(tmp_path):
+    result = _unchanged_run(tmp_path, FULL_PAYLOAD + b"tampered")
+
+    assert result.sources_succeeded == 0
+    assert set(result.source_errors.values()) == {"valueerror_unchanged_document_hash_mismatch"}
+
+
 def test_live_finance_isolates_one_failed_source():
     contract = load_insurer_contract(ROOT / "config")
 

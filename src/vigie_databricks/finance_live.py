@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+import hashlib
 from pathlib import Path
 import re
 from typing import Any, Callable
@@ -132,7 +133,9 @@ def acquire_live_finance(
                 if not raw_path or not Path(raw_path).exists():
                     raise ValueError("unchanged_document_raw_content_missing")
                 content = Path(raw_path).read_bytes()
-                document = replace(document, raw_content_path=raw_path)
+                if hashlib.sha256(content).hexdigest() != document.content_hash:
+                    raise ValueError("unchanged_document_hash_mismatch")
+                document = replace(document, raw_content_path=raw_path, content_type=prior.get("content_type"))
             else:
                 fetched_count += 1
                 content = fetched.content

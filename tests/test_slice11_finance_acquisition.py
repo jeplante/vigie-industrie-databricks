@@ -25,9 +25,13 @@ class FakeHeaders:
 
 
 class FakeResponse:
-    def __init__(self, payload: bytes, content_type: str = "application/pdf", etag: str | None = None):
+    def __init__(self, payload: bytes, content_type: str = "application/pdf", etag: str | None = None, url: str = ""):
         self.payload = payload
         self.headers = FakeHeaders(content_type, etag)
+        self.url = url
+
+    def geturl(self) -> str:
+        return self.url
 
     def __enter__(self):
         return self
@@ -44,7 +48,7 @@ def test_finance_acquisition_is_bounded_and_sends_conditional_headers(monkeypatc
 
     def fake_urlopen(request, timeout):
         requests.append((request, timeout))
-        return FakeResponse(b"%PDF official report", etag='"current"')
+        return FakeResponse(b"%PDF official report", etag='"current"', url=request.full_url)
 
     monkeypatch.setattr("vigie_databricks.finance_acquisition.urlopen", fake_urlopen)
     result = acquire_financial_document(
@@ -86,7 +90,7 @@ def test_finance_acquisition_marks_a_304_response_unchanged(monkeypatch) -> None
 def test_finance_acquisition_rejects_unexpected_content_type(monkeypatch) -> None:
     monkeypatch.setattr(
         "vigie_databricks.finance_acquisition.urlopen",
-        lambda request, timeout: FakeResponse(b"<html>", "application/octet-stream"),
+        lambda request, timeout: FakeResponse(b"<html>", "application/octet-stream", url=request.full_url),
     )
 
     with pytest.raises(ValueError, match="content type"):
@@ -95,4 +99,18 @@ def test_finance_acquisition_rejects_unexpected_content_type(monkeypatch) -> Non
             "IAG",
             "annual_report",
             "https://ia.ca/a-propos/investisseurs/rapports-financiers/report.pdf",
+        )
+
+def test_finance_acquisition_rejects_a_redirect_to_an_unapproved_host(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "vigie_databricks.finance_acquisition.urlopen",
+        lambda request, timeout: FakeResponse(b"%PDF", url="https://attacker.example/report.pdf"),
+    )
+
+    with pytest.raises(ValueError, match="redirect host"):
+        acquire_financial_document(
+            load_insurer_contract(ROOT / "config"),
+            "MFC",
+            "quarterly_report",
+            "https://www.manulife.com/ca/en/about-us/investors/results-and-reports/q1.pdf",
         )

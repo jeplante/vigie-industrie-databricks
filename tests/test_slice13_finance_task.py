@@ -92,3 +92,22 @@ def test_finance_publish_rejection_preserves_tables_and_records_audit(monkeypatc
         task.main()
 
     assert calls == ["audit"]
+
+
+def test_finance_publish_records_a_stale_audit_when_reconciliation_fails(monkeypatch, tmp_path):
+    fixture = tmp_path / "candidates.json"
+    fixture.write_text("[]", encoding="utf-8")
+    audits = []
+    publication = type("Publication", (), {"quality_status": "current", "observations": ({"observation_id": "o"},), "rejection_reasons": ()})()
+    monkeypatch.setattr(task, "SparkSession", FakeSparkSession)
+    monkeypatch.setattr(task, "load_insurer_contract", lambda _: object())
+    monkeypatch.setattr(task, "publish_finance_candidates", lambda *_: publication)
+    monkeypatch.setattr(task, "load_bronze_observations", lambda *args: LayerResult())
+    monkeypatch.setattr(task, "load_silver_observations", lambda *args: LayerResult(reconciliation_delta=1))
+    monkeypatch.setattr(task, "upsert_finance_run_audit", lambda spark, name, audit: audits.append(audit))
+    monkeypatch.setattr(sys, "argv", _argv(fixture, tmp_path))
+
+    with pytest.raises(ValueError, match="Silver reconciliation"):
+        task.main()
+
+    assert [audit["quality_status"] for audit in audits] == ["stale"]
