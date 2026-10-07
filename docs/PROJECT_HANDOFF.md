@@ -440,14 +440,16 @@ sont integrees. Etat au 2026-10-07:
   separees `pnc_official_news` et `pnc_news_audit` (statut par source dans `per_source_json`). Contexte seulement,
   jamais un KPI. Le service principal de l'App a SELECT sur ces deux tables et sur `pnc_run_audit` et
   `pnc_financial_documents` (droits accordes le 2026-10-07 avec l'accord du user, SELECT seulement).
-- L'App deployee == main (barre laterale commune vie/dommages, onglet Actualites P&C, filtres).
+- L'App deployee == main: barre laterale commune vie/dommages, memes onglets Synthese et Par compagnie des deux cotes
+  (un sous-onglet par assureur avec indicateurs, historique et actualites filtrables).
+- Audit des actualites vie: `official_news_audit.per_source_json` (colonne ajoutee par mergeSchema le 2026-10-07, wheel 0.10.13).
+  Le Job `vigie-official-investor-news` ecrit toujours une ligne d'audit, meme si une source echoue (lot non publie,
+  dernier lot valide preserve), et la barre laterale vie nomme la source en echec.
 Points ouverts:
 1. Le staging pnc_candidates accumule des doublons identiques (le publisher les
    regroupe); un nettoyage serait destructif.
 2. La collecte P&C des KPI reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
-3. L'audit des actualites vie ne stocke qu'un compteur (la source en echec n'est pas nommee);
-   l'audit P&C stocke le statut par source. Aligner le vie demande de changer le schema d'audit.
-4. Pas de tableau de bord de consommation ni de runbooks dedies (l'alerte de pic suffit
+3. Pas de tableau de bord de consommation ni de runbooks dedies (l'alerte de pic suffit
    pour l'instant).
 
 Preserve le pipeline financier, les Jobs independants, le cleanup Unity Catalog,
