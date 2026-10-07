@@ -9,7 +9,8 @@ import json
 from databricks.sdk import WorkspaceClient
 from pyspark.sql import SparkSession
 
-from vigie_databricks.operations_monitor import MAX_DAILY_DBUS, evaluate_operations, evaluate_usage, latest_completed_quarter
+from vigie_databricks.operations_monitor import (MAX_DAILY_DBUS, OperationsAlert, evaluate_operations, evaluate_pnc, evaluate_usage,
+                                                latest_completed_quarter)
 
 
 AUDIT_SCHEMA = "run_id string,observed_at timestamp,status string,alert_type string,severity string,entity string,message string"
@@ -21,6 +22,8 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--finance-audit-object", default="workspace.vigie.finance_run_audit")
     parser.add_argument("--validated-object", default="workspace.vigie.finance_history_validated")
     parser.add_argument("--audit-object", default="workspace.vigie.operations_monitor_audit")
+    parser.add_argument("--pnc-gold-object", default="workspace.vigie.pnc_gold_observations")
+    parser.add_argument("--pnc-news-object", default="workspace.vigie.pnc_official_news")
     parser.add_argument("--app-name", default="vigie-gold-viewer")
     parser.add_argument("--max-daily-dbus", type=float, default=MAX_DAILY_DBUS)
     parser.add_argument("--run-id", required=True)
@@ -50,6 +53,17 @@ def main() -> None:
         app_state=app_state, compute_state=compute_state,
     )
     try:
+        pnc_rows = [row.asDict(recursive=True) for row in spark.sql(
+            f"SELECT company_id, metric_id, period_id, value, validation_status FROM {args.pnc_gold_object}"
+        ).collect()]
+        pnc_news = [row.asDict(recursive=True) for row in spark.sql(
+            f"SELECT company_id, title, published_at FROM {args.pnc_news_object} "
+            "WHERE COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 120 DAYS"
+        ).collect()]
+        alerts += evaluate_pnc(pnc_rows, pnc_news, now=observed_at)
+    except Exception as error:  # an unreadable P&C table is itself worth an alert, never a monitor crash
+        alerts.append(OperationsAlert("pnc_unreadable", "warning", "pnc", f"Tables P&C illisibles: {str(error)[:160]}"))
+    try:
         usage = [(row["usage_date"], row["dbus"]) for row in spark.sql(
             "SELECT usage_date, sum(usage_quantity) AS dbus FROM system.billing.usage "
             "WHERE usage_unit = 'DBU' AND usage_date >= date_sub(current_date(), 3) GROUP BY usage_date"
@@ -67,7 +81,7 @@ def main() -> None:
     ] or [{
         "run_id": args.run_id, "observed_at": observed_at, "status": "healthy",
         "alert_type": "none", "severity": "info", "entity": "vigie",
-        "message": f"Finance, {expected_period} et App validés.",
+        "message": f"Finance, {expected_period}, P&C et App validés.",
     }]
     if args.dry_run == "false":
         spark.createDataFrame(rows, AUDIT_SCHEMA).write.format("delta").mode("append").saveAsTable(args.audit_object)

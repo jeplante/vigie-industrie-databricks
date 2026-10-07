@@ -1,4 +1,8 @@
-"""Publish only complete four-source batches; archive legacy news separately."""
+"""Publish the official news of every source that answered; a failing source is named and fails the run.
+
+Same rule as the P&C newsrooms: MERGE never deletes, so a failing source keeps its last-known articles while the
+others stay current; the audit records each source and the raised error makes the Job alert.
+"""
 import argparse
 from datetime import UTC, datetime
 import json
@@ -34,33 +38,34 @@ def main():
             errors[company] = type(exc).__name__ + ': ' + str(exc)[:200]
     per_source = per_source_status(COMPANIES, rows, errors)
     print(json.dumps({'sources_succeeded': 4-len(errors), 'articles': len(rows), 'errors': errors, 'model_calls': 0, 'per_source': per_source}), flush=True)
-    if errors:
-        if args.dry_run == 'false':  # the batch is not published, but the failing source is recorded
-            append_audit(SparkSession.builder.getOrCreate(), {'run_id': args.run_id or uuid4().hex, 'observed_at': datetime.now(UTC),
-                         'sources_succeeded': 4-len(errors), 'articles': 0, 'inserted_rows': 0, 'updated_rows': 0, 'model_calls': 0,
-                         'per_source_json': json.dumps(per_source, sort_keys=True)}, args.audit_table)
-        raise ValueError('Official News source gate failed; last-known-good preserved')
+    failure = f"Official News sources failed: {', '.join(sorted(errors))}; their last-known articles are kept" if errors else None
     if args.dry_run == 'true':
+        if failure:
+            raise ValueError(failure)
         return
     spark = SparkSession.builder.getOrCreate()
     target = args.target
     if not spark.catalog.tableExists(target):
         spark.createDataFrame([], SCHEMA).write.format('delta').saveAsTable(target)
-    source = spark.createDataFrame(rows, SCHEMA)
-    old = spark.table(target).select('article_id', 'content_hash')
-    inserted = source.join(old, 'article_id', 'left_anti').count()
-    updated = source.alias('s').join(old.alias('t'), 'article_id').where('s.content_hash <> t.content_hash').count()
-    view = 'official_news_' + uuid4().hex
-    source.createOrReplaceTempView(view)
-    try:
-        spark.sql(f'MERGE INTO {target} t USING {view} s ON t.article_id=s.article_id WHEN MATCHED AND t.content_hash <> s.content_hash THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *')
-    finally:
-        spark.catalog.dropTempView(view)
-    audit = {'run_id': args.run_id or uuid4().hex, 'observed_at': datetime.now(UTC), 'sources_succeeded': 4,
+    inserted = updated = 0
+    if rows:
+        source = spark.createDataFrame(rows, SCHEMA)
+        old = spark.table(target).select('article_id', 'content_hash')
+        inserted = source.join(old, 'article_id', 'left_anti').count()
+        updated = source.alias('s').join(old.alias('t'), 'article_id').where('s.content_hash <> t.content_hash').count()
+        view = 'official_news_' + uuid4().hex
+        source.createOrReplaceTempView(view)
+        try:
+            spark.sql(f'MERGE INTO {target} t USING {view} s ON t.article_id=s.article_id WHEN MATCHED AND t.content_hash <> s.content_hash THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *')
+        finally:
+            spark.catalog.dropTempView(view)
+    audit = {'run_id': args.run_id or uuid4().hex, 'observed_at': datetime.now(UTC), 'sources_succeeded': 4-len(errors),
              'articles': len(rows), 'inserted_rows': inserted, 'updated_rows': updated, 'model_calls': 0,
              'per_source_json': json.dumps(per_source, sort_keys=True)}
     append_audit(spark, audit, args.audit_table)
     print(json.dumps(audit, default=str), flush=True)
+    if failure:  # successes are kept; the failure is surfaced so the Job alerts
+        raise ValueError(failure)
 
 
 if __name__ == '__main__':

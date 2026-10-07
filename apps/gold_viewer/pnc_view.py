@@ -11,8 +11,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from history_chart import history_spec
+from history_quality import flag_suspicious_history, year_to_date_values
 from news_filter import filter_articles, news_facets
-from pnc_yoy import kind_of as _kind, pnc_yoy, prior_year_period as _prior_year_period
+from pnc_yoy import favourability, kind_of as _kind, pnc_yoy, prior_year_period as _prior_year_period
 from source_status import SidebarSection, alert_rows, pnc_acquisition_rows, pnc_news_rows, pnc_sources, render_sidebar
 
 from shared_ui import (
@@ -52,7 +54,17 @@ NEWS_SOURCE_LABELS = {
     "definity_newsroom": "Definity · salle de presse",
     "aviva_canada_press": "Aviva Canada · communiqués",
     "td_stories_insurance": "TD Stories · TD Insurance",
+    "insurance_journal": "Insurance Journal",
+    "insurance_canada": "Insurance-Canada.ca",
+    "artemis": "Artemis",
+    "reinsurance_news": "Reinsurance News",
 }
+# Flow metrics: they can be summed into a year-to-date total.
+ADDITIVE_METRICS = {"insurance_revenue", "operating_income", "net_income"}
+# Flows checked for an isolated annual-looking spike, as on the life page. P&C net income is left out: catastrophe
+# losses and investment gains make it legitimately volatile, and the life rule would mask six reviewed quarters
+# of it (measured 2026-10-07) while catching no mislabelled annual value.
+SPIKE_CHECKED_METRICS = {"insurance_revenue", "operating_income"}
 
 
 def _news_date(value: Any) -> str:
@@ -76,7 +88,7 @@ def pnc_company_table(current_rows, all_rows, period):
     return table
 
 
-def render_pnc_company(st, company, name, scope, current_rows, all_rows, period, news_articles=None):
+def render_pnc_company(st, company, name, scope, current_rows, all_rows, period, news_articles=None, editorial=()):
     """The 'Par compagnie' panel: provenance, indicators, validated history and newsroom items."""
     st.subheader(name)
     st.caption(f"Périmètre : {scope}")
@@ -111,57 +123,66 @@ def render_pnc_company(st, company, name, scope, current_rows, all_rows, period,
         )
     if news_articles is not None:
         st.markdown("#### Actualités")
-        render_pnc_news(st, news_articles, company=company)
+        render_pnc_news(st, news_articles, company=company, editorial=editorial)
 
 
-def render_pnc_news(st, articles, company=None):
-    """Official newsroom items; context only, never a KPI. `company` narrows to one issuer."""
+def _issuers(article):
+    """Official items name one issuer; a sector article can mention several."""
+    return list(article.get("relevant_company_ids") or []) or [article.get("company_id")]
+
+
+def render_pnc_news(st, articles, company=None, editorial=()):
+    """Official newsroom items and sector media articles; context only, never a KPI. `company` narrows to one issuer."""
     if company is None:
-        st.markdown("<p class='section-eyebrow'>Salles de presse officielles</p>", unsafe_allow_html=True)
-    st.caption("Communiqués publiés par les assureurs. Ils apportent du contexte et ne modifient jamais les KPI publiés.")
+        st.markdown("<p class='section-eyebrow'>Salles de presse et médias sectoriels</p>", unsafe_allow_html=True)
+    st.caption("Communiqués officiels et articles de médias sectoriels pertinents. Les articles externes apportent du contexte et ne modifient jamais les KPI publiés.")
     names = {code: name for code, name, _ in COMPANIES}
-    items = [dict(article, news_kind="Source officielle") for article in articles
-             if company is None or article["company_id"] == company]
+    items = [dict(article, news_kind="Source officielle") for article in articles]
+    items += [dict(article, news_kind="Média sectoriel") for article in editorial]
+    items = [item for item in items if company is None or company in _issuers(item)]
+    items.sort(key=lambda item: str(item.get("published_at") or ""), reverse=True)
     if not items:
-        st.caption("Aucune actualité officielle n’est encore disponible." if company is None
+        st.caption("Aucune actualité n’est encore disponible." if company is None
                    else "Aucune actualité pertinente n’est encore disponible pour cet assureur.")
         return
     suffix = company or "all"
-    _kinds, source_options, category_options = news_facets(items, NEWS_SOURCE_LABELS)
-    columns = st.columns(3 if company is None else 2)
+    kind_options, source_options, category_options = news_facets(items, NEWS_SOURCE_LABELS)
+    columns = st.columns(4 if company is None else 3)
     chosen_companies = []
     if company is None:
         chosen_companies = columns[0].multiselect(
-            "Assureur", [name for code, name, _ in COMPANIES if any(a["company_id"] == code for a in items)], key="pnc-news-company")
+            "Assureur", [name for code, name, _ in COMPANIES if any(code in _issuers(a) for a in items)], key="pnc-news-company")
+    chosen_kinds = columns[-3].multiselect("Type", kind_options, key=f"pnc-news-kind-{suffix}")
     chosen_sources = columns[-2].multiselect("Source", source_options, key=f"pnc-news-source-{suffix}")
     chosen_categories = columns[-1].multiselect("Catégorie", category_options, key=f"pnc-news-category-{suffix}")
     if chosen_companies:
         wanted = {code for code, name in names.items() if name in chosen_companies}
-        items = [item for item in items if item["company_id"] in wanted]
-    items = filter_articles(items, NEWS_SOURCE_LABELS, (), chosen_sources, chosen_categories)
+        items = [item for item in items if wanted & set(_issuers(item))]
+    items = filter_articles(items, NEWS_SOURCE_LABELS, chosen_kinds, chosen_sources, chosen_categories)
     if not items:
         st.caption("Aucune actualité ne correspond aux filtres choisis.")
     for article in items[:20]:
-        metadata = [names.get(article["company_id"], article["company_id"]), NEWS_SOURCE_LABELS.get(article["source"], article["source"])]
+        metadata = [", ".join(names.get(code, code) for code in _issuers(article)),
+                    NEWS_SOURCE_LABELS.get(article["source"], article["source"]), article["news_kind"]]
         metadata.extend(article.get("categories") or [])
         metadata.append(_news_date(article.get("published_at")))
         st.markdown(f"**{article['title']}**  " + chr(10) + f"{' · '.join(metadata)}")
         if article.get("summary"):
             st.write(article["summary"])
-        st.link_button("Consulter la source ↗", article["source_url"], key=f"pnc-news-{suffix}-{article['article_id']}")
+        st.link_button("Consulter la source ↗", article["source_url"], key=f"pnc-news-{suffix}-{article['news_kind']}-{article['article_id']}")
 
 
 def pnc_delta(current_row: dict[str, Any], all_rows) -> str:
     """A year-over-year delta badge, only when the comparison is legitimate.
 
-    The tone is neutral: favourability differs by metric (a lower combined ratio
-    is better), so we never colour the chip green or red.
+    Green when the change is favourable for that metric and red when it is not, as on the life page;
+    a lower ratio is favourable, so a falling combined ratio shows ▼ in green.
     """
     yoy = pnc_yoy(current_row, all_rows)
     if yoy is None:
         return ""
     text, symbol, prior_period = yoy
-    return delta_badge(f"{symbol} {text}", "flat", f"vs {prior_period}")
+    return delta_badge(f"{symbol} {text}", favourability(current_row.get("metric_id", ""), symbol), f"vs {prior_period}")
 
 
 def pnc_comparison_html(period: str | None, published_rows, all_rows) -> str:
@@ -196,6 +217,69 @@ def pnc_comparison_html(period: str | None, published_rows, all_rows) -> str:
             ))
         body.append(row_open(company) + "".join(cells) + "</tr>")
     return table_shell(header_cells, body)
+
+
+def pnc_history_records(rows, metric, companies, cumulative=False):
+    """Chart records for one metric and the chosen issuers, with the life page's display rules.
+
+    Returns (records, number of masked points). An isolated annual-looking spike of a checked flow
+    metric is masked from the chart, never from the data; a year-to-date total follows each issuer's own
+    calendar (TD's fiscal year) and stops after a missing or masked quarter.
+    """
+    series = [dict(row) for row in rows if row.get("metric_id") == metric and row.get("company_id") in companies
+              and row.get("value") is not None]
+    reviewed = flag_suspicious_history(series, metric, SPIKE_CHECKED_METRICS)
+    masked = sum(row["display_quality"] != "accepted" for row in reviewed)
+    reviewed.sort(key=lambda row: (row["company_id"], row["period_id"]))
+    if cumulative and metric in ADDITIVE_METRICS:
+        for row, total in zip(reviewed, year_to_date_values(reviewed)):
+            row["display_value"] = total
+    for row in reviewed:
+        row["display_value"] = float(row["display_value"]) if row["display_value"] is not None else None
+        row["closing"] = str(row.get("period_end"))
+        row["calendar"] = "Fiscal" if row.get("calendar_basis") == "fiscal" else "Civil"
+    return reviewed, masked
+
+
+def render_pnc_history(st, all_rows):
+    """Évolution historique: the life page's chart over the reviewed P&C observations."""
+    labels = dict(METRICS)
+    metrics = [metric for metric, _label in METRICS if any(row.get("metric_id") == metric for row in all_rows)]
+    st.markdown("<p class='section-eyebrow'>Comparaison multi-assureurs</p>", unsafe_allow_html=True)
+    st.subheader("Évolution historique")
+    if not metrics:
+        st.info("Aucune série historique validée n'est encore disponible.")
+        return
+    left, right = st.columns([2, 1])
+    default = "combined_ratio" if "combined_ratio" in metrics else metrics[0]
+    metric = left.selectbox("Indicateur", metrics, index=metrics.index(default), format_func=labels.get, key="pnc-history-metric")
+    metric = metric if metric in metrics else default
+    additive = metric in ADDITIVE_METRICS
+    basis = right.selectbox("Base", ["Trimestre", "Cumul annuel"], disabled=not additive, key="pnc-history-basis")
+    # The same issuer list for every indicator, as on the life page: a selection then survives a change of
+    # indicator, and an issuer without that indicator simply has no line.
+    present = [company for company, _name, _scope in COMPANIES if any(row.get("company_id") == company for row in all_rows)]
+    chosen = st.multiselect("Assureurs affichés", present, default=present, key="pnc-history-companies")
+    chosen = present if chosen is None else chosen
+    if not chosen:
+        st.info("Sélectionnez au moins un assureur pour afficher l’évolution historique.")
+        return
+    records, masked = pnc_history_records(all_rows, metric, chosen, cumulative=basis == "Cumul annuel")
+    if masked:
+        st.warning(f"{masked} point(s) historique(s) isolé(s) comme potentiellement annuels sont masqués du graphique en attendant validation. Les données sources ne sont pas modifiées.")
+    if basis == "Cumul annuel" and additive:
+        st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque exercice (novembre à octobre pour TD). Après un trimestre absent ou masqué, le cumul de l’année est indiqué comme manquant.")
+    else:
+        st.caption("Valeurs trimestrielles validées. Les ratios restent des valeurs du trimestre; les clôtures et calendriers figurent dans l’infobulle.")
+    if any(row["calendar"] == "Fiscal" for row in records):
+        st.caption("TD suit un exercice fiscal : son trimestre affiché sous la même étiquette se termine deux mois avant celui des autres assureurs.")
+    st.vega_lite_chart(history_spec(records, (("closing", "Clôture"), ("calendar", "Calendrier"))), use_container_width=True)
+    st.caption("Survolez un point pour voir son rapport officiel; cliquez sur un point pour l’ouvrir.")
+    source_company = st.selectbox("Rapport source du graphique", chosen, key="pnc-history-source-company")
+    latest = max((row for row in records if row["company_id"] == source_company and row.get("source_url")),
+                 key=lambda row: row["period_id"], default=None)
+    if latest:
+        st.link_button("Voir le rapport officiel du dernier point affiché ↗", latest["source_url"], key="pnc-history-source")
 
 
 def pnc_history_table(rows):
@@ -273,7 +357,7 @@ def render_pnc_chat(st, rows, news_articles, ask_fn=None):
                 messages.append({"role": "assistant", "content": answer["answer"]})
 
 
-def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=None, news=None):
+def render_pnc_page(st, published_rows=(), operations_alerts=(), acquisition=None, news=None):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
     period, published_rows = current_pnc_rows(all_rows)
@@ -291,7 +375,7 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
                                      {row["company_id"]: row for row in attempts}, audit)
         sections.append(SidebarSection("Acquisition", None, None, steps))
     if news is not None:
-        news_articles, news_counts, news_audit = news
+        news_articles, news_counts, news_audit = news[:3]
         news_status = pnc_news_rows([company for company, _name, _scope in COMPANIES],
                                     {row["company_id"]: row for row in news_counts}, news_audit, datetime.now(UTC))
         sections.append(SidebarSection("Actualités officielles", f"{news_audit['sources_succeeded']} / {len(COMPANIES)}" if news_audit else None,
@@ -325,6 +409,7 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
             sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
             for index, url in enumerate(sources):
                 st.link_button(f"Rapport officiel — {name}", url, key=f"pnc-source-{company}-{index}")
+        render_pnc_history(st, all_rows)
     with company_tab:
         st.caption("Consultez tous les indicateurs, la provenance, l’historique validé et les communiqués pour chaque assureur.")
         panels = st.tabs([company for company, _name, _scope in COMPANIES])
@@ -334,6 +419,7 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
                     st, company, name, scope,
                     [row for row in published_rows if row["company_id"] == company], all_rows, period,
                     news[0] if news is not None else None,
+                    news[3] if news is not None and len(news) > 3 else (),
                 )
     st.caption("N/A signifie ici qu’aucune valeur validée n’a été publiée, et non que l’assureur n’a pas communiqué de résultat.")
     st.subheader("Périmètres et périodes")

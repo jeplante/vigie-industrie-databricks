@@ -69,7 +69,20 @@ def fetch_pnc_news(connection, catalog, schema):
         "SELECT observed_at, sources_succeeded, sources_failed, articles, per_source_json "
         f"FROM {namespace}.`pnc_news_audit` ORDER BY observed_at DESC LIMIT 1"
     )
-    return articles, counts, (audit[0] if audit else None)
+    try:
+        editorial = run(
+            "SELECT article_id, source, source_url, title, summary, published_at, relevant_company_ids, categories "
+            f"FROM {namespace}.`pnc_editorial_news` WHERE {window} "
+            "ORDER BY COALESCE(published_at, fetched_at) DESC, article_id LIMIT 60"
+        )
+    except Exception as error:  # the sector-media table appears with the first collection run
+        if "TABLE_OR_VIEW_NOT_FOUND" not in str(error):
+            raise
+        editorial = []
+    for article in editorial:  # the SQL connector returns ARRAY columns as numpy arrays
+        article["relevant_company_ids"] = list(article.get("relevant_company_ids") if article.get("relevant_company_ids") is not None else [])
+        article["categories"] = list(article.get("categories") if article.get("categories") is not None else [])
+    return articles, counts, (audit[0] if audit else None), editorial
 
 
 def current_pnc_rows(rows):

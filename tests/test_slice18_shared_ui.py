@@ -104,13 +104,25 @@ def test_pnc_yoy_blocked_across_calendar_bases():
     assert pnc_view.pnc_delta(current, [current, prior_civil]) == ""
 
 
-def test_pnc_delta_tone_is_neutral():
-    # favourability differs by metric; the chip must never be coloured up/down
+def test_pnc_delta_is_coloured_by_favourability_like_the_life_table():
     rows = _pnc_rows()
     revenue = next(r for r in rows if r["metric_id"] == "insurance_revenue" and r["period_id"] == "2026-Q1")
-    badge = pnc_view.pnc_delta(revenue, rows)
-    assert "comparison-delta flat" in badge
-    assert "comparison-delta up" not in badge and "comparison-delta down" not in badge
+    assert "comparison-delta up" in pnc_view.pnc_delta(revenue, rows)  # higher revenue: favourable, green
+    ratio = next(r for r in rows if r["metric_id"] == "combined_ratio")
+    lower = dict(ratio, period_id="2025-Q1", value=95.0)
+    badge = pnc_view.pnc_delta(ratio, rows + [lower])
+    assert "▼ -3.6 pp" in badge and "comparison-delta up" in badge  # lower ratio: arrow down, still favourable
+    higher = dict(ratio, period_id="2025-Q1", value=88.0)
+    assert "comparison-delta down" in pnc_view.pnc_delta(ratio, rows + [higher])  # higher ratio: unfavourable, red
+
+
+def test_favourable_trends_match_the_pnc_metric_contract():
+    import yaml
+    from pathlib import Path
+    import pnc_yoy
+    contract = yaml.safe_load((Path(__file__).resolve().parents[1] / "config/pnc/metrics.yaml").read_text(encoding="utf-8"))["metrics"]
+    assert pnc_yoy.FAVORABLE_TREND == {metric: spec["favorable_trend"] for metric, spec in contract.items()}
+    assert pnc_yoy.favourability("combined_ratio", "•") == "flat" and pnc_yoy.favourability("unknown", "▲") == "flat"
 
 
 def test_pnc_conflicting_closes_raise():

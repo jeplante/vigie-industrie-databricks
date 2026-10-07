@@ -28,15 +28,29 @@ explicite, de preference un moment calme.
 | Job | Id | Cadence (America/Toronto) | Contenu |
 |---|---|---|---|
 | vigie-finance-live | 319208446632488 | 06:15 quotidien | acquisition et publication Finance vie |
-| vigie-pnc-news | 199998716914987 | 06:20 quotidien | salles de presse officielles des 4 assureurs P&C |
+| vigie-pnc-news | 199998716914987 | 06:20 quotidien | salles de presse des 4 assureurs P&C et medias sectoriels |
 | vigie-app-start | 494550201015118 | 06:30 quotidien | demarre l'App si elle est arretee |
-| vigie-operations-monitor | 737745708117826 | 06:45 quotidien | alertes (App, Finance, trimestre, consommation) |
+| vigie-operations-monitor | 737745708117826 | 06:45 quotidien | alertes (App, Finance, trimestre vie et P&C, consommation) |
 | vigie-official-investor-news | 1118291153119927 | toutes les 6 h | actualites officielles vie et media sectoriel |
 | vigie-pnc-acquisition-review | 313136866676385 | manuel | acquisition des documents P&C vers le staging |
 | vigie-finance-history-publish | 623558766235360 | manuel | reprise historique Finance (ponctuelle) |
 
 Les Jobs planifies envoient un courriel a l'echec. Le monitor **echoue volontairement** s'il detecte une alerte: son
 courriel est le canal d'alerte.
+
+**Regle de publication des actualites (vie et P&C, depuis 0.10.15).** Les sources qui repondent sont publiees; une source
+en echec garde ses derniers articles (le `MERGE` ne supprime jamais), l'audit la nomme et le run echoue pour que le Job
+alerte. Medias sectoriels: moins de 2 fils lus fait echouer le run, dans les deux univers.
+
+**Alertes P&C du monitor (depuis 0.10.15).** Les KPI P&C sont publies apres une revue humaine des preuves, donc:
+- `pnc_quarter_incomplete` (avertissement): un KPI attendu manque pour le dernier trimestre clos depuis 50 jours, selon le
+  calendrier de l'assureur (exercice fiscal de TD: novembre a octobre). Aviva Canada n'est jamais attendu. Action: faire la
+  revue P&C et publier.
+- `pnc_results_announced` (avertissement): un communique officiel annonce des resultats trimestriels plus recents que la
+  derniere publication de cet assureur. Action: meme revue, souvent avant que l'alerte precedente ne se declenche.
+- `pnc_value_anomalous` (critique): un ratio publie sort de sa plage plausible, ou sinistres + frais ne donnent pas le
+  ratio combine (tolerance 0,5 pp). Action: verifier la preuve, corriger par une nouvelle publication revue.
+- `pnc_unreadable` (avertissement): le monitor n'a pas pu lire les tables P&C.
 
 ## 2. Verification quotidienne (5 minutes)
 
@@ -156,11 +170,12 @@ une panne dans un schema jetable:
 2. Lancer un run unique (`databricks jobs submit`) de la tache avec `--config-directory` pointant vers un dossier vide (la
    source Manulife echoue), `--dry-run false`, `--target workspace.vigie_drill.official_news`,
    `--audit-table workspace.vigie_drill.official_news_audit`.
-3. Attendu: run `FAILED` (`Official News source gate failed`), aucune ligne dans `official_news`, une ligne d'audit avec
-   `MFC` en `failed` et les trois autres sources en `ok`.
+3. Attendu depuis 0.10.15: run `FAILED` (`Official News sources failed: MFC; their last-known articles are kept`), les
+   articles des trois autres sources publies dans `official_news` du schema jetable, une ligne d'audit avec
+   `sources_succeeded = 3`, `MFC` en `failed` et les trois autres sources en `ok`. (Avant 0.10.15: rien n'etait publie.)
 4. `DROP SCHEMA workspace.vigie_drill CASCADE;` (verifier d'abord que le schema ne contient que ces deux tables).
 
-**Resultat observe le 2026-10-07** (wheel 0.10.14, run unique `vigie-failure-drill`): le run a fini en `FAILED` avec
+**Resultat observe le 2026-10-07** (wheel 0.10.14, ancienne regle, run unique `vigie-failure-drill`): le run a fini en `FAILED` avec
 `Official News source gate failed; last-known-good preserved`; la table `official_news` du schema jetable n'a pas ete creee
 (rien n'a ete publie); l'audit contenait `MFC` en `failed` avec sa cause (`Cannot read contract file ...`) et `SLF`, `GWO`,
 `IAG` en `ok` (3, 2 et 3 articles lus), en **deux lignes** (une par tentative). Le schema a ete supprime ensuite.

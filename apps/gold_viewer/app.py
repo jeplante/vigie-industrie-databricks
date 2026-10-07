@@ -3,14 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 import logging
-import os
-import altair as alt
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer, fallback_answer
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
+from history_chart import history_spec
 from history_quality import flag_suspicious_history, year_to_date_values
+from shared_ui import vigie_header
 from news_filter import filter_articles, news_facets
 from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SidebarSection, SourceRow,
                            alert_rows, audit_freshness_row, finance_sources, news_sources, render_sidebar)
@@ -78,24 +78,23 @@ def _safe(call, default):
         return default
 
 
-# Enable P&C only in workspaces where its reviewed Gold table and App grant exist.
-if os.environ.get("PNC_PREVIEW_ENABLED", "false").lower() == "true":
-    universe = st.radio("Univers", ["Assurance vie", "Assurance de dommages"], horizontal=True, key="industry_universe")
-    if universe == "Assurance de dommages":
-        from pnc_view import render_pnc_preview
-        try:
-            pnc_config = GoldConfig.from_environment()
-            pnc_rows = pnc_published(pnc_config.catalog, pnc_config.schema)
-        except Exception:
-            logging.getLogger(__name__).exception("P&C publication unavailable")
-            st.warning("Les données P&C publiées sont temporairement indisponibles.")
-            pnc_rows = []
-        render_pnc_preview(st, pnc_rows, _safe(lambda: operations_alerts_status(pnc_config), []),
-                           _safe(lambda: pnc_acquisition(pnc_config.catalog, pnc_config.schema), None),
-                           _safe(lambda: pnc_news(pnc_config.catalog, pnc_config.schema), None))
-        st.stop()
+# Two universes of equal standing; each page reads only its own published tables.
+universe = st.radio("Univers", ["Assurance vie", "Assurance de dommages"], horizontal=True, key="industry_universe")
+if universe == "Assurance de dommages":
+    from pnc_view import render_pnc_page
+    try:
+        pnc_config = GoldConfig.from_environment()
+        pnc_rows = pnc_published(pnc_config.catalog, pnc_config.schema)
+    except Exception:
+        logging.getLogger(__name__).exception("P&C publication unavailable")
+        st.warning("Les données P&C publiées sont temporairement indisponibles.")
+        pnc_rows = []
+    render_pnc_page(st, pnc_rows, _safe(lambda: operations_alerts_status(pnc_config), []),
+                    _safe(lambda: pnc_acquisition(pnc_config.catalog, pnc_config.schema), None),
+                    _safe(lambda: pnc_news(pnc_config.catalog, pnc_config.schema), None))
+    st.stop()
 
-st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)
+st.markdown(vigie_header("Assurance de personnes · Canada", "Vigie de l'industrie", "MFC · SLF · GWO · IAG — résultats et actualités"), unsafe_allow_html=True)
 try:
     config = GoldConfig.from_environment()
     available_companies = companies(config)
@@ -178,15 +177,7 @@ with summary_tab:
                 observed = {(row.company_id, row.period_id) for row in frame.itertuples() if pd.notna(row.display_value)}
                 pending = documented - observed
                 st.caption(f"Ruptures : {len(pending)} période(s) avec rapport officiel mais KPI en attente de validation; les autres absences correspondent à une source non collectée ou non publiée.")
-                lines = alt.Chart(frame).mark_line(point=False).encode(
-                    x=alt.X("period_id:N", title="Période"), y=alt.Y("display_value:Q", title="Valeur"), color=alt.Color("company_id:N", title="Assureur")
-                )
-                points = alt.Chart(frame.dropna(subset=["display_value"])).mark_circle(size=60).encode(
-                    x="period_id:N", y="display_value:Q", color="company_id:N",
-                    tooltip=["company_id:N", "period_id:N", alt.Tooltip("display_value:Q", format=",.3f"), alt.Tooltip("source_url:N", title="Rapport officiel")],
-                    href="source_url:N",
-                )
-                st.altair_chart((lines + points).interactive(), use_container_width=True)
+                st.vega_lite_chart(history_spec(frame.to_dict("records")), use_container_width=True)
                 st.caption("Survolez un point pour voir son rapport officiel; cliquez sur un point lorsqu’un lien est disponible.")
                 source_company = st.selectbox("Rapport source du graphique", selected_companies, key="history_source_company")
                 source_period = frame.loc[frame["company_id"] == source_company, "period_id"].max()
