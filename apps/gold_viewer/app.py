@@ -9,7 +9,7 @@ import streamlit as st
 from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer, fallback_answer
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
-from history_quality import flag_suspicious_history
+from history_quality import flag_suspicious_history, year_to_date_values
 from pnc_data import fetch_pnc_published
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit
 
@@ -40,6 +40,8 @@ def company_editorial_news(config, company): return fetch_editorial_news(connect
 def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
 @st.cache_data(ttl=300, show_spinner=False)
 def document_periods(config): return fetch_finance_document_periods(connection(), config)
+@st.cache_data(ttl=300, show_spinner=False)
+def finance_provenance(config, company, period): return fetch_finance_provenance(connection(), config, company, period)
 # Previously re-queried on every rerun (about 3 s per interaction on the life landing page).
 # Errors are not cached by Streamlit, so the existing try/except fallbacks still apply.
 @st.cache_data(ttl=300, show_spinner=False)
@@ -147,35 +149,41 @@ with summary_tab:
             selected_companies = st.multiselect("Assureurs affichés", available_companies, default=available_companies, key="history_companies")
             reviewed_rows = flag_suspicious_history(rows, selected_metric)
             suspect_count = sum(row["display_quality"] != "accepted" for row in reviewed_rows)
-            frame = pd.DataFrame([row for row in reviewed_rows if row["company_id"] in selected_companies]).sort_values(["company_id", "period_id"])
             if suspect_count:
                 st.warning(f"{suspect_count} point(s) historique(s) isolé(s) comme potentiellement annuels sont masqués du graphique en attendant validation. Les données sources ne sont pas modifiées.")
-            if basis == "Cumul annuel" and additive:
-                frame["year"] = frame["period_id"].str[:4]
-                frame["display_value"] = frame.groupby(["company_id", "year"])["display_value"].cumsum()
-                st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année.")
-            else: st.caption("Valeurs trimestrielles validées. Les ratios et actifs restent des valeurs de fin de trimestre.")
-            source_urls = {(document["company_id"], document["reporting_period"]): document["source_url"] for document in available_document_periods}
-            frame["source_url"] = [source_urls.get((row.company_id, row.period_id)) for row in frame.itertuples()]
-            documented = {(document["company_id"], document["reporting_period"]) for document in available_document_periods}
-            observed = {(row.company_id, row.period_id) for row in frame.itertuples() if row.display_value is not None}
-            pending = documented - observed
-            st.caption(f"Ruptures : {len(pending)} période(s) avec rapport officiel mais KPI en attente de validation; les autres absences correspondent à une source non collectée ou non publiée.")
-            lines = alt.Chart(frame).mark_line(point=False).encode(
-                x=alt.X("period_id:N", title="Période"), y=alt.Y("display_value:Q", title="Valeur"), color=alt.Color("company_id:N", title="Assureur")
-            )
-            points = alt.Chart(frame.dropna(subset=["display_value"])).mark_circle(size=60).encode(
-                x="period_id:N", y="display_value:Q", color="company_id:N",
-                tooltip=["company_id:N", "period_id:N", alt.Tooltip("display_value:Q", format=",.3f"), alt.Tooltip("source_url:N", title="Rapport officiel")],
-                href="source_url:N",
-            )
-            st.altair_chart((lines + points).interactive(), use_container_width=True)
-            st.caption("Survolez un point pour voir son rapport officiel; cliquez sur un point lorsqu’un lien est disponible.")
-            source_company = st.selectbox("Rapport source du graphique", selected_companies or available_companies, key="history_source_company")
-            source_period = frame.loc[frame["company_id"] == source_company, "period_id"].max() if not frame.empty else None
-            source_document = fetch_finance_provenance(connection(), config, source_company, source_period) if source_period else None
-            if source_document:
-                st.link_button("Voir le rapport officiel du dernier point affiché ↗", source_document["source_url"], key="history-source")
+            if not selected_companies:
+                st.info("Sélectionnez au moins un assureur pour afficher l’évolution historique.")
+            else:
+                frame = pd.DataFrame([row for row in reviewed_rows if row["company_id"] in selected_companies]).sort_values(["company_id", "period_id"])
+                if basis == "Cumul annuel" and additive:
+                    frame["display_value"] = year_to_date_values(frame.to_dict("records"))
+                    st.caption("Cumul annuel : somme des valeurs trimestrielles depuis le début de chaque année. Après un trimestre absent ou masqué, le cumul de l’année est indiqué comme manquant.")
+                else: st.caption("Valeurs trimestrielles validées. Les ratios et actifs restent des valeurs de fin de trimestre.")
+                source_urls = {(document["company_id"], document["reporting_period"]): document["source_url"] for document in available_document_periods}
+                frame["source_url"] = [source_urls.get((row.company_id, row.period_id)) for row in frame.itertuples()]
+                documented = {(document["company_id"], document["reporting_period"]) for document in available_document_periods}
+                observed = {(row.company_id, row.period_id) for row in frame.itertuples() if pd.notna(row.display_value)}
+                pending = documented - observed
+                st.caption(f"Ruptures : {len(pending)} période(s) avec rapport officiel mais KPI en attente de validation; les autres absences correspondent à une source non collectée ou non publiée.")
+                lines = alt.Chart(frame).mark_line(point=False).encode(
+                    x=alt.X("period_id:N", title="Période"), y=alt.Y("display_value:Q", title="Valeur"), color=alt.Color("company_id:N", title="Assureur")
+                )
+                points = alt.Chart(frame.dropna(subset=["display_value"])).mark_circle(size=60).encode(
+                    x="period_id:N", y="display_value:Q", color="company_id:N",
+                    tooltip=["company_id:N", "period_id:N", alt.Tooltip("display_value:Q", format=",.3f"), alt.Tooltip("source_url:N", title="Rapport officiel")],
+                    href="source_url:N",
+                )
+                st.altair_chart((lines + points).interactive(), use_container_width=True)
+                st.caption("Survolez un point pour voir son rapport officiel; cliquez sur un point lorsqu’un lien est disponible.")
+                source_company = st.selectbox("Rapport source du graphique", selected_companies, key="history_source_company")
+                source_period = frame.loc[frame["company_id"] == source_company, "period_id"].max()
+                try:
+                    source_document = finance_provenance(config, source_company, source_period) if pd.notna(source_period) else None
+                except Exception:
+                    logging.getLogger(__name__).exception("Finance provenance unavailable")
+                    source_document = None
+                if source_document:
+                    st.link_button("Voir le rapport officiel du dernier point affiché ↗", source_document["source_url"], key="history-source")
         else: st.info("Aucune série historique validée n'est encore disponible pour cet indicateur.")
 
 with company_tab:
@@ -277,11 +285,11 @@ if question:
             try:
                 answer = deterministic_answer(question, context) or ask(question, context, st.session_state.chat_messages[:-1])
                 st.write(answer["answer"])
-                used_kpis = [f"{row.get('company_id')} {row.get('metric_id')} {row.get('period_id')}" for row in answer.get("used_kpis", [])]
+                used_kpis = [f"{row.get('company_id')} {row.get('metric_id')} {row.get('period_id')}" for row in answer.get("used_kpis") or []]
                 if used_kpis:
                     st.caption("KPI utilisés : " + "; ".join(used_kpis))
-                for citation in answer.get("citations", []):
-                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-{citation['url']}")
+                for index, citation in enumerate(answer.get("citations") or []):
+                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-{index}-{citation['url']}")
                 if answer.get("caveat"):
                     st.caption(answer["caveat"])
                 st.session_state.chat_messages.append({"role": "assistant", "content": answer["answer"]})
@@ -290,6 +298,6 @@ if question:
                 answer = fallback_answer(context)
                 st.warning(answer["answer"])
                 st.caption(answer["caveat"])
-                for citation in answer.get("citations", []):
-                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-fallback-{citation['url']}")
+                for index, citation in enumerate(answer.get("citations") or []):
+                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"chat-fallback-{index}-{citation['url']}")
                 st.session_state.chat_messages.append({"role": "assistant", "content": answer["answer"]})
