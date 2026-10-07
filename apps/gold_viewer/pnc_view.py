@@ -8,9 +8,11 @@ delta only when a same-calendar, same-quarter prior-year value exists.
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
-from source_status import SidebarSection, alert_rows, pnc_acquisition_rows, pnc_sources, render_sidebar
+from news_filter import filter_articles, news_facets
+from source_status import SidebarSection, alert_rows, pnc_acquisition_rows, pnc_news_rows, pnc_sources, render_sidebar
 
 from shared_ui import (
     delta_badge,
@@ -44,6 +46,46 @@ HELP = {
     "Résultat net": "Résultat net publié, en milliards de dollars canadiens.",
 }
 SCOPE = {company: scope for company, _, scope in COMPANIES}
+NEWS_SOURCE_LABELS = {
+    "intact_newsroom": "Intact Financial · salle de presse",
+    "definity_newsroom": "Definity · salle de presse",
+    "aviva_canada_press": "Aviva Canada · communiqués",
+    "td_stories_insurance": "TD Stories · TD Insurance",
+}
+
+
+def _news_date(value: Any) -> str:
+    return value.strftime("%Y-%m-%d") if hasattr(value, "strftime") else (str(value)[:10] if value else "Date non fournie")
+
+
+def render_pnc_news(st, articles):
+    """Official newsroom items per issuer; context only, never a KPI."""
+    st.markdown("<p class='section-eyebrow'>Salles de presse officielles</p>", unsafe_allow_html=True)
+    st.caption("Communiqués publiés par les assureurs. Ils apportent du contexte et ne modifient jamais les KPI publiés.")
+    names = {company: name for company, name, _ in COMPANIES}
+    items = [dict(article, news_kind="Source officielle") for article in articles]
+    if not items:
+        st.caption("Aucune actualité officielle n’est encore disponible.")
+        return
+    _kinds, source_options, category_options = news_facets(items, NEWS_SOURCE_LABELS)
+    company_column, source_column, category_column = st.columns(3)
+    chosen_companies = company_column.multiselect("Assureur", [name for company, name, _ in COMPANIES if any(a["company_id"] == company for a in items)], key="pnc-news-company")
+    chosen_sources = source_column.multiselect("Source", source_options, key="pnc-news-source")
+    chosen_categories = category_column.multiselect("Catégorie", category_options, key="pnc-news-category")
+    if chosen_companies:
+        wanted = {company for company, name in names.items() if name in chosen_companies}
+        items = [item for item in items if item["company_id"] in wanted]
+    items = filter_articles(items, NEWS_SOURCE_LABELS, (), chosen_sources, chosen_categories)
+    if not items:
+        st.caption("Aucune actualité ne correspond aux filtres choisis.")
+    for article in items[:20]:
+        metadata = [names.get(article["company_id"], article["company_id"]), NEWS_SOURCE_LABELS.get(article["source"], article["source"])]
+        metadata.extend(article.get("categories") or [])
+        metadata.append(_news_date(article.get("published_at")))
+        st.markdown(f"**{article['title']}**  \n{' · '.join(metadata)}")
+        if article.get("summary"):
+            st.write(article["summary"])
+        st.link_button("Consulter la source ↗", article["source_url"], key=f"pnc-news-{article['article_id']}")
 
 
 def _kind(row: dict[str, Any]) -> str:
@@ -143,7 +185,7 @@ def pnc_history_table(rows):
              "Rapport officiel": row["source_url"]} for row in ordered]
 
 
-def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=None):
+def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=None, news=None):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
     period, published_rows = current_pnc_rows(all_rows)
@@ -160,6 +202,12 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
         steps = pnc_acquisition_rows([company for company, _name, _scope in COMPANIES],
                                      {row["company_id"]: row for row in attempts}, audit)
         sections.append(SidebarSection("Acquisition", None, None, steps))
+    if news is not None:
+        news_articles, news_counts, news_audit = news
+        news_status = pnc_news_rows([company for company, _name, _scope in COMPANIES],
+                                    {row["company_id"]: row for row in news_counts}, news_audit, datetime.now(UTC))
+        sections.append(SidebarSection("Actualités officielles", f"{news_audit['sources_succeeded']} / {len(COMPANIES)}" if news_audit else None,
+                                       None, news_status))
     render_sidebar(st, sections, alert_rows(operations_alerts))
     st.caption("Intact Financial · Aviva Canada · TD Insurance · Definity Financial")
     if not published_rows:
@@ -173,7 +221,12 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
             details = "; ".join(f"{name} : {', '.join(dates)}" for name, dates in closes if dates)
             st.warning(f"Attention : les périodes de clôture diffèrent ({details}). "
                        "Les trimestres fiscaux et civils ne couvrent pas les mêmes dates.")
-    summary_tab, history_tab = st.tabs(["Synthèse", "Historique validé"])
+    labels = ["Synthèse", "Historique validé"] if news is None else ["Synthèse", "Actualités", "Historique validé"]
+    opened = st.tabs(labels)
+    summary_tab, history_tab = opened[0], opened[-1]
+    if news is not None:
+        with opened[1]:
+            render_pnc_news(st, news[0])
     with summary_tab:
         st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
         st.subheader("Résultats des quatre compagnies")

@@ -1,4 +1,5 @@
 import importlib.util
+from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -330,3 +331,72 @@ def test_pnc_sidebar_adds_an_acquisition_section_when_the_audit_is_readable(monk
     module.render_pnc_preview(without, rows, ())
     assert "Dernier run" in with_audit.html and "lacune déclarée" in with_audit.html
     assert "Dernier run" not in without.html  # no read access: the section is simply absent
+
+
+def test_pnc_news_read_is_read_only_and_bounded_to_the_namespace():
+    import pytest
+
+    module = _load_pnc_data()
+
+    class Cursor:
+        def __init__(self, owner): self.owner = owner; self.description = [("company_id",)]
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def execute(self, statement): self.owner.statements.append(statement)
+        def fetchall(self): return []
+
+    class Connection:
+        def __init__(self): self.statements = []
+        def cursor(self): return Cursor(self)
+
+    connection = Connection()
+    assert module.fetch_pnc_news(connection, "workspace", "vigie") == ([], [], None)
+    assert len(connection.statements) == 3 and all(s.lstrip().startswith("SELECT") for s in connection.statements)
+    assert "`workspace`.`vigie`.`pnc_official_news`" in connection.statements[0] and "LIMIT 60" in connection.statements[0]
+    assert "COALESCE(published_at, fetched_at)" in connection.statements[0] and "`pnc_news_audit`" in connection.statements[2]
+    with pytest.raises(ValueError):
+        module.fetch_pnc_news(connection, "workspace", "vigie`; DROP")
+
+
+def test_pnc_news_tab_lists_articles_and_filters_by_issuer_source_and_category(monkeypatch):
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class Column:
+        def __init__(self, view, name): self.view, self.name = view, name
+        def multiselect(self, label, options, key=None):
+            self.view.options[label] = list(options)
+            return self.view.choices.get(label, [])
+
+    class View:
+        def __init__(self, choices=None):
+            self.choices, self.options, self.titles, self.links, self.captions = choices or {}, {}, [], [], []
+        def columns(self, count): return [Column(self, name) for name in ("a", "b", "c")]
+        def markdown(self, text, **kwargs):
+            if text.startswith("**"): self.titles.append(text.split("**")[1])
+        def caption(self, text): self.captions.append(text)
+        def write(self, text): pass
+        def link_button(self, label, url, key=None): self.links.append((url, key))
+
+    articles = [
+        {"article_id": "1", "company_id": "IFC", "source": "intact_newsroom", "source_url": "https://newsroom.intactfc.com/a", "title": "Q3 catastrophe loss estimate",
+         "summary": "s", "published_at": datetime(2026, 10, 6, tzinfo=timezone.utc), "categories": ["Résultats et capital"]},
+        {"article_id": "2", "company_id": "AV", "source": "aviva_canada_press", "source_url": "https://www.aviva.ca/en/press-releases/2026/x/", "title": "Appoints Chief Claims Officer",
+         "summary": "", "published_at": None, "categories": ["Communiqué"]},
+    ]
+    view = View()
+    module.render_pnc_news(view, articles)
+    assert view.titles == ["Q3 catastrophe loss estimate", "Appoints Chief Claims Officer"] and len(view.links) == 2
+    assert view.options["Assureur"] == ["Intact Financial", "Aviva Canada"] and "Communiqué" in view.options["Catégorie"]
+    only = View({"Assureur": ["Aviva Canada"]})
+    module.render_pnc_news(only, articles)
+    assert only.titles == ["Appoints Chief Claims Officer"]
+    none = View({"Assureur": ["Intact Financial"], "Catégorie": ["Communiqué"]})
+    module.render_pnc_news(none, articles)
+    assert none.titles == [] and "Aucune actualité ne correspond aux filtres choisis." in none.captions
+    empty = View()
+    module.render_pnc_news(empty, [])
+    assert any("Aucune actualité officielle" in caption for caption in empty.captions)

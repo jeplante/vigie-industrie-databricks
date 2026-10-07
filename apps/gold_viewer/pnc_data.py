@@ -45,6 +45,33 @@ def fetch_pnc_acquisition(connection, catalog, schema):
     return attempts, (rows[0] if rows else None)
 
 
+def fetch_pnc_news(connection, catalog, schema):
+    """Official P&C newsroom items (context only), the per-issuer counts and the latest run audit."""
+    namespace = _namespace(catalog, schema)
+    window = "COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 365 DAYS"
+
+    def run(statement):
+        with connection.cursor() as cursor:
+            cursor.execute(statement)
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    articles = run(
+        "SELECT article_id, company_id, source, source_url, title, summary, published_at, categories "
+        f"FROM {namespace}.`pnc_official_news` WHERE {window} "
+        "ORDER BY COALESCE(published_at, fetched_at) DESC, article_id LIMIT 60"
+    )
+    counts = run(
+        "SELECT company_id, count(*) AS n, max(COALESCE(published_at, fetched_at)) AS latest "
+        f"FROM {namespace}.`pnc_official_news` WHERE {window} GROUP BY company_id"
+    )
+    audit = run(
+        "SELECT observed_at, sources_succeeded, sources_failed, articles, per_source_json "
+        f"FROM {namespace}.`pnc_news_audit` ORDER BY observed_at DESC LIMIT 1"
+    )
+    return articles, counts, (audit[0] if audit else None)
+
+
 def current_pnc_rows(rows):
     periods = [row.get("period_id", "") for row in rows
                if re.fullmatch(r"20\d{2}-Q[1-4]", row.get("period_id", ""))]
