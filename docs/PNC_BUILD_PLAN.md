@@ -35,6 +35,26 @@ review evidence; a new publication decision requires exact stored-byte and
 candidate readback, the reviewed-only dry-run, and independent Gold readback.
 Acquisition and publication remain manual and unscheduled.
 
+## Observed state checkpoint (read-only, 2026-10-06)
+
+Read-only SQL readback of `workspace.vigie.pnc_gold_observations`: 167 rows
+across 18 quarters, 2022-Q1 through 2026-Q2 (9 or 10 rows per quarter, two or
+three issuers each). 2026-Q2 holds nine rows for IFC, TD and DFY; DFY's five
+metrics there do not include `insurance_revenue`. The reviewed evidence on
+`main` now records DFY 2026-Q2 `insurance_revenue` = 1.7937 (CAD billions;
+reviewed 2026-09-28), but that value has not been published to Gold: doing so
+is a separate, explicitly authorized publication. `vigie-pnc-acquisition-review`
+has no schedule; its last two runs (2026-09-20 and 2026-09-21) ended `FAILED`
+in `pnc_acquire`. Acquisition and publication remain manual.
+
+Since the earlier checkpoints: the 2022 comparative backfill was published
+(PR #17), 2026-Q2 acquisition sources were added (PR #20), and the App renders
+P&C through the shared presentation module with the same page skeleton as the
+life universe (PR #18, #22). `PNC_PREVIEW_ENABLED` remains the activation gate.
+Aviva Canada stays `N/A` outside Q1 (no isolated Canada quarterly COR) and TD
+Insurance stays gap-flagged where TD reports a combined Wealth Management and
+Insurance segment. This is a dated observation, not a standing guarantee.
+
 ## Original phase-1 implementation slices (historical)
 
 The list below records the initial build plan; the dated checkpoint above
