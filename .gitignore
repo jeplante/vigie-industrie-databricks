@@ -10,3 +10,8 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# Local Spark / Delta test artifacts
+spark-warehouse/
+metastore_db/
+derby.log
