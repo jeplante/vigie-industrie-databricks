@@ -424,16 +424,23 @@ Reprends vigie-industrie-databricks avec docs/PROJECT_HANDOFF.md.
 
 Verifie d'abord Git (main synchronise, aucune PR ouverte) puis l'etat live en
 lecture seule: Jobs, derniers runs, operations_monitor_audit. Les Slices 10 a 18
-sont integrees. Points ouverts, dans cet ordre:
-1. Verifier les runs de 06:30 (vigie-app-start) et 06:45 (monitor): le monitor
-   doit etre SUCCESS sans alerte tant que l'App est active.
-2. Le Job vigie-official-investor-news tourne toutes les 6 h avec dry_run=true:
-   aucune actualite n'est persistee depuis le 2026-09-15. Passer dry_run a false
-   est une decision du user (action live).
-3. Aucun courriel d'echec n'est configure sur le monitor.
-4. Le staging pnc_candidates accumule des doublons identiques (le publisher les
+sont integrees. Etat au 2026-10-07:
+- vigie-app-start (06:30) demarre l'App avant le monitor (06:45); l'App consomme
+  0,5 DBU/h tant qu'elle tourne (jusqu'a 12 DBU/jour).
+- Le monitor (wheel 0.10.10) alerte aussi sur un pic de consommation (seuil 30
+  DBU/jour, argument --max-daily-dbus) et envoie un courriel d'echec, comme
+  vigie-app-start, vigie-finance-live et vigie-official-investor-news.
+- vigie-official-investor-news persiste (dry_run=false) depuis le 2026-10-07;
+  verifier l'idempotence au prochain run (inserted_rows et updated_rows a 0).
+- vigie-finance-live tourne sur le wheel 0.10.9 (correctifs de la revue Codex).
+Points ouverts:
+1. La source deployee de l'App est anterieure a la Slice 18 (sans shared_ui.py ni
+   la vue P&C refaite); la redeployer depuis apps/gold_viewer (sauvegarde d'abord).
+2. Le staging pnc_candidates accumule des doublons identiques (le publisher les
    regroupe); un nettoyage serait destructif.
-5. La collecte P&C reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
+3. La collecte P&C reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
+4. Pas de tableau de bord des couts ni de runbooks dedies (l'alerte de pic suffit
+   pour l'instant).
 
 Preserve le pipeline financier, les Jobs independants, le cleanup Unity Catalog,
 l'idempotence IA et le plafond d'appels modele. Aucune publication, aucun
