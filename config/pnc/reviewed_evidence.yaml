@@ -798,3 +798,18 @@ reviews:
       net_income: {value: 0.185, unit: CAD_BILLION}
     exclusions:
       operating_roe: comparative trailing-twelve-month measure, not quarterly
+  - company_id: TD
+    period_id: 2026-Q3
+    period_end: 2026-07-31
+    calendar_basis: fiscal
+    disclosure_scope: insurance_segment
+    source_document_hash: 6df473f21b580a745119c5deee17b6c41a681c7b37967eac6dd65f6fe473b9c9
+    reviewed_by: claude-report-review-2026-10-07
+    basis: quarterly
+    source_locator: Report to shareholders page 21, Table 13 and quarterly comparison narrative
+    period_excerpt: For the three months ended July 31 2026
+    scope_excerpt: Insurance net income of $188 million
+    # Cross-checks: +$6M vs fiscal 2025-Q3 (0.182 published), -$91M vs 2026-Q2 (0.279 published),
+    # nine-month Insurance net income $650M = 183 + 279 + 188.
+    metrics:
+      net_income: {value: 0.188, unit: CAD_BILLION}
