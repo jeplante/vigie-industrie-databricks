@@ -17,6 +17,7 @@ def test_preview_displays_all_issuers_without_exposing_candidates(monkeypatch):
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
     class View:
         def __init__(self):
             self.html = ""
@@ -55,6 +56,7 @@ def test_preview_warns_when_fiscal_and_calendar_quarters_differ(monkeypatch):
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
 
     class View:
         def __init__(self):
@@ -92,6 +94,7 @@ def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
 
     class View:
         def __init__(self):
@@ -128,6 +131,7 @@ def test_aviva_half_year_source_is_separate_from_quarterly_values(monkeypatch):
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
 
     class View:
         def __init__(self):
@@ -170,6 +174,7 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
 
     class View:
         def __init__(self):
@@ -222,6 +227,7 @@ def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
 
     class View:
         def __init__(self):
@@ -307,6 +313,7 @@ def test_pnc_sidebar_adds_an_acquisition_section_when_the_audit_is_readable(monk
     spec = importlib.util.spec_from_file_location("pnc_view", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.render_pnc_chat = lambda *args, **kwargs: None  # chat covered in test_pnc_chat.py
 
     class View:
         def __init__(self):

@@ -441,6 +441,13 @@ sont integrees. Etat au 2026-10-07:
   `pnc_financial_documents` (droits accordes le 2026-10-07 avec l'accord du user, SELECT seulement).
 - L'App deployee == main: barre laterale commune vie/dommages, memes onglets Synthese et Par compagnie des deux cotes
   (un sous-onglet par assureur avec indicateurs, historique et actualites filtrables).
+- Chat "Questionner la Vigie" des deux cotes (modele Databricks `databricks-gpt-oss-20b` heberge par Databricks, aucune API
+  externe ni cle; l'App l'appelle avec son identite, droit CAN_QUERY). Volet dommages: `pnc_chat.py` (contexte P&C seulement,
+  conversation separee, consigne P&C, reponses deterministes pour les consultations et les lacunes connues Aviva/TD, secours
+  deterministe, `reasoning_effort=low` car ce modele a sature son budget de jetons en raisonnant). Les citations hors contexte
+  et les KPI inconnus sont supprimes; la prose du modele n'est PAS verifiee (erreur observee: un ratio combine pris pour un
+  ratio de sinistres sur une question ouverte; les comparaisons chiffrees passent d'abord par le repondeur deterministe).
+  Le chat vie est inchange (sans reasoning_effort).
 - Audit des actualites vie: `official_news_audit.per_source_json` (colonne ajoutee par mergeSchema le 2026-10-07, wheel 0.10.13).
   Le Job `vigie-official-investor-news` ecrit toujours une ligne d'audit, meme si une source echoue (lot non publie,
   dernier lot valide preserve), et la barre laterale vie nomme la source en echec.

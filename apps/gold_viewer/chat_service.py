@@ -139,18 +139,30 @@ def _response_object(content: Any) -> dict[str, Any]:
     return parsed
 
 
-def ask(question: str, context: dict[str, Any], history: list[dict[str, str]]) -> dict[str, Any]:
+def ask(
+    question: str,
+    context: dict[str, Any],
+    history: list[dict[str, str]],
+    *,
+    system: str = SYSTEM,
+    allowed_kpis: set[tuple[Any, Any, Any]] | None = None,
+    reasoning_effort: str | None = None,
+) -> dict[str, Any]:
     if not 3 <= len(question.strip()) <= 600:
         raise ValueError("La question doit contenir entre 3 et 600 caractères.")
     config = Config()
     context_json = json.dumps(context, ensure_ascii=False, default=_json_default)
-    messages = [{"role": "system", "content": SYSTEM + "\nCONTEXT:\n" + context_json}]
+    messages = [{"role": "system", "content": system + "\nCONTEXT:\n" + context_json}]
     messages.extend({"role": item["role"], "content": item["content"][:1200]} for item in history[-6:])
     messages.append({"role": "user", "content": question.strip()})
+    payload = {"messages": messages, "temperature": 0.1, "max_tokens": 1536}
+    if reasoning_effort:
+        # A reasoning model can spend the whole token budget thinking and never answer; "low" keeps it bounded.
+        payload["reasoning_effort"] = reasoning_effort
     response = requests.post(
         f"{config.host.rstrip('/')}/serving-endpoints/{os.environ.get('VIGIE_CHAT_ENDPOINT', DEFAULT_MODEL)}/invocations",
         headers={**config.authenticate(), "Content-Type": "application/json"},
-        json={"messages": messages, "temperature": 0.1, "max_tokens": 1536}, timeout=45,
+        json=payload, timeout=45,
     )
     response.raise_for_status()
     parsed = _response_object(response.json()["choices"][0]["message"]["content"])
@@ -160,10 +172,11 @@ def ask(question: str, context: dict[str, Any], history: list[dict[str, str]]) -
         if isinstance(item, dict) and item.get("url") in allowed:
             citations.setdefault(item["url"], item)
     parsed["citations"] = list(citations.values())[:6]
-    allowed_kpis = {
-        (row.get("company_id"), row.get("metric_id"), row.get("current_period_id"))
-        for row in context.get("comparisons", [])
-    }
+    if allowed_kpis is None:
+        allowed_kpis = {
+            (row.get("company_id"), row.get("metric_id"), row.get("current_period_id"))
+            for row in context.get("comparisons", [])
+        }
     parsed["used_kpis"] = [
         item for item in parsed.get("used_kpis") or []
         if isinstance(item, dict)

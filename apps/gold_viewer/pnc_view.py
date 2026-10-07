@@ -258,6 +258,64 @@ def pnc_history_table(rows):
              "Rapport officiel": row["source_url"]} for row in ordered]
 
 
+def render_pnc_chat(st, rows, news_articles, ask_fn=None):
+    """Questionner la Vigie, dommages: P&C context only, its own conversation, same guardrails as the life chat."""
+    import logging
+    import pnc_chat
+
+    st.divider()
+    st.markdown("<p class='section-eyebrow'>Assistant fondé sur les données publiées</p>", unsafe_allow_html=True)
+    st.subheader("Questionner la Vigie")
+    st.caption("Les réponses sont limitées aux KPI P&C publiés, aux communiqués et aux documents officiels cités. Ce n'est pas un conseil financier.")
+    examples = (
+        "Compare les ratios combinés des assureurs pour le dernier trimestre",
+        "Quel est le résultat net de Definity?",
+        "Pourquoi Aviva Canada est-il N/A?",
+    )
+    selected_example = None
+    for column, example in zip(st.columns(3), examples):
+        if column.button(example, use_container_width=True, key=f"pnc-chat-example-{example[:12]}"):
+            selected_example = example
+    if "pnc_chat_messages" not in st.session_state:
+        st.session_state["pnc_chat_messages"] = []
+    messages = st.session_state["pnc_chat_messages"]
+    for message in messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+    question = selected_example or st.chat_input("Ex. Compare les ratios combinés des quatre assureurs.", key="pnc-chat-input")
+    if not question:
+        return
+    messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.write(question)
+    context = pnc_chat.compact_pnc_context(rows, news_articles)
+    with st.chat_message("assistant"):
+        with st.spinner("Analyse des données publiées..."):
+            try:
+                if ask_fn is None:
+                    from chat_service import ask as ask_fn
+                answer = pnc_chat.deterministic_answer(question, context) or ask_fn(
+                    question, context, messages[:-1], system=pnc_chat.PNC_SYSTEM, allowed_kpis=pnc_chat.allowed_kpis(context),
+                    reasoning_effort="low")
+                st.write(answer["answer"])
+                used = [f"{row.get('company_id')} {row.get('metric_id')} {row.get('period_id')}" for row in answer.get("used_kpis") or []]
+                if used:
+                    st.caption("KPI utilisés : " + "; ".join(used))
+                for index, citation in enumerate(answer.get("citations") or []):
+                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"pnc-chat-{index}-{citation['url']}")
+                if answer.get("caveat"):
+                    st.caption(answer["caveat"])
+                messages.append({"role": "assistant", "content": answer["answer"]})
+            except Exception:
+                logging.getLogger(__name__).exception("P&C chat query failed")
+                answer = pnc_chat.fallback_answer(context)
+                st.warning(answer["answer"])
+                st.caption(answer["caveat"])
+                for index, citation in enumerate(answer.get("citations") or []):
+                    st.link_button(citation.get("label", "Source officielle ↗"), citation["url"], key=f"pnc-chat-fallback-{index}-{citation['url']}")
+                messages.append({"role": "assistant", "content": answer["answer"]})
+
+
 def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=None, news=None):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
@@ -324,3 +382,4 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
     st.subheader("Périmètres et périodes")
     st.write("Les résultats consolidés d’Intact et de Definity ne représentent pas le même périmètre que les segments Aviva Canada et TD Insurance.")
     st.write("Les résultats semestriels, les cumuls annuels et les rendements sur douze mois seront distingués des résultats du trimestre.")
+    render_pnc_chat(st, all_rows, news[0] if news is not None else [])
