@@ -119,12 +119,17 @@ def main() -> None:
     if publication.quality_status != "current":
         audit["quality_status"] = "stale"; upsert_finance_run_audit(spark, args.audit_object, audit)
         raise ValueError("Live Finance candidates rejected; last-known-good publication preserved")
-    bronze = load_bronze_observations(spark, publication.observations, args.bronze_object)
-    silver = load_silver_observations(spark, args.bronze_object, args.silver_object)
-    if silver.reconciliation_delta != 0:
-        raise ValueError("Finance Silver reconciliation failed")
-    gold = load_gold_observations(spark, args.silver_object, args.gold_object)
-    if gold.reconciliation_delta != 0:
-        raise ValueError("Finance Gold reconciliation failed")
+    try:
+        bronze = load_bronze_observations(spark, publication.observations, args.bronze_object)
+        silver = load_silver_observations(spark, args.bronze_object, args.silver_object)
+        if silver.reconciliation_delta != 0:
+            raise ValueError("Finance Silver reconciliation failed")
+        gold = load_gold_observations(spark, args.silver_object, args.gold_object)
+        if gold.reconciliation_delta != 0:
+            raise ValueError("Finance Gold reconciliation failed")
+    except Exception:
+        # Without this row the App would keep showing the previous run as current.
+        audit["quality_status"] = "stale"; upsert_finance_run_audit(spark, args.audit_object, audit)
+        raise
     audit["quality_status"] = "current"; upsert_finance_run_audit(spark, args.audit_object, audit)
     print(json.dumps({"status": "success", "audit": audit, "bronze": asdict(bronze), "silver": asdict(silver), "gold": asdict(gold)}, default=str, sort_keys=True))

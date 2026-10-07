@@ -58,3 +58,36 @@ def test_live_ai_fallback_requests_each_missing_metric_within_the_run_budget(mon
 
     assert len(requested) == 10
     assert json.loads(capsys.readouterr().out)["audit"]["ai_model_calls"] == 10
+
+
+def test_live_reconciliation_failure_records_a_stale_audit(monkeypatch):
+    from dataclasses import dataclass
+
+    import pytest
+
+    @dataclass(frozen=True)
+    class LayerResult:
+        reconciliation_delta: int = 0
+
+    audits = []
+    publication = type("Publication", (), {"quality_status": "current", "observations": ({"observation_id": "o"},)})()
+    monkeypatch.setattr(task, "SparkSession", FakeSparkSession)
+    monkeypatch.setattr(task, "enforce_finance_retention", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(task, "acquire_live_finance", lambda *args, **kwargs: LiveFinanceResult((), ({"observation_id": "o"},), 4, {}, 0, 0, 0))
+    monkeypatch.setattr(task, "upsert_financial_documents", lambda *args: None)
+    monkeypatch.setattr(task, "publish_finance_candidates", lambda *args: publication)
+    monkeypatch.setattr(task, "load_bronze_observations", lambda *args: LayerResult())
+    monkeypatch.setattr(task, "load_silver_observations", lambda *args: LayerResult())
+    monkeypatch.setattr(task, "load_gold_observations", lambda *args: LayerResult(reconciliation_delta=2))
+    monkeypatch.setattr(task, "upsert_finance_run_audit", lambda spark, name, audit: audits.append(dict(audit)))
+    monkeypatch.setattr(sys, "argv", [
+        "finance_live", "--config-directory", str(ROOT / "config"),
+        "--documents-object", "c.s.documents", "--bronze-object", "c.s.bronze",
+        "--silver-object", "c.s.silver", "--gold-object", "c.s.gold",
+        "--audit-object", "c.s.audit", "--run-id", "run-1", "--dry-run", "false",
+    ])
+
+    with pytest.raises(ValueError, match="Gold reconciliation"):
+        task.main()
+
+    assert [audit["quality_status"] for audit in audits] == ["stale"]
