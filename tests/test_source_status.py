@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "gold_view
 from contextlib import nullcontext
 
 from source_status import (SidebarSection, SourceRow, alert_rows, audit_freshness_row, finance_sources, format_time, news_sources,
-                           pnc_acquisition_rows, pnc_sources, render_sidebar, source_list_html, worst_level)
+                           pnc_acquisition_rows, pnc_news_rows, pnc_sources, render_sidebar, source_list_html, worst_level)
 
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
 
@@ -128,3 +128,17 @@ def test_pnc_acquisition_separates_failures_known_gaps_and_incomplete_runs():
     assert by_name(pnc_acquisition_rows(["AV"], {}, dict(audit, status="acquisition_failed")))["Dernier run"].level == "error"
     assert by_name(pnc_acquisition_rows(["IFC"], {}, None))["Dernier run"].level == "na"
     assert by_name(pnc_acquisition_rows(["AV"], {}, dict(audit, missing_sources_json="not json")))["AV"].level == "error"
+
+
+def test_pnc_news_status_names_the_failing_source_and_flags_a_stale_run():
+    audit = {"observed_at": NOW - timedelta(hours=3), "sources_succeeded": 2,
+             "per_source_json": '{"IFC": {"status": "ok"}, "DFY": {"status": "failed", "error": "TimeoutError: timed out"}, "AV": {"status": "ok"}}'}
+    counts = {"IFC": {"n": 5, "latest": datetime(2026, 10, 6, tzinfo=timezone.utc)}, "AV": {"n": 0}}
+    rows = by_name(pnc_news_rows(["IFC", "DFY", "AV", "TD"], counts, audit, NOW))
+    assert rows["IFC"].level == "ok" and rows["IFC"].text == "5 articles · dernier 2026-10-06"
+    assert rows["DFY"].level == "error" and "TimeoutError" in rows["DFY"].text  # the failing source is named
+    assert rows["AV"].level == "na" and rows["TD"].level == "warn" and "absente" in rows["TD"].text
+    old = dict(audit, observed_at=NOW - timedelta(days=5))
+    assert by_name(pnc_news_rows(["IFC"], counts, old, NOW))["Actualités"].level == "error"
+    assert pnc_news_rows(["IFC"], {}, None, NOW)[0].level == "na"
+    assert by_name(pnc_news_rows(["IFC"], counts, dict(audit, per_source_json="oops"), NOW))["IFC"].level == "warn"

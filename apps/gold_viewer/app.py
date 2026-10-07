@@ -14,7 +14,7 @@ from history_quality import flag_suspicious_history, year_to_date_values
 from news_filter import filter_articles, news_facets
 from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SidebarSection, SourceRow,
                            alert_rows, audit_freshness_row, finance_sources, news_sources, render_sidebar)
-from pnc_data import fetch_pnc_acquisition, fetch_pnc_published
+from pnc_data import fetch_pnc_acquisition, fetch_pnc_news, fetch_pnc_published
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit, fetch_official_news_counts
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
@@ -61,6 +61,8 @@ def official_news_counts(config): return fetch_official_news_counts(connection()
 @st.cache_data(ttl=300, show_spinner=False)
 def pnc_acquisition(catalog, schema): return fetch_pnc_acquisition(connection(), catalog, schema)
 @st.cache_data(ttl=300, show_spinner=False)
+def pnc_news(catalog, schema): return fetch_pnc_news(connection(), catalog, schema)
+@st.cache_data(ttl=300, show_spinner=False)
 def pnc_published(catalog, schema): return fetch_pnc_published(connection(), catalog, schema)
 
 def _safe(call, default):
@@ -83,7 +85,8 @@ if os.environ.get("PNC_PREVIEW_ENABLED", "false").lower() == "true":
             st.warning("Les données P&C publiées sont temporairement indisponibles.")
             pnc_rows = []
         render_pnc_preview(st, pnc_rows, _safe(lambda: operations_alerts_status(pnc_config), []),
-                           _safe(lambda: pnc_acquisition(pnc_config.catalog, pnc_config.schema), None))
+                           _safe(lambda: pnc_acquisition(pnc_config.catalog, pnc_config.schema), None),
+                           _safe(lambda: pnc_news(pnc_config.catalog, pnc_config.schema), None))
         st.stop()
 
 st.markdown("""<header class="vigie-header"><p class="vigie-eyebrow">Assurance de personnes · Canada</p><h1>Vigie de l'industrie</h1><p>MFC · SLF · GWO · IAG — résultats et actualités</p></header>""", unsafe_allow_html=True)

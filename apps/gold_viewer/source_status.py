@@ -182,6 +182,38 @@ def pnc_acquisition_rows(
     return rows
 
 
+def pnc_news_rows(
+    companies: Iterable[str],
+    counts: Mapping[str, Mapping[str, Any]],
+    audit: Mapping[str, Any] | None,
+    now: datetime,
+) -> list[SourceRow]:
+    """Official newsroom status per P&C issuer; the audit records each source, so a failure is named."""
+    rows = []
+    if not audit:
+        return [SourceRow("Actualités", "na", "Aucun run enregistré")]
+    stale = audit_freshness_row("Actualités", audit, now, FINANCE_WARN_HOURS, FINANCE_ERROR_HOURS)
+    if stale:
+        rows.append(stale)
+    try:
+        per_source = json.loads(audit.get("per_source_json") or "{}")
+    except (TypeError, ValueError):
+        per_source = {}
+    for company in companies:
+        info, entry = per_source.get(company), counts.get(company)
+        number = int(entry.get("n") or 0) if entry else 0
+        if info and info.get("status") != "ok":
+            rows.append(SourceRow(company, "error", f"Source en échec : {info.get('error') or 'erreur inconnue'}"))
+        elif not info:
+            rows.append(SourceRow(company, "warn", "Source absente du dernier run"))
+        elif number == 0:
+            rows.append(SourceRow(company, "na", "Aucun article récent"))
+        else:
+            plural = "s" if number > 1 else ""
+            rows.append(SourceRow(company, "ok", f"{number} article{plural} · dernier {format_time(entry.get('latest'))[:10]}"))
+    return rows
+
+
 def alert_rows(alerts: Iterable[Mapping[str, Any]]) -> list[SourceRow]:
     return [SourceRow(str(alert.get("entity") or "Exploitation"), "error", str(alert.get("message") or ""))
             for alert in alerts if alert.get("status") == "alert"]
