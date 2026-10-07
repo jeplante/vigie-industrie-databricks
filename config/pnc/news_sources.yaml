@@ -1,0 +1,25 @@
+# Approved official newsrooms for the P&C issuers. News is context only: it never feeds a KPI.
+# Every article URL must be https on one of allowed_hosts, otherwise it is dropped.
+news_sources:
+  - company_id: IFC
+    source_id: intact_newsroom
+    kind: rss
+    url: https://newsroom.intactfc.com/press-releases?pagetemplate=rss
+    allowed_hosts: [newsroom.intactfc.com]
+  - company_id: DFY
+    source_id: definity_newsroom
+    kind: rss
+    url: https://www.definityfinancial.com/rss/pressrelease.aspx
+    allowed_hosts: [www.definityfinancial.com]
+  - company_id: AV
+    source_id: aviva_canada_press
+    kind: aviva_list
+    url: https://www.aviva.ca/en/press-releases/
+    allowed_hosts: [www.aviva.ca, aviva.ca]
+  - company_id: TD
+    source_id: td_stories_insurance
+    kind: td_list
+    url: https://stories.td.com/ca/en/news
+    allowed_hosts: [stories.td.com]
+    # TD Bank Group publishes all of its news here; keep only TD Insurance items.
+    include_terms: ["td insurance", "td general insurance", "td home and auto insurance"]
