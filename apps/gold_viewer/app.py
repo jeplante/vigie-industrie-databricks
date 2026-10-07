@@ -10,6 +10,7 @@ from display import display_number, display_percentage, display_value
 from chat_service import ask, compact_context, deterministic_answer, fallback_answer
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
 from history_quality import flag_suspicious_history
+from pnc_data import fetch_pnc_published
 from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
@@ -25,30 +26,39 @@ st.markdown(f"<style>{Path(__file__).with_name('style.css').read_text(encoding='
 
 @st.cache_resource(show_spinner=False)
 def connection(): return connect_to_warehouse()
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def companies(config): return fetch_companies(connection(), config)
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def company_rows(config, company): return fetch_comparison(connection(), config, company)
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def history(config, metric): return fetch_metric_history(connection(), config, metric)
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def company_news(config, company): return fetch_news(connection(), config, company)
 @st.cache_data(ttl=300, show_spinner=False)
 def company_editorial_news(config, company): return fetch_editorial_news(connection(), config, company)
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def document_periods(config): return fetch_finance_document_periods(connection(), config)
+# Previously re-queried on every rerun (about 3 s per interaction on the life landing page).
+# Errors are not cached by Streamlit, so the existing try/except fallbacks still apply.
+@st.cache_data(ttl=300, show_spinner=False)
+def finance_audit_status(config): return fetch_latest_finance_audit(connection(), config)
+@st.cache_data(ttl=300, show_spinner=False)
+def news_audit_status(config): return fetch_official_news_audit(connection(), config)
+@st.cache_data(ttl=300, show_spinner=False)
+def operations_alerts_status(config): return fetch_latest_operations_alerts(connection(), config)
+@st.cache_data(ttl=300, show_spinner=False)
+def pnc_published(catalog, schema): return fetch_pnc_published(connection(), catalog, schema)
 
 # Enable P&C only in workspaces where its reviewed Gold table and App grant exist.
 if os.environ.get("PNC_PREVIEW_ENABLED", "false").lower() == "true":
     universe = st.radio("Univers", ["Assurance vie", "Assurance de dommages"], horizontal=True, key="industry_universe")
     if universe == "Assurance de dommages":
         from pnc_view import render_pnc_preview
-        from pnc_data import fetch_pnc_published
         try:
             pnc_config = GoldConfig.from_environment()
-            pnc_rows = fetch_pnc_published(connection(), pnc_config.catalog, pnc_config.schema)
+            pnc_rows = pnc_published(pnc_config.catalog, pnc_config.schema)
         except Exception:
             logging.getLogger(__name__).exception("P&C publication unavailable")
             st.warning("Les données P&C publiées sont temporairement indisponibles.")
@@ -79,8 +89,8 @@ current_rows = rows_for_period(all_rows, current_period)
 with st.sidebar:
     st.caption("État des sources")
     try:
-        finance_audit = fetch_latest_finance_audit(connection(), config)
-        news_audit = fetch_official_news_audit(connection(), config)
+        finance_audit = finance_audit_status(config)
+        news_audit = news_audit_status(config)
     except Exception:
         finance_audit = news_audit = None
     if finance_audit:
@@ -101,7 +111,7 @@ with summary_tab:
         card.caption(f"Collecté : {display_value(document.get('fetched_at') if document else None, '—')}")
     with st.expander("À surveiller", expanded=False):
         try:
-            operations_alerts = fetch_latest_operations_alerts(connection(), config)
+            operations_alerts = operations_alerts_status(config)
         except Exception:
             operations_alerts = []
         for alert in operations_alerts:
