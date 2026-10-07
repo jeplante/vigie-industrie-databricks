@@ -51,23 +51,26 @@ def main() -> None:
     prior = load_financial_document_index(spark, args.documents_object)
     remaining_calls = contract.finance_policy.ai_max_calls_per_run
 
-    def ai_fallback(company_id, period_id, source_url, content_hash, source_text):
+    def ai_fallback(company_id, period_id, source_url, content_hash, source_text, metric_ids):
         nonlocal remaining_calls
-        if args.ai_fallback != "true" or remaining_calls <= 0:
-            return []
-        metric_id = "core_eps"
-        skeleton = {
-            "observation_id": f"{company_id}-{period_id}-{metric_id}", "company_id": company_id,
-            "metric_id": metric_id, "period_id": period_id, "value": 0.0,
-            "unit": contract.metrics[metric_id].unit, "source_url": source_url,
-            "source_document_hash": content_hash, "quality_status": "candidate",
-        }
-        remaining_calls -= 1
-        parsed = invoke_finance_ai(
-            skeleton, source_text, contract, enabled=True, remaining_calls=1,
-            invoke=lambda payload: call_finance_model(payload, args.ai_model or contract.finance_policy.ai_model),
-        )
-        return [parsed["candidate"]] if parsed else []
+        candidates = []
+        for metric_id in metric_ids:
+            if args.ai_fallback != "true" or remaining_calls <= 0:
+                break
+            skeleton = {
+                "observation_id": f"{company_id}-{period_id}-{metric_id}", "company_id": company_id,
+                "metric_id": metric_id, "period_id": period_id, "value": 0.0,
+                "unit": contract.metrics[metric_id].unit, "source_url": source_url,
+                "source_document_hash": content_hash, "quality_status": "candidate",
+            }
+            remaining_calls -= 1
+            parsed = invoke_finance_ai(
+                skeleton, source_text, contract, enabled=True, remaining_calls=1,
+                invoke=lambda payload: call_finance_model(payload, args.ai_model or contract.finance_policy.ai_model),
+            )
+            if parsed:
+                candidates.append(parsed["candidate"])
+        return candidates
 
     result = acquire_live_finance(contract, prior, persist_raw=not dry_run, ai_fallback=ai_fallback)
     all_sources = result.sources_succeeded == len(contract.financial_sources)

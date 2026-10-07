@@ -37,6 +37,57 @@ def test_live_finance_selects_latest_report_and_builds_deterministic_candidates(
     assert {candidate["company_id"] for candidate in result.candidates} == set(contract.companies)
 
 
+PAYLOAD_WITHOUT_LICAT = b"<p>Core EPS $1.25. Core earnings $2,000 million. Net income attributed to shareholders $1,000 million. Core ROE 18%. Underlying EPS $1.25. Underlying net income $2,000 million. Reported net income $1,000 million. Underlying ROE 18%. Assets under management $1,500 billion. Base EPS $1.25. Base earnings $2,000 million. Net earnings $1,000 million. Base ROE 18%. Total client assets $3 trillion. Net income attributed to common shareholders $1,000 million. Assets under administration $300 billion.</p>"
+
+
+def _without_licat_fetchers():
+    def page_fetcher(source):
+        return '<a href="/reports/2026-q1.pdf">Q1 2026 report</a>'
+
+    def document_fetcher(contract, company_id, document_type, source_url, **kwargs):
+        from vigie_databricks.finance_acquisition import FinancialDocumentFetch
+        document = create_financial_document(contract, company_id, document_type, source_url, "fetched", content=PAYLOAD_WITHOUT_LICAT, content_type="text/html")
+        return FinancialDocumentFetch(document, PAYLOAD_WITHOUT_LICAT)
+
+    return page_fetcher, document_fetcher
+
+
+def test_live_finance_asks_ai_only_for_metrics_missing_from_deterministic_extraction():
+    contract = load_insurer_contract(ROOT / "config")
+    page_fetcher, document_fetcher = _without_licat_fetchers()
+    requests = []
+
+    def ai_fallback(company_id, period_id, source_url, content_hash, text, metric_ids):
+        requests.append((company_id, tuple(metric_ids)))
+        return [{
+            "observation_id": f"{company_id}-{period_id}-{metric_id}", "company_id": company_id,
+            "metric_id": metric_id, "period_id": period_id, "value": 140.0,
+            "unit": contract.metrics[metric_id].unit, "source_url": source_url,
+            "source_document_hash": content_hash, "quality_status": "candidate",
+        } for metric_id in metric_ids]
+
+    result = acquire_live_finance(contract, {}, persist_raw=False, page_fetcher=page_fetcher,
+                                  document_fetcher=document_fetcher, ai_fallback=ai_fallback)
+
+    assert result.sources_succeeded == 4, result.source_errors
+    assert sorted(requests) == [(company_id, ("licat_ratio",)) for company_id in sorted(contract.companies)]
+    assert sum(candidate["metric_id"] == "licat_ratio" for candidate in result.candidates) == 4
+
+
+def test_live_finance_rejects_ai_candidates_for_unrequested_metrics():
+    contract = load_insurer_contract(ROOT / "config")
+    page_fetcher, document_fetcher = _without_licat_fetchers()
+
+    def ai_fallback(company_id, period_id, source_url, content_hash, text, metric_ids):
+        return [{"metric_id": "core_eps"}]
+
+    result = acquire_live_finance(contract, {}, persist_raw=False, page_fetcher=page_fetcher,
+                                  document_fetcher=document_fetcher, ai_fallback=ai_fallback)
+
+    assert result.sources_succeeded == 0
+    assert set(result.source_errors.values()) == {"valueerror_ai_candidates_outside_requested_metrics"}
+
+
 def test_live_finance_isolates_one_failed_source():
     contract = load_insurer_contract(ROOT / "config")
 

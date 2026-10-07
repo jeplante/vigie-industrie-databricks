@@ -60,6 +60,12 @@ def invoke_finance_ai(
     parsed = parse_finance_ai_output(content, contract)
     if parsed["source_excerpt"].strip() not in source_text:
         raise ValueError("invalid_finance_ai_excerpt_provenance")
+    # The model may only fill in the value of the requested candidate.
+    returned = parsed["candidate"]
+    if set(returned) != set(candidate) or any(
+        returned[key] != candidate[key] for key in candidate if key != "value"
+    ):
+        raise ValueError("invalid_finance_ai_candidate_identity")
     return parsed
 
 
