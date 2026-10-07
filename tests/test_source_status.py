@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "gold_view
 from contextlib import nullcontext
 
 from source_status import (SidebarSection, SourceRow, alert_rows, audit_freshness_row, finance_sources, format_time, news_sources,
-                           pnc_sources, render_sidebar, source_list_html, worst_level)
+                           pnc_acquisition_rows, pnc_sources, render_sidebar, source_list_html, worst_level)
 
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc)
 
@@ -110,3 +110,21 @@ def test_one_sidebar_layout_serves_both_universes():
     assert life.calls[0] == ("caption", "État des sources") and pnc_ui.calls[0] == ("caption", "État des sources")
     assert ("success", "Aucune alerte d'exploitation.") in life.calls
     assert "N/A" in pnc_ui.calls[2][1] and "App=UNAVAILABLE" in pnc_ui.calls[4][1]
+
+
+def test_pnc_acquisition_separates_failures_known_gaps_and_incomplete_runs():
+    attempts = {"IFC": {"acquisition_status": "unchanged", "reporting_period": "2026-Q2", "fetched_at": "2026-10-07T01:43:56+00:00"},
+                "AV": {"acquisition_status": "fetched", "reporting_period": "2026-Q1", "fetched_at": "2026-10-07T01:41:41+00:00"},
+                "TD": {"acquisition_status": "failed", "error_code": "http_503"}}
+    audit = {"status": "needs_review", "candidate_count": 11, "observed_at": "2026-10-07T01:44:17+00:00", "missing_sources_json": '["AV"]'}
+    rows = by_name(pnc_acquisition_rows(["IFC", "AV", "TD", "DFY"], attempts, audit))
+    assert rows["Dernier run"].level == "ok" and "11 candidats" in rows["Dernier run"].text and "needs_review" in rows["Dernier run"].text
+    assert rows["IFC"].level == "ok" and "2026-Q2" in rows["IFC"].text
+    assert rows["AV"].level == "na" and "lacune déclarée" in rows["AV"].text  # a collected document without KPI is a declared gap
+    assert rows["TD"].level == "error" and "http_503" in rows["TD"].text
+    assert rows["DFY"].level == "error" and "Aucune acquisition" in rows["DFY"].text
+    incomplete = by_name(pnc_acquisition_rows(["AV"], {}, dict(audit, status="extraction_incomplete")))
+    assert incomplete["AV"].level == "warn" and incomplete["Dernier run"].level == "warn"
+    assert by_name(pnc_acquisition_rows(["AV"], {}, dict(audit, status="acquisition_failed")))["Dernier run"].level == "error"
+    assert by_name(pnc_acquisition_rows(["IFC"], {}, None))["Dernier run"].level == "na"
+    assert by_name(pnc_acquisition_rows(["AV"], {}, dict(audit, missing_sources_json="not json")))["AV"].level == "error"

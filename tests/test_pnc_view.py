@@ -263,3 +263,70 @@ def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
     assert "source-na'><span class='source-state'>N/A</span><strong>AV</strong>" in view.html
     assert "source-na'><span class='source-state'>N/A</span><strong>DFY</strong>" in view.html
     assert any("plusieurs trimestres" in message for message in view.infos)  # a single period: no history table
+
+
+def test_pnc_acquisition_is_read_only_and_validates_the_namespace():
+    import pytest
+
+    module = _load_pnc_data()
+
+    class Cursor:
+        def __init__(self, owner): self.owner = owner; self.description = [("company_id",)]
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def execute(self, statement): self.owner.statements.append(statement)
+        def fetchall(self): return []
+
+    class Connection:
+        def __init__(self): self.statements = []
+        def cursor(self): return Cursor(self)
+
+    connection = Connection()
+    assert module.fetch_pnc_acquisition(connection, "workspace", "vigie") == ([], None)
+    assert len(connection.statements) == 2 and all(s.lstrip().startswith("SELECT") for s in connection.statements)
+    assert "`workspace`.`vigie`.`pnc_financial_documents`" in connection.statements[0] and "PARTITION BY company_id" in connection.statements[0]
+    assert "`pnc_run_audit`" in connection.statements[1] and "LIMIT 1" in connection.statements[1]
+    with pytest.raises(ValueError):
+        module.fetch_pnc_acquisition(connection, "workspace; DROP", "vigie")
+
+
+def _load_pnc_data():
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_data.py"
+    spec = importlib.util.spec_from_file_location("pnc_data", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_pnc_sidebar_adds_an_acquisition_section_when_the_audit_is_readable(monkeypatch):
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class View:
+        def __init__(self):
+            self.html = ""
+            self.column_config = SimpleNamespace(LinkColumn=lambda *args, **kwargs: kwargs)
+
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            return [nullcontext() for _ in labels]
+
+        def markdown(self, html, **kwargs):
+            self.html += html
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+    rows = [dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q2", period_end="2026-06-30",
+                 calendar_basis="calendar", value=94.9, unit="PERCENT", source_url="https://example.com/ifc")]
+    acquisition = ([{"company_id": "IFC", "reporting_period": "2026-Q2", "acquisition_status": "unchanged", "fetched_at": "2026-10-07T01:43:56+00:00"}],
+                   {"status": "needs_review", "candidate_count": 11, "observed_at": "2026-10-07T01:44:17+00:00", "missing_sources_json": '["AV"]'})
+    with_audit, without = View(), View()
+    module.render_pnc_preview(with_audit, rows, (), acquisition)
+    module.render_pnc_preview(without, rows, ())
+    assert "Dernier run" in with_audit.html and "lacune déclarée" in with_audit.html
+    assert "Dernier run" not in without.html  # no read access: the section is simply absent
