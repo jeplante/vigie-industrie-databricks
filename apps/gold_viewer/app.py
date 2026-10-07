@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 import logging
 import os
@@ -11,8 +12,10 @@ from chat_service import ask, compact_context, deterministic_answer, fallback_an
 from comparison_table import METRICS, comparison_html, expected_yoy_period, latest_quarter_period, rows_for_period
 from history_quality import flag_suspicious_history, year_to_date_values
 from news_filter import filter_articles, news_facets
+from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SourceRow,
+                           alert_rows, audit_freshness_row, finance_sources, news_sources, source_list_html)
 from pnc_data import fetch_pnc_published
-from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit
+from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit, fetch_official_news_counts
 
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 NEWS_SOURCE_LABELS = {
@@ -52,6 +55,10 @@ def news_audit_status(config): return fetch_official_news_audit(connection(), co
 @st.cache_data(ttl=300, show_spinner=False)
 def operations_alerts_status(config): return fetch_latest_operations_alerts(connection(), config)
 @st.cache_data(ttl=300, show_spinner=False)
+def finance_attempts(config): return fetch_latest_finance_attempts(connection(), config)
+@st.cache_data(ttl=300, show_spinner=False)
+def official_news_counts(config): return fetch_official_news_counts(connection(), config)
+@st.cache_data(ttl=300, show_spinner=False)
 def pnc_published(catalog, schema): return fetch_pnc_published(connection(), catalog, schema)
 
 # Enable P&C only in workspaces where its reviewed Gold table and App grant exist.
@@ -89,44 +96,46 @@ current_period = latest_quarter_period(
     [str(document.get("reporting_period")) for document in available_document_periods],
 )
 current_rows = rows_for_period(all_rows, current_period)
+SOURCE_COMPANIES = ("MFC", "SLF", "GWO", "IAG")
+
+
+def _safe(call, default):
+    try:
+        return call()
+    except Exception:
+        return default
+
+
+now = datetime.now(UTC)
+finance_audit = _safe(lambda: finance_audit_status(config), None)
+news_audit = _safe(lambda: news_audit_status(config), None)
+attempts = {row["company_id"]: row for row in _safe(lambda: finance_attempts(config), [])}
+news_counts = {row["company_id"]: row for row in _safe(lambda: official_news_counts(config), [])}
+operations_alerts = _safe(lambda: operations_alerts_status(config), [])
 with st.sidebar:
     st.caption("État des sources")
-    try:
-        finance_audit = finance_audit_status(config)
-        news_audit = news_audit_status(config)
-    except Exception:
-        finance_audit = news_audit = None
+    finance_rows = [row for row in (audit_freshness_row("Finance", finance_audit, now, FINANCE_WARN_HOURS, FINANCE_ERROR_HOURS),) if row]
+    if finance_audit and finance_audit.get("quality_status") != "current":
+        finance_rows.append(SourceRow("Validation", "warn", "La dernière validation n'est pas `current`; la dernière publication fiable reste affichée."))
+    finance_rows += finance_sources(SOURCE_COMPANIES, latest_documents, attempts, current_period)
     if finance_audit:
         st.metric("Finance", f"{finance_audit['sources_succeeded']} / 4")
         st.caption(f"Vérifié : {finance_audit['observed_at']}")
+    st.markdown(source_list_html(finance_rows), unsafe_allow_html=True)
+    news_rows = [row for row in (audit_freshness_row("Actualités", news_audit, now, NEWS_WARN_HOURS, NEWS_ERROR_HOURS),) if row]
+    news_rows += news_sources(SOURCE_COMPANIES, news_counts, news_audit)
     if news_audit:
         st.metric("Actualités officielles", f"{news_audit['sources_succeeded']} / 4")
+    st.markdown(source_list_html(news_rows), unsafe_allow_html=True)
+    st.caption("Alertes d'exploitation")
+    alerts = alert_rows(operations_alerts)
+    if alerts:
+        st.markdown(source_list_html(alerts), unsafe_allow_html=True)
+    else:
+        st.success("Aucune alerte d'exploitation.")
 
 summary_tab, company_tab = st.tabs(["Synthèse", "Par compagnie"])
 with summary_tab:
-    st.markdown("<p class='section-eyebrow'>Fraîcheur des sources</p>", unsafe_allow_html=True)
-    freshness_cards = st.columns(4)
-    for card, company in zip(freshness_cards, ("MFC", "SLF", "GWO", "IAG")):
-        document = latest_documents.get(company)
-        period = document.get("reporting_period") if document else None
-        is_current = bool(period and period == current_period)
-        card.metric(company, display_value(period, "Source absente"), "À jour" if is_current else "À vérifier", delta_color="normal" if is_current else "off")
-        card.caption(f"Collecté : {display_value(document.get('fetched_at') if document else None, '—')}")
-    with st.expander("À surveiller", expanded=False):
-        try:
-            operations_alerts = operations_alerts_status(config)
-        except Exception:
-            operations_alerts = []
-        for alert in operations_alerts:
-            if alert.get("status") == "alert":
-                st.warning(f"{alert.get('entity')} — {alert.get('message')}")
-        stale_companies = [company for company, document in latest_documents.items() if not document or document.get("reporting_period") != current_period]
-        if stale_companies:
-            st.warning("Sources hors de la période la plus récente : " + ", ".join(stale_companies) + ".")
-        if finance_audit and finance_audit.get("quality_status") != "current":
-            st.warning("La dernière validation Finance n’est pas `current`; la dernière publication fiable reste affichée.")
-        if not stale_companies and (not finance_audit or finance_audit.get("quality_status") == "current"):
-            st.success("Aucune alerte de fraîcheur ou de publication détectée.")
     st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
     st.subheader("Résultats des quatre compagnies")
     st.caption(f"Trimestre affiché : {display_value(current_period, 'indisponible')}. Aucun trimestre antérieur n’est utilisé comme substitut.")

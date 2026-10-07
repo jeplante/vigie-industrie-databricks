@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_editorial_news, fetch_latest_finance_attempts, fetch_official_news_counts, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
 
 
 class FakeCursor:
@@ -172,3 +172,26 @@ def test_fetch_latest_finance_audit_exposes_ai_and_retention_counters():
     row = fetch_latest_finance_audit(connection, config())
     assert row == {"run_id": "run-2", "ai_model_calls": 0, "retention_deleted_files": 1}
     assert "ORDER BY observed_at DESC" in connection.cursor_instance.statement
+
+
+def test_official_news_window_keeps_articles_without_a_publication_date():
+    connection = FakeConnection([], ["article_id"])
+    fetch_news(connection, config(), "MFC")
+    statement = connection.cursor_instance.statement
+    assert "COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 365 DAYS" in statement
+    assert "published_at >= current_timestamp()" not in statement.replace("COALESCE(published_at, fetched_at) >= current_timestamp()", "")
+
+
+def test_sidebar_status_queries_are_read_only_and_share_the_news_filters():
+    connection = FakeConnection([], ["company_id", "n", "last_fetch"])
+    fetch_official_news_counts(connection, config())
+    statement = connection.cursor_instance.statement
+    assert statement.lstrip().startswith("SELECT") and "explode(relevant_company_ids)" in statement
+    assert "enrichment_status = 'succeeded'" in statement and "INTERVAL 365 DAYS" in statement
+    connection = FakeConnection([], ["company_id"])
+    fetch_latest_finance_attempts(connection, config())
+    statement = connection.cursor_instance.statement
+    assert statement.lstrip().startswith("SELECT") and "PARTITION BY company_id" in statement
+    assert "acquisition_status" in statement and "error_code" in statement
+    for forbidden in ("INSERT", "UPDATE", "DELETE", "MERGE", "DROP"):
+        assert forbidden not in statement.upper().split()
