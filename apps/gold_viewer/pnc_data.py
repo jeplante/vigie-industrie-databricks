@@ -1,4 +1,5 @@
 """Read only reviewed P&C publication, never staging candidates."""
+import logging
 import re
 
 
@@ -75,9 +76,8 @@ def fetch_pnc_news(connection, catalog, schema):
             f"FROM {namespace}.`pnc_editorial_news` WHERE {window} "
             "ORDER BY COALESCE(published_at, fetched_at) DESC, article_id LIMIT 60"
         )
-    except Exception as error:  # the sector-media table appears with the first collection run
-        if "TABLE_OR_VIEW_NOT_FOUND" not in str(error):
-            raise
+    except Exception:  # missing table, missing grant or outage: sector media must never hide the official news
+        logging.getLogger(__name__).warning("P&C sector media unavailable", exc_info=True)
         editorial = []
     for article in editorial:  # the SQL connector returns ARRAY columns as numpy arrays
         article["relevant_company_ids"] = list(article.get("relevant_company_ids") if article.get("relevant_company_ids") is not None else [])
