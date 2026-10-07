@@ -9,7 +9,7 @@ import json
 from databricks.sdk import WorkspaceClient
 from pyspark.sql import SparkSession
 
-from vigie_databricks.operations_monitor import MAX_DAILY_DBUS, evaluate_cost, evaluate_operations, latest_completed_quarter
+from vigie_databricks.operations_monitor import MAX_DAILY_DBUS, evaluate_operations, evaluate_usage, latest_completed_quarter
 
 
 AUDIT_SCHEMA = "run_id string,observed_at timestamp,status string,alert_type string,severity string,entity string,message string"
@@ -54,9 +54,9 @@ def main() -> None:
             "SELECT usage_date, sum(usage_quantity) AS dbus FROM system.billing.usage "
             "WHERE usage_unit = 'DBU' AND usage_date >= date_sub(current_date(), 3) GROUP BY usage_date"
         ).collect()]
-        alerts += evaluate_cost(usage, observed_at.date(), args.max_daily_dbus)
+        alerts += evaluate_usage(usage, observed_at.date(), args.max_daily_dbus)
     except Exception as error:  # billing tables may be unreadable; never fail the monitor for that
-        print(json.dumps({"cost_check": "unavailable", "reason": str(error)[:200]}))
+        print(json.dumps({"usage_check": "unavailable", "reason": str(error)[:200]}))
     rows = [
         {
             "run_id": args.run_id, "observed_at": observed_at, "status": "alert",

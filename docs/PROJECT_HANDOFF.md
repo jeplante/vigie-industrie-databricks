@@ -427,8 +427,9 @@ lecture seule: Jobs, derniers runs, operations_monitor_audit. Les Slices 10 a 18
 sont integrees. Etat au 2026-10-07:
 - vigie-app-start (06:30) demarre l'App avant le monitor (06:45); l'App consomme
   0,5 DBU/h tant qu'elle tourne (jusqu'a 12 DBU/jour).
-- Le monitor (wheel 0.10.10) alerte aussi sur un pic de consommation (seuil 30
-  DBU/jour, argument --max-daily-dbus) et envoie un courriel d'echec, comme
+- Le monitor (wheel 0.10.11) alerte aussi sur un pic de consommation de calcul
+  (`usage_spike`, seuil empirique de 30 DBU/jour, argument --max-daily-dbus; workspace en Free Edition, donc
+  quota d'usage et non facture) et envoie un courriel d'echec, comme
   vigie-app-start, vigie-finance-live et vigie-official-investor-news.
 - vigie-official-investor-news persiste (dry_run=false) depuis le 2026-10-07;
   verifier l'idempotence au prochain run (inserted_rows et updated_rows a 0).
@@ -439,7 +440,7 @@ Points ouverts:
 2. Le staging pnc_candidates accumule des doublons identiques (le publisher les
    regroupe); un nettoyage serait destructif.
 3. La collecte P&C reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
-4. Pas de tableau de bord des couts ni de runbooks dedies (l'alerte de pic suffit
+4. Pas de tableau de bord de consommation ni de runbooks dedies (l'alerte de pic suffit
    pour l'instant).
 
 Preserve le pipeline financier, les Jobs independants, le cleanup Unity Catalog,

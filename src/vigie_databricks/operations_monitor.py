@@ -32,23 +32,24 @@ def latest_completed_quarter(now: datetime, reporting_lag_days: int = REPORTING_
     return f"{reference.year}-Q{current_quarter - 1}"
 
 
-# Observed consumption (2026-10): about 1.5 DBU per day for the Jobs alone, plus 0.5 DBU per hour
+# Observed compute usage (2026-10; the workspace is Databricks Free Edition, so this is a usage
+# quota guard, not a bill): about 1.5 DBU per day for the Jobs alone, plus 0.5 DBU per hour
 # while the App runs (up to 12 per day) and SQL warehouse time when it is used, so a normal day can
 # reach 15 to 20. The threshold sits above that to flag a runaway Job or cluster, not normal variation.
 MAX_DAILY_DBUS = 30.0
 
 
-def evaluate_cost(daily_dbus: Iterable[tuple[date, float]], today: date, max_daily_dbus: float = MAX_DAILY_DBUS) -> list[OperationsAlert]:
-    """Alert when the latest complete day (yesterday) consumed more than ``max_daily_dbus`` DBUs.
+def evaluate_usage(daily_dbus: Iterable[tuple[date, float]], today: date, max_daily_dbus: float = MAX_DAILY_DBUS) -> list[OperationsAlert]:
+    """Alert when the latest complete day (yesterday) used more than ``max_daily_dbus`` DBUs of compute.
 
-    Today is partial and ignored. A missing day is not an alert: absence of data is not overspending.
+    Today is partial and ignored. A missing day is not an alert: absence of data is not heavy usage.
     """
     yesterday = today - timedelta(days=1)
     consumed = sum(float(quantity) for day, quantity in daily_dbus if day == yesterday)
     if consumed > max_daily_dbus:
         return [OperationsAlert(
-            "cost_spike", "warning", "databricks",
-            f"{yesterday}: {consumed:.1f} DBU consommées (seuil {max_daily_dbus:.0f}).",
+            "usage_spike", "warning", "databricks",
+            f"{yesterday}: consommation de calcul élevée, {consumed:.1f} DBU (seuil {max_daily_dbus:.0f}).",
         )]
     return []
 
