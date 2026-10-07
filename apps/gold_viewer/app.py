@@ -15,8 +15,9 @@ from news_filter import filter_articles, news_facets
 from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SidebarSection, SourceRow,
                            alert_rows, audit_freshness_row, finance_sources, news_sources, render_sidebar)
 from pnc_data import fetch_pnc_acquisition, fetch_pnc_news, fetch_pnc_published
-from gold_data import GoldConfig, connect_to_warehouse, fetch_companies, fetch_comparison, fetch_editorial_news, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_news, fetch_official_news_audit, fetch_official_news_counts
+from gold_data import GoldConfig, connect_to_warehouse, fetch_comparison_all, fetch_editorial_news_all, fetch_latest_finance_provenance_all, fetch_news_all, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_official_news_audit, fetch_official_news_counts
 
+SOURCE_COMPANIES = ("MFC", "SLF", "GWO", "IAG")
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
 NEWS_SOURCE_LABELS = {
     "insurance_journal": "Insurance Journal",
@@ -30,18 +31,23 @@ st.markdown(f"<style>{Path(__file__).with_name('style.css').read_text(encoding='
 
 @st.cache_resource(show_spinner=False)
 def connection(): return connect_to_warehouse()
+# One statement per kind of data for all four companies: the first load is dominated by the number of
+# statements, not by their size, so these replace what used to be four statements each.
 @st.cache_data(ttl=300, show_spinner=False)
-def companies(config): return fetch_companies(connection(), config)
+def comparison_all(config): return fetch_comparison_all(connection(), config, SOURCE_COMPANIES)
 @st.cache_data(ttl=300, show_spinner=False)
-def company_rows(config, company): return fetch_comparison(connection(), config, company)
+def documents_all(config): return fetch_latest_finance_provenance_all(connection(), config, SOURCE_COMPANIES)
+@st.cache_data(ttl=300, show_spinner=False)
+def news_all(config): return fetch_news_all(connection(), config, SOURCE_COMPANIES)
+@st.cache_data(ttl=300, show_spinner=False)
+def editorial_news_all(config): return fetch_editorial_news_all(connection(), config, SOURCE_COMPANIES)
+def companies(config): return sorted(company for company, rows in comparison_all(config).items() if rows)
+def company_rows(config, company): return comparison_all(config).get(company, [])
+def company_news(config, company): return news_all(config).get(company, [])
+def company_editorial_news(config, company): return editorial_news_all(config).get(company, [])
+def company_document(config, company): return documents_all(config).get(company)
 @st.cache_data(ttl=300, show_spinner=False)
 def history(config, metric): return fetch_metric_history(connection(), config, metric)
-@st.cache_data(ttl=300, show_spinner=False)
-def company_news(config, company): return fetch_news(connection(), config, company)
-@st.cache_data(ttl=300, show_spinner=False)
-def company_editorial_news(config, company): return fetch_editorial_news(connection(), config, company)
-@st.cache_data(ttl=300, show_spinner=False)
-def company_document(config, company): return fetch_latest_finance_provenance(connection(), config, company)
 @st.cache_data(ttl=300, show_spinner=False)
 def document_periods(config): return fetch_finance_document_periods(connection(), config)
 @st.cache_data(ttl=300, show_spinner=False)
@@ -109,9 +115,6 @@ current_period = latest_quarter_period(
     [str(document.get("reporting_period")) for document in available_document_periods],
 )
 current_rows = rows_for_period(all_rows, current_period)
-SOURCE_COMPANIES = ("MFC", "SLF", "GWO", "IAG")
-
-
 now = datetime.now(UTC)
 finance_audit = _safe(lambda: finance_audit_status(config), None)
 news_audit = _safe(lambda: news_audit_status(config), None)

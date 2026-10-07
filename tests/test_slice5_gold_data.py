@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_editorial_news, fetch_latest_finance_attempts, fetch_official_news_counts, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
+from apps.gold_viewer.gold_data import GoldConfig, fetch_companies, fetch_company_metrics, fetch_comparison, fetch_editorial_news, fetch_editorial_news_all, fetch_news_all, fetch_comparison_all, fetch_latest_finance_provenance_all, fetch_latest_finance_attempts, fetch_official_news_counts, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_news_ai_audit, fetch_metric_history, fetch_news
 
 
 class FakeCursor:
@@ -195,3 +195,37 @@ def test_sidebar_status_queries_are_read_only_and_share_the_news_filters():
     assert "acquisition_status" in statement and "error_code" in statement
     for forbidden in ("INSERT", "UPDATE", "DELETE", "MERGE", "DROP"):
         assert forbidden not in statement.upper().split()
+
+
+class AmbiguousArray(list):
+    """Behaves like the numpy arrays the SQL connector returns: its truth value is ambiguous."""
+
+    def __bool__(self):
+        raise ValueError("The truth value of an array is ambiguous")
+
+
+def test_batched_reads_group_rows_per_company_and_survive_connector_arrays():
+    columns = ["article_id", "relevant_company_ids", "published_at"]
+    rows = [("a1", AmbiguousArray(["MFC"]), 3), ("a2", AmbiguousArray([]), 2), ("a3", AmbiguousArray(["SLF", "MFC"]), 1)]
+    connection = FakeConnection(rows, columns)
+    grouped = fetch_editorial_news_all(connection, config(), ["MFC", "SLF", "IAG"])
+    assert [row["article_id"] for row in grouped["MFC"]] == ["a1", "a2", "a3"]
+    assert [row["article_id"] for row in grouped["SLF"]] == ["a2", "a3"]  # untagged applies to everyone
+    assert [row["article_id"] for row in grouped["IAG"]] == ["a2"]
+    assert connection.cursor_instance.statement.lstrip().startswith("SELECT") and "LIMIT" not in connection.cursor_instance.statement
+
+    comparison = FakeConnection([("MFC", "core_eps"), ("SLF", "core_eps"), ("MFC", "net_income")], ["company_id", "metric_id"])
+    by_company = fetch_comparison_all(comparison, config(), ["MFC", "SLF", "GWO"])
+    assert [row["metric_id"] for row in by_company["MFC"]] == ["core_eps", "net_income"] and by_company["GWO"] == []
+    assert comparison.cursor_instance.statement.count("?") == 3 and comparison.cursor_instance.parameters == ["MFC", "SLF", "GWO"]
+
+    documents = FakeConnection([("MFC", "2026-Q2")], ["company_id", "reporting_period"])
+    latest = fetch_latest_finance_provenance_all(documents, config(), ["MFC", "SLF"])
+    assert latest["MFC"]["reporting_period"] == "2026-Q2" and latest["SLF"] is None
+    assert "PARTITION BY company_id" in documents.cursor_instance.statement and "'fetched', 'unchanged'" in documents.cursor_instance.statement
+
+    news = FakeConnection([("n1", "MFC")], ["article_id", "news_company"])
+    official = fetch_news_all(news, config(), ["MFC", "SLF"])
+    assert official["MFC"] == [{"article_id": "n1"}] and official["SLF"] == []
+    statement = news.cursor_instance.statement
+    assert "explode(relevant_company_ids)" in statement and "news_rank <= 20" in statement and "INTERVAL 365 DAYS" in statement

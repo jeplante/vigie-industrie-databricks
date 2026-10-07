@@ -134,6 +134,93 @@ def fetch_comparison(
     )
 
 
+def _as_list(value: Any) -> list[Any]:
+    """SQL arrays arrive as numpy arrays from the connector, whose truth value is ambiguous."""
+    return [] if value is None else list(value)
+
+
+def fetch_comparison_all(connection: Any, config: GoldConfig, company_ids: Sequence[str]) -> dict[str, list[dict[str, Any]]]:
+    """Every company's comparison rows in one statement (same rows as fetch_comparison per company)."""
+    company_ids = list(company_ids)
+    columns = ", ".join(COMPARISON_COLUMNS)
+    rows = _query(
+        connection,
+        f"""
+        SELECT {columns}
+        FROM {config.qualified_table}
+        WHERE company_id IN ({", ".join("?" for _ in company_ids)})
+        ORDER BY company_id, metric_id
+        """,
+        company_ids,
+    )
+    grouped: dict[str, list[dict[str, Any]]] = {company: [] for company in company_ids}
+    for row in rows:
+        grouped[row["company_id"]].append(row)
+    return grouped
+
+
+def fetch_latest_finance_provenance_all(connection: Any, config: GoldConfig, company_ids: Sequence[str]) -> dict[str, dict[str, Any] | None]:
+    """The latest collected document of every company in one statement (same choice as the per-company read)."""
+    company_ids = list(company_ids)
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.finance_documents_table))
+    rows = _query(connection, f"""
+        SELECT company_id, reporting_period, source_url, content_hash, fetched_at, acquisition_status
+        FROM (
+            SELECT company_id, reporting_period, source_url, content_hash, fetched_at, acquisition_status,
+                   row_number() OVER (PARTITION BY company_id ORDER BY reporting_period DESC, fetched_at DESC, document_id DESC) AS document_rank
+            FROM {table}
+            WHERE acquisition_status IN ('fetched', 'unchanged') AND company_id IN ({", ".join("?" for _ in company_ids)})
+        )
+        WHERE document_rank = 1
+        """, company_ids)
+    latest: dict[str, dict[str, Any] | None] = {company: None for company in company_ids}
+    for row in rows:
+        latest[row["company_id"]] = row
+    return latest
+
+
+def fetch_news_all(connection: Any, config: GoldConfig, company_ids: Sequence[str]) -> dict[str, list[dict[str, Any]]]:
+    """The newest 20 official articles of every company in one statement (as fetch_news per company)."""
+    company_ids = list(company_ids)
+    rows = _query(connection, f"""
+        SELECT article_id, source, source_url, title, published_at, summary, categories, relevant_company_ids, news_company
+        FROM (
+            SELECT article_id, source, source_url, title, published_at, fetched_at, summary, categories, relevant_company_ids, news_company,
+                   row_number() OVER (PARTITION BY news_company ORDER BY published_at DESC NULLS LAST, fetched_at DESC, article_id) AS news_rank
+            FROM (
+                SELECT article_id, source, source_url, title, published_at, fetched_at, summary, categories, relevant_company_ids,
+                       explode(relevant_company_ids) AS news_company
+                FROM {_news_table(config)}
+                WHERE {' AND '.join(_official_news_filters())}
+            )
+            WHERE news_company IN ({", ".join("?" for _ in company_ids)})
+        )
+        WHERE news_rank <= 20
+        ORDER BY news_company, news_rank
+        """, company_ids)
+    grouped: dict[str, list[dict[str, Any]]] = {company: [] for company in company_ids}
+    for row in rows:
+        company = row.pop("news_company")
+        grouped[company].append(row)
+    return grouped
+
+
+def fetch_editorial_news_all(connection: Any, config: GoldConfig, company_ids: Sequence[str]) -> dict[str, list[dict[str, Any]]]:
+    """Editorial articles per company with the per-company rule: untagged articles apply to every company."""
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.editorial_news_table))
+    rows = _query(connection, f"""
+        SELECT article_id, source, source_type, source_url, title, summary, published_at, categories, relevant_company_ids
+        FROM {table}
+        WHERE enrichment_status = 'succeeded' AND published_at >= current_timestamp() - INTERVAL 365 DAYS
+        ORDER BY published_at DESC NULLS LAST, article_id
+        """)
+    tagged = [(row, _as_list(row.get("relevant_company_ids"))) for row in rows]
+    return {
+        company: [row for row, tags in tagged if not tags or company in tags][:20]
+        for company in company_ids
+    }
+
+
 def fetch_metric_history(connection: Any, config: GoldConfig, metric_id: str) -> list[dict[str, Any]]:
     table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.silver_table))
     return _query(
