@@ -52,8 +52,3 @@ automatiquement. Sinon, manuellement :
 
 Les specs et plans produits par ces skills vont dans `docs/superpowers/specs/`
 et `docs/superpowers/plans/`.
-
-## Notes
-
-- Un fichier parasite à la racine (nom commençant par `s -ExecutionPolicy`)
-  provient d'une commande PowerShell mal citée; ne pas l'inclure dans les commits.
