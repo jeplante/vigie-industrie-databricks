@@ -14,7 +14,25 @@ def healthy_rows(period="2026-Q2"):
 
 def test_latest_completed_quarter_handles_year_boundary():
     assert latest_completed_quarter(datetime(2026, 9, 15, tzinfo=UTC)) == "2026-Q2"
-    assert latest_completed_quarter(datetime(2026, 1, 3, tzinfo=UTC)) == "2025-Q4"
+    assert latest_completed_quarter(datetime(2026, 3, 20, tzinfo=UTC)) == "2025-Q4"
+
+
+def test_quarter_is_not_expected_during_the_reporting_window():
+    # Q3 ended 2026-09-30; insurers publish in November, so early October must still expect Q2.
+    assert latest_completed_quarter(datetime(2026, 10, 1, tzinfo=UTC)) == "2026-Q2"
+    assert latest_completed_quarter(datetime(2026, 10, 6, tzinfo=UTC)) == "2026-Q2"
+    assert latest_completed_quarter(datetime(2026, 11, 18, tzinfo=UTC)) == "2026-Q2"
+    assert latest_completed_quarter(datetime(2026, 11, 20, tzinfo=UTC)) == "2026-Q3"
+
+
+def test_q4_is_expected_only_after_the_mid_february_reporting_window():
+    assert latest_completed_quarter(datetime(2027, 1, 3, tzinfo=UTC)) == "2026-Q3"
+    assert latest_completed_quarter(datetime(2027, 2, 18, tzinfo=UTC)) == "2026-Q3"
+    assert latest_completed_quarter(datetime(2027, 2, 21, tzinfo=UTC)) == "2026-Q4"
+
+
+def test_reporting_lag_is_configurable():
+    assert latest_completed_quarter(datetime(2026, 10, 6, tzinfo=UTC), reporting_lag_days=0) == "2026-Q3"
 
 
 def test_healthy_operations_have_no_alerts():

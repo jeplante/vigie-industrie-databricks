@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Iterable
 
 from vigie_databricks.finance_extraction import EXPECTED_METRICS
@@ -17,13 +17,19 @@ class OperationsAlert:
     message: str
 
 
-def latest_completed_quarter(now: datetime) -> str:
-    """Return the latest fully completed calendar quarter."""
-    year = now.year
-    current_quarter = (now.month - 1) // 3 + 1
+# Insurers publish a quarter roughly five to seven weeks after it ends (Q4 is the
+# latest, mid-February). Expecting a quarter's KPIs before then raised a daily
+# critical alert for every company during the reporting window.
+REPORTING_LAG_DAYS = 50
+
+
+def latest_completed_quarter(now: datetime, reporting_lag_days: int = REPORTING_LAG_DAYS) -> str:
+    """Return the latest calendar quarter that ended at least ``reporting_lag_days`` ago."""
+    reference = now - timedelta(days=reporting_lag_days)
+    current_quarter = (reference.month - 1) // 3 + 1
     if current_quarter == 1:
-        return f"{year - 1}-Q4"
-    return f"{year}-Q{current_quarter - 1}"
+        return f"{reference.year - 1}-Q4"
+    return f"{reference.year}-Q{current_quarter - 1}"
 
 
 def evaluate_operations(
