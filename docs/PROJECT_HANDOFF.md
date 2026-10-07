@@ -434,12 +434,19 @@ sont integrees. Etat au 2026-10-07:
 - vigie-official-investor-news persiste (dry_run=false) depuis le 2026-10-07;
   verifier l'idempotence au prochain run (inserted_rows et updated_rows a 0).
 - vigie-finance-live tourne sur le wheel 0.10.9 (correctifs de la revue Codex).
+- Actualites P&C: Job `vigie-pnc-news` (199998716914987, 06:20 quotidien, dry_run=false, courriel d'echec,
+  wheel 0.10.12 dans `vigie_pnc/0.10.12/`). Quatre salles de presse approuvees (`config/pnc/news_sources.yaml`:
+  Intact et Definity en RSS, Aviva Canada en liste HTML, TD Stories filtre sur TD Insurance), tables P&C
+  separees `pnc_official_news` et `pnc_news_audit` (statut par source dans `per_source_json`). Contexte seulement,
+  jamais un KPI. Le service principal de l'App a SELECT sur ces deux tables et sur `pnc_run_audit` et
+  `pnc_financial_documents` (droits accordes le 2026-10-07 avec l'accord du user, SELECT seulement).
+- L'App deployee == main (barre laterale commune vie/dommages, onglet Actualites P&C, filtres).
 Points ouverts:
-1. La source deployee de l'App est anterieure a la Slice 18 (sans shared_ui.py ni
-   la vue P&C refaite); la redeployer depuis apps/gold_viewer (sauvegarde d'abord).
-2. Le staging pnc_candidates accumule des doublons identiques (le publisher les
+1. Le staging pnc_candidates accumule des doublons identiques (le publisher les
    regroupe); un nettoyage serait destructif.
-3. La collecte P&C reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
+2. La collecte P&C des KPI reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
+3. L'audit des actualites vie ne stocke qu'un compteur (la source en echec n'est pas nommee);
+   l'audit P&C stocke le statut par source. Aligner le vie demande de changer le schema d'audit.
 4. Pas de tableau de bord de consommation ni de runbooks dedies (l'alerte de pic suffit
    pour l'instant).
 
