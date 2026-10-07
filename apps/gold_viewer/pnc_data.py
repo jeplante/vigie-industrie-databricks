@@ -86,8 +86,16 @@ def fetch_pnc_news(connection, catalog, schema):
 
 
 def current_pnc_rows(rows):
-    periods = [row.get("period_id", "") for row in rows
-               if re.fullmatch(r"20\d{2}-Q[1-4]", row.get("period_id", ""))]
+    """Reference quarter and its rows.
+
+    The reference is the latest quarter published by a calendar-year issuer: TD's fiscal quarters end two
+    months earlier, so its label runs ahead (fiscal 2026-Q3 closed on July 31) and would otherwise leave
+    every other issuer N/A for two months. TD is shown under the same label; its newer quarter stays in its
+    history, the chart and the chat. Without any calendar-year row, the latest quarter is used.
+    """
+    quarterly = [row for row in rows if re.fullmatch(r"20\d{2}-Q[1-4]", row.get("period_id", ""))]
+    calendar = [row for row in quarterly if row.get("calendar_basis") != "fiscal"]
+    periods = [row["period_id"] for row in (calendar or quarterly)]
     period = max(periods, default=None)
     selected = [row for row in rows if row.get("period_id") == period]
     keys = [(row["company_id"], row["metric_id"]) for row in selected]

@@ -225,7 +225,9 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
     view = View()
     module.render_pnc_page(view, rows)
     history = next(table for table in view.tables if table[0] and "Trimestre" in table[0][0])
-    assert "<strong>0.279 G$</strong>" in _row_html(view.html, "TD Insurance")
+    # Intact's latest calendar quarter is the reference; TD's fiscal Q2 (ahead) stays in its history
+    assert "<strong>0.183 G$</strong>" in _row_html(view.html, "TD Insurance")
+    assert "0.279 G$" not in _row_html(view.html, "TD Insurance")
     assert [row["Trimestre"] for row in history[0]] == ["2026-Q2", "2026-Q1"]  # TD only: its own panel
     assert {row["Compagnie"] for row in history[0]} == {"TD Insurance"}
     q1_td = next(row for row in history[0] if row["Compagnie"] == "TD Insurance" and row["Trimestre"] == "2026-Q1")
@@ -630,3 +632,17 @@ def test_pnc_news_mixes_official_and_sector_media_with_a_type_filter(monkeypatch
     only_official = View({"Type": ["Source officielle"]})
     module.render_pnc_news(only_official, official, editorial=editorial)
     assert [title.split("**")[1] for title in only_official.titles] == ["Intact release"]
+
+
+def test_reference_quarter_follows_calendar_issuers_not_tds_fiscal_label():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/gold_viewer"))
+    from pnc_data import current_pnc_rows
+
+    def row(company, period, basis="calendar"):
+        return dict(company_id=company, metric_id="net_income", period_id=period, calendar_basis=basis)
+
+    rows = [row("IFC", "2026-Q2"), row("DFY", "2026-Q2"), row("TD", "2026-Q2", "fiscal"), row("TD", "2026-Q3", "fiscal")]
+    period, current = current_pnc_rows(rows)
+    assert period == "2026-Q2" and {r["company_id"] for r in current} == {"IFC", "DFY", "TD"}
+    assert current_pnc_rows([row("TD", "2026-Q2", "fiscal"), row("TD", "2026-Q3", "fiscal")])[0] == "2026-Q3"  # TD alone
+    assert current_pnc_rows(rows + [row("IFC", "2026-Q3")])[0] == "2026-Q3"  # once Intact reports, Q3 becomes the reference
