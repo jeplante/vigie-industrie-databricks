@@ -141,6 +141,19 @@ def pnc_history_table(rows):
              "Rapport officiel": row["source_url"]} for row in ordered]
 
 
+def _render_sidebar(st, period, published_rows):
+    """Source-status sidebar, same skeleton as the life universe, from data already read."""
+    published = {row["company_id"] for row in published_rows}
+    with st.sidebar:
+        st.caption("État des sources")
+        st.metric("Assureurs de dommages", f"{len(published)} / {len(COMPANIES)}")
+        if period:
+            st.caption(f"Période de référence : {period}")
+        absent = [name for company, name, _ in COMPANIES if company not in published]
+        if published and absent:
+            st.caption("N/A : " + ", ".join(absent) + " (aucune valeur validée).")
+
+
 def render_pnc_preview(st, published_rows=()):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
@@ -150,6 +163,7 @@ def render_pnc_preview(st, published_rows=()):
                      "IFC · AV · TD · DFY — résultats et actualités"),
         unsafe_allow_html=True,
     )
+    _render_sidebar(st, period, published_rows)
     st.caption("Intact Financial · Aviva Canada · TD Insurance · Definity Financial")
     if not published_rows:
         st.info("Les données P&C sont en cours de validation. Aucun KPI n’est encore publié dans cette vue.")
@@ -162,28 +176,33 @@ def render_pnc_preview(st, published_rows=()):
             details = "; ".join(f"{name} : {', '.join(dates)}" for name, dates in closes if dates)
             st.warning(f"Attention : les périodes de clôture diffèrent ({details}). "
                        "Les trimestres fiscaux et civils ne couvrent pas les mêmes dates.")
-    st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
-    st.subheader("Résultats des quatre compagnies")
-    st.caption("Une variation annuelle n’est affichée que si le même trimestre de l’année précédente "
-               "existe pour le même assureur et le même calendrier.")
-    st.markdown(pnc_comparison_html(period, published_rows, all_rows), unsafe_allow_html=True)
-    if published_rows and not any(row["company_id"] == "AV" for row in published_rows):
-        st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
-        st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL,
-                       key="pnc-aviva-hy26-source")
-    st.caption("Le résultat net opérationnel est une mesure non-IFRS propre à chaque assureur; ses ajustements peuvent différer. Vérifiez le rapport officiel avant une comparaison directe.")
-    for company, name, _ in COMPANIES:
-        sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
-        for index, url in enumerate(sources):
-            st.link_button(f"Rapport officiel — {name}", url, key=f"pnc-source-{company}-{index}")
-    if len({row["period_id"] for row in all_rows}) > 1:
-        st.subheader("Historique trimestriel validé")
-        st.caption("Chaque ligne conserve sa clôture et son calendrier. Les trimestres fiscaux de TD ne couvrent pas les mêmes dates que les trimestres civils.")
-        st.dataframe(
-            pnc_history_table(all_rows), hide_index=True, width="stretch",
-            column_config={"Rapport officiel": st.column_config.LinkColumn(
-                "Rapport officiel", display_text="Ouvrir")},
-        )
+    summary_tab, history_tab = st.tabs(["Synthèse", "Historique validé"])
+    with summary_tab:
+        st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
+        st.subheader("Résultats des quatre compagnies")
+        st.caption("Une variation annuelle n’est affichée que si le même trimestre de l’année précédente "
+                   "existe pour le même assureur et le même calendrier.")
+        st.markdown(pnc_comparison_html(period, published_rows, all_rows), unsafe_allow_html=True)
+        if published_rows and not any(row["company_id"] == "AV" for row in published_rows):
+            st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
+            st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL,
+                           key="pnc-aviva-hy26-source")
+        st.caption("Le résultat net opérationnel est une mesure non-IFRS propre à chaque assureur; ses ajustements peuvent différer. Vérifiez le rapport officiel avant une comparaison directe.")
+        for company, name, _ in COMPANIES:
+            sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
+            for index, url in enumerate(sources):
+                st.link_button(f"Rapport officiel — {name}", url, key=f"pnc-source-{company}-{index}")
+    with history_tab:
+        if len({row["period_id"] for row in all_rows}) > 1:
+            st.subheader("Historique trimestriel validé")
+            st.caption("Chaque ligne conserve sa clôture et son calendrier. Les trimestres fiscaux de TD ne couvrent pas les mêmes dates que les trimestres civils.")
+            st.dataframe(
+                pnc_history_table(all_rows), hide_index=True, width="stretch",
+                column_config={"Rapport officiel": st.column_config.LinkColumn(
+                    "Rapport officiel", display_text="Ouvrir")},
+            )
+        else:
+            st.info("L’historique s’affichera dès que plusieurs trimestres validés seront publiés.")
     st.caption("N/A signifie ici qu’aucune valeur validée n’a été publiée, et non que l’assureur n’a pas communiqué de résultat.")
     st.subheader("Périmètres et périodes")
     st.write("Les résultats consolidés d’Intact et de Definity ne représentent pas le même périmètre que les segments Aviva Canada et TD Insurance.")
