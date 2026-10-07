@@ -89,6 +89,15 @@ def finance_sources(
     return rows
 
 
+def per_source_info(audit: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Per-source status recorded by the audit (empty for runs recorded before it existed)."""
+    try:
+        info = json.loads(audit.get("per_source_json") or "{}") if audit else {}
+    except (TypeError, ValueError):
+        return {}
+    return info if isinstance(info, dict) else {}
+
+
 def news_sources(
     companies: Iterable[str],
     counts: Mapping[str, Mapping[str, Any]],
@@ -96,14 +105,18 @@ def news_sources(
     total_sources: int = 4,
 ) -> list[SourceRow]:
     rows = []
+    per_source = per_source_info(audit)
     succeeded = int(audit.get("sources_succeeded") or 0) if audit else None
-    if succeeded is not None and succeeded < total_sources:
+    if succeeded is not None and succeeded < total_sources and not per_source:
         rows.append(SourceRow("Dernier run", "warn",
                               f"{succeeded}/{total_sources} sources ont répondu (la source en échec n'est pas détaillée par l'audit)"))
     for company in companies:
         entry = counts.get(company)
         number = int(entry.get("n") or 0) if entry else 0
-        if number == 0:
+        info = per_source.get(company)
+        if info and info.get("status") != "ok":
+            rows.append(SourceRow(company, "error", f"Source en échec : {info.get('error') or 'erreur inconnue'}"))
+        elif number == 0:
             rows.append(SourceRow(company, "warn", "Aucun article enregistré"))
         else:
             plural = "s" if number > 1 else ""
@@ -195,10 +208,7 @@ def pnc_news_rows(
     stale = audit_freshness_row("Actualités", audit, now, FINANCE_WARN_HOURS, FINANCE_ERROR_HOURS)
     if stale:
         rows.append(stale)
-    try:
-        per_source = json.loads(audit.get("per_source_json") or "{}")
-    except (TypeError, ValueError):
-        per_source = {}
+    per_source = per_source_info(audit)
     for company in companies:
         info, entry = per_source.get(company), counts.get(company)
         number = int(entry.get("n") or 0) if entry else 0
