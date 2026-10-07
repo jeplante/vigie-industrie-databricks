@@ -3,6 +3,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 
+def _row_html(html, company_name):
+    """The <tr> of the shared branded table that belongs to one issuer."""
+    return next(part for part in html.split("<tr style") if f"<strong>{company_name}</strong>" in part)
+
+
 def test_preview_displays_all_issuers_without_exposing_candidates(monkeypatch):
     path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
     monkeypatch.syspath_prepend(str(path.parent))
@@ -11,16 +16,19 @@ def test_preview_displays_all_issuers_without_exposing_candidates(monkeypatch):
     spec.loader.exec_module(module)
     class View:
         def __init__(self):
-            self.rows = []
-        def dataframe(self, rows, **kwargs):
-            self.rows = rows
+            self.html = ""
+        def markdown(self, html, **kwargs):
+            self.html += html
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
     view = View()
     module.render_pnc_preview(view)
-    assert len(view.rows) == 4
-    assert all(row["Résultat net"] == "N/A" for row in view.rows)
-    assert all(row["Période publiée"] == "N/A" for row in view.rows)
+    assert view.html.count("<tr style") == 4
+    for name in ("Intact Financial", "Aviva Canada", "TD Insurance", "Definity Financial"):
+        row = _row_html(view.html, name)
+        assert row.count("comparison-empty") == 6  # every metric is N/A, none invented
+        assert row.count("comparison-meta'>N/A") == 2  # Clôture and Calendrier
+        assert "comparison-period" not in row and "comparison-delta" not in row
 
 
 def test_current_period_does_not_fall_back_to_stale_values(monkeypatch):
@@ -74,11 +82,11 @@ def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):
 
     class View:
         def __init__(self):
-            self.rows = []
+            self.html = ""
             self.captions = []
 
-        def dataframe(self, rows, **kwargs):
-            self.rows = rows
+        def markdown(self, html, **kwargs):
+            self.html += html
 
         def caption(self, message):
             self.captions.append(message)
@@ -91,7 +99,8 @@ def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):
                unit="CAD_BILLION", source_url="https://example.com/ifc")
     view = View()
     module.render_pnc_preview(view, [row])
-    assert view.rows[0]["Résultat net opérationnel"] == "0.561 G$ CA"
+    assert "<strong>0.561 G$</strong>" in _row_html(view.html, "Intact Financial")
+    assert "non-IFRS" in view.html  # column tooltip
     assert any("non-IFRS" in caption for caption in view.captions)
 
 
@@ -104,12 +113,12 @@ def test_aviva_half_year_source_is_separate_from_quarterly_values(monkeypatch):
 
     class View:
         def __init__(self):
-            self.rows = []
+            self.html = ""
             self.links = []
             self.info_messages = []
 
-        def dataframe(self, rows, **kwargs):
-            self.rows = rows
+        def markdown(self, html, **kwargs):
+            self.html += html
 
         def link_button(self, label, url, **kwargs):
             self.links.append((label, url))
@@ -125,8 +134,9 @@ def test_aviva_half_year_source_is_separate_from_quarterly_values(monkeypatch):
                unit="PERCENT", source_url="https://example.com/ifc")
     view = View()
     module.render_pnc_preview(view, [row])
-    aviva = next(item for item in view.rows if item["Compagnie"] == "Aviva Canada")
-    assert aviva["Ratio combiné"] == "N/A"
+    aviva = _row_html(view.html, "Aviva Canada")
+    assert aviva.count("comparison-empty") == 6  # combined ratio stays N/A, with all other metrics
+    assert "%" not in aviva
     assert any("six mois" in message for message in view.info_messages)
     assert any(url == module.AVIVA_HY26_URL for _, url in view.links)
 
@@ -141,10 +151,14 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
     class View:
         def __init__(self):
             self.tables = []
+            self.html = ""
             self.column_config = SimpleNamespace(LinkColumn=lambda *args, **kwargs: kwargs)
 
         def dataframe(self, rows, **kwargs):
             self.tables.append((rows, kwargs))
+
+        def markdown(self, html, **kwargs):
+            self.html += html
 
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
@@ -162,11 +176,11 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
     ]
     view = View()
     module.render_pnc_preview(view, rows)
-    current, history = view.tables
-    assert next(row for row in current[0] if row["Compagnie"] == "TD Insurance")["Résultat net"] == "0.279 G$ CA"
+    (history,) = view.tables
+    assert "<strong>0.279 G$</strong>" in _row_html(view.html, "TD Insurance")
     assert [row["Trimestre"] for row in history[0]] == ["2026-Q2", "2026-Q1", "2026-Q1"]
     q1_td = next(row for row in history[0] if row["Compagnie"] == "TD Insurance" and row["Trimestre"] == "2026-Q1")
-    assert q1_td["Valeur"] == "0.183 G$ CA"
+    assert q1_td["Valeur"] == "0.183 G$"
     assert q1_td["Clôture"] == "2026-01-31"
     assert q1_td["Calendrier"] == "Fiscal"
     assert q1_td["Rapport officiel"] == "https://example.com/td-q1"

@@ -1,11 +1,24 @@
 """Presentation-only renderer for the published insurer comparison."""
 from __future__ import annotations
 
-from html import escape
 import re
 from typing import Any
 
-COMPANIES = {"MFC": ("Manuvie", "#1677c8"), "SLF": ("Sun Life", "#f4b400"), "GWO": ("Great-West Lifeco", "#d99800"), "IAG": ("iA Groupe financier", "#c54b8c")}
+from shared_ui import (
+    BRAND,
+    delta_badge,
+    empty_cell,
+    format_value,
+    header_cell,
+    row_header_cell,
+    row_open,
+    table_shell,
+    value_cell,
+)
+
+# Life-universe view of the shared brand registry (name, colour), kept as a
+# module constant for backward compatibility with existing imports and tests.
+COMPANIES = {company_id: BRAND[company_id] for company_id in ("MFC", "SLF", "GWO", "IAG")}
 METRICS = (
     ("core_eps", "BPA activités de base", "per_share"),
     ("core_earnings", "Résultat des activités de base", "billion"),
@@ -60,16 +73,6 @@ def expected_yoy_period(period_id: str | None) -> str | None:
     return f"{int(match['year']) - 1}-Q{match['quarter']}"
 
 
-def _format_value(value: Any, kind: str, metric_id: str) -> str:
-    if value is None:
-        return "—"
-    number = float(value)
-    if kind == "per_share": return f"{number:,.2f} $"
-    if kind == "billion": return f"{number:,.3f} G$"
-    if kind == "assets": return f"{number:,.1f} T$" if metric_id == "total_client_assets" else f"{number:,.0f} G$"
-    return f"{number:.1f} %"
-
-
 def _metric_row(rows: list[dict[str, Any]], selector: str | tuple[str, ...]) -> dict[str, Any] | None:
     metric_ids = (selector,) if isinstance(selector, str) else selector
     return next((row for metric_id in metric_ids for row in rows if row.get("metric_id") == metric_id), None)
@@ -92,20 +95,25 @@ def _delta(row: dict[str, Any], kind: str) -> tuple[str, str, str]:
 
 def comparison_html(all_rows: dict[str, list[dict[str, Any]]]) -> str:
     """Render an accessible, compact table from already published rows."""
-    header = "".join(f"<th scope='col' title='{escape(HELP[label])}'>{escape(label)}</th>" for _, label, _ in METRICS)
+    header_cells = [header_cell("Compagnie")]
+    header_cells += [header_cell(label, HELP[label]) for _, label, _ in METRICS]
     body: list[str] = []
     for company_id in ("MFC", "SLF", "GWO", "IAG"):
         rows = all_rows.get(company_id, [])
-        name, colour = COMPANIES[company_id]
         period = next((row.get("current_period_id") for row in rows if row.get("current_period_id")), None)
-        cells: list[str] = []
+        ticker = f"{company_id}.{period}" if period else company_id
+        cells: list[str] = [row_header_cell(company_id, ticker)]
         for selector, _, kind in METRICS:
             row = _metric_row(rows, selector)
             if not row:
-                cells.append("<td class='comparison-empty'>N/A</td>")
+                cells.append(empty_cell())
                 continue
             delta, tone, delta_period = _delta(row, kind)
-            value = _format_value(row.get("current_value"), kind, row.get("metric_id", ""))
-            cells.append("<td><strong>" + escape(value) + "</strong>" + (f"<span class='comparison-period'>{escape(str(row.get('current_period_id') or ''))}</span>" if row.get("current_period_id") else "") + (f"<span class='comparison-delta {tone}'>{escape(delta)}</span>" if delta else "") + (f"<span class='comparison-delta-period'>{escape(delta_period)}</span>" if delta_period else "") + "</td>")
-        body.append(f"<tr style='--company-colour:{escape(colour)}'><th scope='row'><strong>{escape(name)}</strong><span class='comparison-ticker'>{escape(company_id)}{'.' + escape(str(period)) if period else ''}</span></th>" + "".join(cells) + "</tr>")
-    return "<div class='comparison-wrap'><table class='comparison-table'><thead><tr><th scope='col'>Compagnie</th>" + header + "</tr></thead><tbody>" + "".join(body) + "</tbody></table></div>"
+            value = format_value(row.get("current_value"), kind, row.get("metric_id", ""))
+            cells.append(value_cell(
+                value,
+                period=row.get("current_period_id"),
+                delta_html=delta_badge(delta, tone, delta_period) if delta else "",
+            ))
+        body.append(row_open(company_id) + "".join(cells) + "</tr>")
+    return table_shell(header_cells, body)
