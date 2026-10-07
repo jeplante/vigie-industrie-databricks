@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 
 from vigie_databricks.finance_extraction import EXPECTED_METRICS
-from vigie_databricks.operations_monitor import evaluate_cost, evaluate_operations, latest_completed_quarter
+from vigie_databricks.operations_monitor import evaluate_operations, evaluate_usage, latest_completed_quarter
 
 
 def healthy_rows(period="2026-Q2"):
@@ -55,18 +55,18 @@ def test_monitor_reports_source_kpi_anomaly_and_app_failures():
     assert kinds == {"publication_failure", "source_missing", "current_quarter_incomplete", "current_value_anomalous", "app_unavailable"}
 
 
-def test_cost_alert_fires_only_when_the_last_complete_day_exceeds_the_threshold():
+def test_usage_alert_fires_only_when_the_last_complete_day_exceeds_the_threshold():
     today = date(2026, 10, 7)
     normal = [(date(2026, 10, 6), 1.4), (date(2026, 10, 7), 0.3)]
-    assert evaluate_cost(normal, today) == []
+    assert evaluate_usage(normal, today) == []
     spike = [(date(2026, 10, 6), 42.5), (date(2026, 10, 7), 0.3)]
-    (alert,) = evaluate_cost(spike, today)
-    assert alert.alert_type == "cost_spike" and "42.5" in alert.message and "2026-10-06" in alert.message
+    (alert,) = evaluate_usage(spike, today)
+    assert alert.alert_type == "usage_spike" and "42.5" in alert.message and "2026-10-06" in alert.message
 
 
-def test_cost_check_ignores_partial_today_and_missing_data():
+def test_usage_check_ignores_partial_today_and_missing_data():
     today = date(2026, 10, 7)
-    assert evaluate_cost([(today, 99.0)], today) == []  # today is incomplete
-    assert evaluate_cost([], today) == []  # no data is not overspending
-    assert evaluate_cost([(date(2026, 10, 6), 30.0)], today) == []  # at the threshold is allowed
-    assert evaluate_cost([(date(2026, 10, 6), 30.1)], today, max_daily_dbus=40) == []
+    assert evaluate_usage([(today, 99.0)], today) == []  # today is incomplete
+    assert evaluate_usage([], today) == []  # no data is not heavy usage
+    assert evaluate_usage([(date(2026, 10, 6), 30.0)], today) == []  # at the threshold is allowed
+    assert evaluate_usage([(date(2026, 10, 6), 30.1)], today, max_daily_dbus=40) == []

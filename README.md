@@ -14,7 +14,7 @@ Sun Life (SLF), Great-West Lifeco (GWO) et iA Groupe financier (IAG).
 - Slices 15 à 17 : actualités officielles des assureurs, expérience App et
   exploitation; non commencées.
 
-Python 3.12 est la version supportée. Le package courant est `0.10.10`.
+Python 3.12 est la version supportée. Le package courant est `0.10.11`.
 
 ## Contrats durables
 

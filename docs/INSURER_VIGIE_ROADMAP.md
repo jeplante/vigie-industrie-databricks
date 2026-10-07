@@ -262,8 +262,8 @@ garantie; chaque ligne indique ce qui a ete verifie.
 | 16 | Export des observations Gold | Absent; a decider seulement si le besoin est valide. |
 | 17 | Cadences separees Finance / News | Finance: quotidien 06:15; News: 6 h (voir dry-run ci-dessus). |
 | 17 | Alertes (source, stale, publication attendue) | Monitor d'exploitation quotidien 06:45; correctif de la fenetre de publication (50 jours) deploye le 6 octobre; courriel d'echec ajoute le 2026-10-07 (monitor et vigie-app-start). |
-| 17 | Alerte budget / consommation | Plafond d'appels modele dans le code News; alerte `cost_spike` du monitor (seuil 30 DBU/jour, wheel 0.10.10) depuis le 2026-10-07. |
-| 17 | Tableau de bord couts/volumes | Absent, remplace pour l'instant par l'alerte de pic. `system.billing.usage` est lisible; environ 1,2 DBU/jour pour les Jobs, +0,5 DBU/h quand l'App tourne. |
+| 17 | Alerte de consommation | Plafond d'appels modele dans le code News; alerte `usage_spike` du monitor (seuil empirique de 30 DBU/jour, wheel 0.10.11) depuis le 2026-10-07. Le workspace est en Databricks Free Edition: aucun cout monetaire, la limite est un quota d'usage dont la valeur n'est pas verifiee. |
+| 17 | Tableau de bord volumes/consommation | Absent, remplace pour l'instant par l'alerte de pic. `system.billing.usage` est lisible; environ 1,2 DBU/jour pour les Jobs, +0,5 DBU/h quand l'App tourne. |
 | 17 | Runbooks de rollback | Pas de runbook dedie; des fichiers de retour arriere des Jobs ont ete produits le 6 octobre (hors depot). |
 | 17 | CI | GitHub Actions: tests unitaires uniquement (`unit-tests`); Databricks Connect reste manuel. |
 
