@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from datetime import datetime, timezone
 from html import escape
 from typing import Any, Iterable, Mapping
@@ -138,6 +139,46 @@ def pnc_sources(
             rows.append(SourceRow(company, "na", f"Aucune valeur validée pour {current_period} (dernière publiée : {earlier[-1]})"))
         else:
             rows.append(SourceRow(company, "na", f"Aucune valeur validée pour {current_period}"))
+    return rows
+
+
+def pnc_acquisition_rows(
+    companies: Iterable[str],
+    attempts: Mapping[str, Mapping[str, Any]],
+    audit: Mapping[str, Any] | None,
+) -> list[SourceRow]:
+    """P&C acquisition status per issuer from the latest attempt and run audit.
+
+    A source the audit lists as missing is a known gap (N/A) unless the run itself reported an
+    incomplete extraction, in which case it needs a look.
+    """
+    status = str(audit.get("status") or "") if audit else ""
+    try:
+        missing = set(json.loads(audit.get("missing_sources_json") or "[]")) if audit else set()
+    except (TypeError, ValueError):
+        missing = set()
+    rows = []
+    if audit:
+        stamp = format_time(audit.get("observed_at"))
+        text = f"{stamp} UTC · {audit.get('candidate_count', 0)} candidats · {status or 'statut inconnu'}"
+        level = "error" if status == "acquisition_failed" else "warn" if status == "extraction_incomplete" else "ok"
+        rows.append(SourceRow("Dernier run", level, text))
+    else:
+        rows.append(SourceRow("Dernier run", "na", "Aucune acquisition enregistrée"))
+    for company in companies:
+        attempt = attempts.get(company)
+        if attempt and attempt.get("acquisition_status") not in OK_ACQUISITION:
+            reason = attempt.get("error_code") or attempt.get("acquisition_status") or "inconnu"
+            rows.append(SourceRow(company, "error", f"Échec d'acquisition ({reason})"))
+        elif company in missing:
+            if status == "extraction_incomplete":
+                rows.append(SourceRow(company, "warn", "Extraction incomplète : aucun KPI extrait"))
+            else:
+                rows.append(SourceRow(company, "na", "Aucun KPI trimestriel extractible : lacune déclarée"))
+        elif attempt:
+            rows.append(SourceRow(company, "ok", f"Document {attempt.get('reporting_period')} · {attempt.get('acquisition_status')} · {format_time(attempt.get('fetched_at'))}"))
+        else:
+            rows.append(SourceRow(company, "error", "Aucune acquisition enregistrée"))
     return rows
 
 

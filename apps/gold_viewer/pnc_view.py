@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from source_status import SidebarSection, alert_rows, pnc_sources, render_sidebar
+from source_status import SidebarSection, alert_rows, pnc_acquisition_rows, pnc_sources, render_sidebar
 
 from shared_ui import (
     delta_badge,
@@ -143,7 +143,7 @@ def pnc_history_table(rows):
              "Rapport officiel": row["source_url"]} for row in ordered]
 
 
-def render_pnc_preview(st, published_rows=(), operations_alerts=()):
+def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=None):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
     period, published_rows = current_pnc_rows(all_rows)
@@ -153,12 +153,14 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=()):
         unsafe_allow_html=True,
     )
     coverage = pnc_sources([(company, name) for company, name, _ in COMPANIES], published_rows, all_rows, period)
-    render_sidebar(
-        st,
-        [SidebarSection("Assureurs de dommages", f"{sum(row.level == 'ok' for row in coverage)} / {len(COMPANIES)}",
-                        f"Période de référence : {period}" if period else None, coverage)],
-        alert_rows(operations_alerts),
-    )
+    sections = [SidebarSection("Assureurs de dommages", f"{sum(row.level == 'ok' for row in coverage)} / {len(COMPANIES)}",
+                               f"Période de référence : {period}" if period else None, coverage)]
+    if acquisition is not None:
+        attempts, audit = acquisition
+        steps = pnc_acquisition_rows([company for company, _name, _scope in COMPANIES],
+                                     {row["company_id"]: row for row in attempts}, audit)
+        sections.append(SidebarSection("Acquisition", None, None, steps))
+    render_sidebar(st, sections, alert_rows(operations_alerts))
     st.caption("Intact Financial · Aviva Canada · TD Insurance · Definity Financial")
     if not published_rows:
         st.info("Les données P&C sont en cours de validation. Aucun KPI n’est encore publié dans cette vue.")
