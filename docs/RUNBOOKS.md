@@ -5,8 +5,8 @@ l'etat reel avec `databricks jobs get <id>` avant d'agir, et mettre ce document 
 **Statut des procedures.** Eprouvees en conditions reelles le 2026-10-07: relance avec et sans `dry_run` (4), migration vers un
 nouveau wheel (6, sens aller), sauvegarde/deploiement/verification de l'App (7, sens aller), droits de lecture (8), lecture de la
 consommation (9). **Jamais executees**: la pause d'un schedule (3), `RESTORE` d'une table (5), le sens retour des sections 6 et 7
-(les fichiers de retour arriere existent mais n'ont pas ete appliques), et l'exercice de panne (10) tant que cette ligne n'est
-pas remplacee par son resultat. Les executer une premiere fois sur un element sans enjeu avant d'en avoir besoin.
+(les fichiers de retour arriere existent mais n'ont pas ete appliques). L'exercice de panne (10) a ete execute le 2026-10-07: voir son
+resultat. Les executer une premiere fois sur un element sans enjeu avant d'en avoir besoin.
 
 ## 0. Avant toute commande
 
@@ -59,6 +59,8 @@ Reprendre = meme fichier avec `"UNPAUSED"`. Le `schedule` est remplace en bloc: 
 ## 4. Relancer une source ou un Job
 
 - Essai sans ecriture: `databricks jobs run-now --json '{"job_id": <id>, "job_parameters": {"dry_run": "true"}}'`.
+- Une tache en echec est **reessayee une fois par la plateforme** (observe: tentatives 0 et 1): une panne persistante ecrit donc
+  deux lignes d'audit par run. L'App lit la plus recente, c'est sans consequence.
 - Persistant: meme commande avec `"dry_run": "false"`. Les ecritures sont idempotentes (MERGE sur l'identifiant d'article
   ou d'observation): un second run identique doit afficher 0 insertion et 0 mise a jour.
 - Actualites vie: la tache `official_news` ne publie un lot que si les 4 sources repondent (le dernier lot valide est
@@ -145,3 +147,10 @@ une panne dans un schema jetable:
 3. Attendu: run `FAILED` (`Official News source gate failed`), aucune ligne dans `official_news`, une ligne d'audit avec
    `MFC` en `failed` et les trois autres sources en `ok`.
 4. `DROP SCHEMA workspace.vigie_drill CASCADE;` (verifier d'abord que le schema ne contient que ces deux tables).
+
+**Resultat observe le 2026-10-07** (wheel 0.10.14, run unique `vigie-failure-drill`): le run a fini en `FAILED` avec
+`Official News source gate failed; last-known-good preserved`; la table `official_news` du schema jetable n'a pas ete creee
+(rien n'a ete publie); l'audit contenait `MFC` en `failed` avec sa cause (`Cannot read contract file ...`) et `SLF`, `GWO`,
+`IAG` en `ok` (3, 2 et 3 articles lus), en **deux lignes** (une par tentative). Le schema a ete supprime ensuite.
+Note: `databricks jobs submit --timeout` n'affiche pas de JSON quand le run echoue; retrouver le run avec
+`databricks jobs list-runs --run-type SUBMIT_RUN` puis lire sa sortie.
