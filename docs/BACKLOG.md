@@ -9,32 +9,14 @@ Chaque idée indique **Pourquoi** (le problème observé) et **Comment saurons-n
 
 ## Priorité haute
 
-### 1. Trouver automatiquement le rapport trimestriel P&C d'un nouveau trimestre
-- **Aujourd'hui :** quand un assureur P&C publie ses résultats, il faut chercher à la main le lien du
-  rapport, l'écrire dans un manifeste (`config/pnc/history/<trimestre>.yaml`) et lancer l'acquisition. Le
-  monitor signale déjà qu'un trimestre manque, mais ne dit pas où est le rapport.
-- **Idée :** trouver ce lien tout seul. Le rapport TD suit un modèle d'adresse prévisible
-  (`.../quarterly-results/<année>/q<n>/<année>-q<n>-report-shareholders-en.pdf`). Intact et Definity
-  annoncent leurs résultats par un communiqué, que le Job d'actualités P&C lit déjà.
-- **Ce qui ne change pas :** une personne valide toujours le chiffre avant sa publication. C'est une règle du
-  dépôt : un chiffre P&C n'est publié qu'après relecture de la preuve. L'automatisation retire la recherche
-  du document, pas la validation.
-- **Fait quand :** pour un nouveau trimestre, le manifeste et l'acquisition se font sans saisie manuelle de
-  lien, et la revue démarre directement sur un candidat extrait.
-
-### 2. Générer un brouillon de fiche de preuve
-- **Aujourd'hui :** la fiche de `config/pnc/reviewed_evidence.yaml` s'écrit à la main (empreinte du document,
-  page, tableau, extrait, période), comme pour TD 2026-Q3 le 2026-10-07.
-- **Idée :** un script qui produit ce brouillon à partir du candidat acquis et de la page du PDF, avec les
-  recoupements automatiques (variation sur un an et sur le trimestre, cumul de l'exercice) déjà calculés.
-- **Fait quand :** la revue d'un trimestre se résume à lire le brouillon et ses recoupements, puis à approuver.
+Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique).
 
 ## Priorité moyenne
 
 ### 3. Afficher les indicateurs P&C déjà définis mais absents de l'App
 - **Pourquoi :** `config/pnc/metrics.yaml` définit les pertes catastrophiques et le rendement des capitaux
   propres opérationnel, mais l'App ne les montre pas.
-- **Fait quand :** ces indicateurs sont extraits, revus, publiés et affichés, ou leur absence est expliquée.
+- **Fait quand :** ces indicateurs sont extraits, validés, publiés et affichés, ou leur absence est expliquée.
 
 ### 4. Fiabiliser le chat
 - **Pourquoi :** le contrôle des chiffres (`answer_check.py`) détecte un chiffre inventé, pas un vrai chiffre
@@ -61,3 +43,6 @@ Chaque idée indique **Pourquoi** (le problème observé) et **Comment saurons-n
 
 ## Historique
 - 2026-10-07 : création du backlog.
+- 2026-10-07 : idées 1 et 2 réalisées au-delà de leur portée. La publication P&C est entièrement automatique
+  (`pnc_discovery.py` trouve les rapports, `pnc_auto_review.py` remplace la fiche de preuve manuelle) sur décision du
+  user ; la fiche manuelle ne sert plus qu'aux exceptions.

@@ -4,7 +4,7 @@
 
 - Read `docs/superpowers/specs/2026-09-29-current-state-baseline-design.md` before architectural work. Treat it as a working-tree snapshot, not proof of production state; use current code and executable configuration as authority.
 - Preserve existing uncommitted work. Do not reset, clean, overwrite, or include unrelated changes in a commit or pull request.
-- Use Python 3.12. Preserve published table contracts, read-only serving, P&C isolation, evidence review, and explicit missing-value behavior.
+- Use Python 3.12. Preserve published table contracts, read-only serving, P&C isolation, the P&C evidence checks (automatic review in `pnc_auto_review.py` since 2026-10-07, by decision of the user; a hand-written record in `config/pnc/reviewed_evidence.yaml` remains possible for an exception), and explicit missing-value behavior.
 - Run the documented local pytest gate for code changes. Keep Databricks Connect, runtime, deployment, and live-workspace validation separate; run the relevant remote gate for Spark, Delta, deployment, or App integration changes when access is available, and report any gate that could not run.
 - Do not claim Live Finance publication is cross-table atomic.
 - Do not change schedules, deployments, published data, or live resources unless the task explicitly authorizes that specific action.

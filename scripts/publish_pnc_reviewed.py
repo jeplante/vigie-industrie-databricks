@@ -8,13 +8,10 @@ import yaml
 from databricks.sdk import WorkspaceClient
 from vigie_databricks.insurer_contract import load_insurer_contract
 from vigie_databricks.pnc_review import attach_reviewed_evidence, collapse_identical_candidates, select_reviewed_periods
-from vigie_databricks.pnc_publication import publish_pnc_candidates
+from vigie_databricks.pnc_publication import GOLD_SCHEMA as SCHEMA, gold_rows, publish_pnc_candidates
 from review_pnc_staging import query
 
 TABLE = "workspace.vigie.pnc_gold_observations"
-SCHEMA = ("observation_id STRING,company_id STRING,metric_id STRING,period_id STRING,"
-          "value DOUBLE,unit STRING,period_end STRING,calendar_basis STRING,disclosure_scope STRING,"
-          "source_url STRING,source_document_hash STRING,validation_status STRING,evidence_json STRING")
 
 
 def execute(client, sql):
@@ -52,17 +49,7 @@ def main():
     result = publish_pnc_candidates(reviewed, documents, [], contract)
     if result.quality_status != "current":
         raise ValueError(result.rejection_reasons)
-    rows = []
-    for row in result.observations:
-        evidence = row["basis_evidence"]
-        output = {key: row[key] for key in ("observation_id", "company_id", "metric_id", "period_id",
-                   "value", "unit", "source_url", "source_document_hash", "validation_status")}
-        for key in ("period_end", "calendar_basis", "disclosure_scope"):
-            if not evidence.get(key):
-                raise ValueError(f"Missing reviewed {key}")
-            output[key] = evidence[key]
-        output["evidence_json"] = json.dumps(evidence, sort_keys=True)
-        rows.append(output)
+    rows = gold_rows(result.observations)
     if args.publish:
         execute(client, f"CREATE TABLE IF NOT EXISTS {TABLE} ({SCHEMA}) USING DELTA")
         payload = json.dumps(rows, allow_nan=False).replace("\\", "\\\\").replace("'", "''")

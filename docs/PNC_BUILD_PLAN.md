@@ -62,7 +62,10 @@ life universe (PR #18, #22). Since 0.10.15 the P&C page is no longer behind an a
 It has the life page's history chart (year-to-date for flows, TD on its own fiscal year), sector media
 articles that name a P&C issuer (table `pnc_editorial_news`, written by `vigie-pnc-news`), deltas coloured
 by each metric's favourable trend, and P&C completeness, plausibility and announced-results alerts in the
-operations monitor. Publication still requires the human evidence review.
+operations monitor. Since 0.10.16 (user decision of 2026-10-07) publication is automatic: `vigie-pnc-news`
+discovers new reports, acquires them and publishes the candidates that pass `pnc_auto_review.py`; a hand-written
+record in `reviewed_evidence.yaml` remains the exception path. Backtested on every candidate since 2022: the same
+169 values as the human review, the two 2023 extraction errors rejected.
 Aviva Canada stays `N/A` outside Q1 (no isolated Canada quarterly COR) and TD
 Insurance stays gap-flagged where TD reports a combined Wealth Management and
 Insurance segment. This is a dated observation, not a standing guarantee.

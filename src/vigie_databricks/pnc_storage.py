@@ -90,3 +90,19 @@ def persist_pnc_acquisition(spark, namespace, run_id, result, expected_companies
                  "run_id string,observed_at timestamp,status string,documents_acquired long,"
                  "candidate_count long,ai_model_calls long,missing_sources_json string,errors_json string", "run_id")
     return audit
+
+
+def publish_pnc_gold(spark, namespace, rows):
+    """MERGE validated rows into pnc_gold_observations by observation_id and read them back."""
+    from vigie_databricks.finance_storage import _upsert_rows
+    from vigie_databricks.pnc_publication import GOLD_SCHEMA
+
+    table = f"{namespace}.pnc_gold_observations"
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*", namespace):
+        raise ValueError("namespace must be a catalog.schema identifier")
+    _upsert_rows(spark, table, rows, GOLD_SCHEMA, "observation_id")
+    wanted = {row["observation_id"]: row for row in rows}
+    stored = {row["observation_id"]: row.asDict() for row in spark.table(table).collect() if row["observation_id"] in wanted}
+    if any(stored.get(key) != row for key, row in wanted.items()):
+        raise RuntimeError("Publication readback differs from validated rows")
+    return len(rows)
