@@ -1,0 +1,26 @@
+# TD fiscal 2026-Q3 (quarter ended July 31, 2026). Intact, Aviva and Definity have not published a newer
+# quarter yet, so their 2026-Q2 entries are repeated unchanged (identical candidates are collapsed on publish).
+sources:
+  - company_id: IFC
+    period_id: 2026-Q2
+    source_url: https://newsroom.intactfc.com/2026-07-28-Intact-Financial-Corporation-reports-Q2-2026-results
+    document_type: quarterly_report
+    disclosure_scope: Intact consolidated global P&C operations; Q2-2026 column only
+    calendar_basis: calendar
+  - company_id: AV
+    period_id: 2026-Q2
+    unavailable_reason: no_quarterly_segment_disclosure
+    reference_url: https://www.aviva.com/newsroom/news-and-research-overview/news-releases/2026/08/half-year-2026-results-announcement/
+    disclosure_scope: Aviva Canada HY26 figures cover six months; no isolated Canada Q2 COR
+  - company_id: TD
+    period_id: 2026-Q3
+    source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2026/q3/2026-q3-report-shareholders-en.pdf
+    document_type: quarterly_report
+    disclosure_scope: TD Insurance standalone line; fiscal quarter ended July 31, 2026
+    calendar_basis: fiscal
+  - company_id: DFY
+    period_id: 2026-Q2
+    source_url: https://www.definityfinancial.com/English/newsroom/news-releases/news-details/2026/Definity-Reports-Second-Quarter-2026-Results/default.aspx
+    document_type: quarterly_report
+    disclosure_scope: Definity consolidated Canadian P&C operations; Q2 2026 column only
+    calendar_basis: calendar
