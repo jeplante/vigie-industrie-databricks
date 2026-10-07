@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 
@@ -19,6 +20,11 @@ def test_preview_displays_all_issuers_without_exposing_candidates(monkeypatch):
             self.html = ""
         def markdown(self, html, **kwargs):
             self.html += html
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            return [nullcontext() for _ in labels]
+
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
     view = View()
@@ -54,6 +60,11 @@ def test_preview_warns_when_fiscal_and_calendar_quarters_differ(monkeypatch):
 
         def warning(self, message):
             self.warnings.append(message)
+
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            return [nullcontext() for _ in labels]
 
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
@@ -91,6 +102,11 @@ def test_operating_net_income_is_labeled_as_non_ifrs(monkeypatch):
         def caption(self, message):
             self.captions.append(message)
 
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            return [nullcontext() for _ in labels]
+
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
@@ -126,6 +142,11 @@ def test_aviva_half_year_source_is_separate_from_quarterly_values(monkeypatch):
         def info(self, message):
             self.info_messages.append(message)
 
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            return [nullcontext() for _ in labels]
+
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
@@ -160,6 +181,11 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
         def markdown(self, html, **kwargs):
             self.html += html
 
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            return [nullcontext() for _ in labels]
+
         def __getattr__(self, name):
             return lambda *args, **kwargs: None
 
@@ -185,3 +211,49 @@ def test_pnc_history_retains_prior_quarter_fiscal_close_and_source(monkeypatch):
     assert q1_td["Calendrier"] == "Fiscal"
     assert q1_td["Rapport officiel"] == "https://example.com/td-q1"
     assert "Rapport officiel" in history[1]["column_config"]
+
+
+def test_pnc_page_has_source_sidebar_and_summary_history_tabs(monkeypatch):
+    path = Path(__file__).resolve().parents[1] / "apps/gold_viewer/pnc_view.py"
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location("pnc_view", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    class View:
+        def __init__(self):
+            self.metrics, self.captions, self.tab_labels, self.infos = [], [], [], []
+            self.column_config = SimpleNamespace(LinkColumn=lambda *args, **kwargs: kwargs)
+
+        sidebar = nullcontext()
+
+        def tabs(self, labels):
+            self.tab_labels.append(list(labels))
+            return [nullcontext() for _ in labels]
+
+        def metric(self, label, value, *args, **kwargs):
+            self.metrics.append((label, value))
+
+        def caption(self, message):
+            self.captions.append(message)
+
+        def info(self, message):
+            self.infos.append(message)
+
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+
+    rows = [
+        dict(company_id="IFC", metric_id="combined_ratio", period_id="2026-Q2",
+             period_end="2026-06-30", calendar_basis="calendar", value=94.9,
+             unit="PERCENT", source_url="https://example.com/ifc"),
+        dict(company_id="TD", metric_id="net_income", period_id="2026-Q2",
+             period_end="2026-04-30", calendar_basis="fiscal", value=0.279,
+             unit="CAD_BILLION", source_url="https://example.com/td"),
+    ]
+    view = View()
+    module.render_pnc_preview(view, rows)
+    assert view.tab_labels == [["Synthèse", "Historique validé"]]
+    assert ("Assureurs de dommages", "2 / 4") in view.metrics
+    assert any("Aviva Canada" in c and "Definity Financial" in c and "N/A" in c for c in view.captions)
+    assert any("plusieurs trimestres" in message for message in view.infos)  # a single period: no history table
