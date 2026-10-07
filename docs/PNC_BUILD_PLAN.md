@@ -37,15 +37,22 @@ Acquisition and publication remain manual and unscheduled.
 
 ## Observed state checkpoint (read-only, 2026-10-06)
 
-Read-only SQL readback of `workspace.vigie.pnc_gold_observations`: 167 rows
-across 18 quarters, 2022-Q1 through 2026-Q2 (9 or 10 rows per quarter, two or
-three issuers each). 2026-Q2 holds nine rows for IFC, TD and DFY; DFY's five
-metrics there do not include `insurance_revenue`. The reviewed evidence on
-`main` now records DFY 2026-Q2 `insurance_revenue` = 1.7937 (CAD billions;
-reviewed 2026-09-28), but that value has not been published to Gold: doing so
-is a separate, explicitly authorized publication. `vigie-pnc-acquisition-review`
-has no schedule; its last two runs (2026-09-20 and 2026-09-21) ended `FAILED`
-in `pnc_acquire`. Acquisition and publication remain manual.
+Read-only SQL readback of `workspace.vigie.pnc_gold_observations` on 2026-10-06,
+after the reviewed 2026-Q2 re-publication: 168 rows, 168 unique observation IDs,
+18 quarters, 2022-Q1 through 2026-Q2. 2026-Q2 holds ten rows for IFC (3), TD (1)
+and DFY (6), all matching the reviewed evidence. DFY's `insurance_revenue` =
+1.7937 (CAD billions) was inserted by that publication, and DFY's other five
+rows now cite document hash `a68a8af6`: the stored `967d8c32` and `a68a8af6`
+pages differ only by 104 bytes of random `<html id>` values, so each fetch
+yields a new hash for identical content. IFC and TD rows were unchanged.
+`vigie-pnc-acquisition-review`
+has no schedule and now runs wheel 0.10.8 from `vigie_pnc/0.10.8` with the
+2026-Q2 source list as its manifest. Its runs of 2026-09-20 and 2026-09-21 ended
+`FAILED` because Aviva was declared as a normal source; with Aviva declared
+`no_quarterly_segment_disclosure`, the 2026-10-06 run ended `acquired_needs_review`
+(11 candidates, Aviva an audited gap, nothing published). Acquisition and
+publication remain manual. Repeated runs append identical candidates to
+`pnc_candidates`; the publisher collapses exact duplicates (PR #26).
 
 Since the earlier checkpoints: the 2022 comparative backfill was published
 (PR #17), 2026-Q2 acquisition sources were added (PR #20), and the App renders
