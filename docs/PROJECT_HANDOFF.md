@@ -390,7 +390,7 @@ Jobs (workspace `dbc-aa63f707-8316`) :
 | vigie-finance-live | 06:15 UNPAUSED | SUCCESS du 3 au 6 octobre; audit `current`, 4/4 sources |
 | vigie-official-investor-news | toutes les 6 h UNPAUSED | SUCCESS (4 runs du 6 octobre) |
 | vigie-operations-monitor | 06:45 UNPAUSED | FAILED du 3 au 6 octobre au moins (voir ci-dessous) |
-| vigie-editorial-news | 06:30 PAUSED | dernier run SUCCESS le 15 septembre |
+| vigie-editorial-news | (supprime le 2026-10-07) | remplace par la tache editorial_news du Job vigie-official-investor-news |
 | vigie-pnc-acquisition-review | aucun | 2 derniers runs FAILED (20 et 21 septembre) |
 | vigie-finance-history-publish | aucun | non examine |
 
@@ -451,6 +451,8 @@ Points ouverts:
 2. La collecte P&C des KPI reste manuelle (lacunes structurelles Aviva hors Q1 et TD).
 3. Pas de tableau de bord de consommation ni de runbooks dedies (l'alerte de pic suffit
    pour l'instant).
+
+Procedures de reprise (pause, relance, restauration, retour arriere, droits, exercice de panne): docs/RUNBOOKS.md.
 
 Preserve le pipeline financier, les Jobs independants, le cleanup Unity Catalog,
 l'idempotence IA et le plafond d'appels modele. Aucune publication, aucun
