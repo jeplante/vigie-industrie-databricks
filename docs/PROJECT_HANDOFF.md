@@ -448,6 +448,12 @@ sont integrees. Etat au 2026-10-07:
   et les KPI inconnus sont supprimes; la prose du modele n'est PAS verifiee (erreur observee: un ratio combine pris pour un
   ratio de sinistres sur une question ouverte; les comparaisons chiffrees passent d'abord par le repondeur deterministe).
   Le chat vie est inchange (sans reasoning_effort).
+- Chat, ajouts du 2026-10-07 (PR #55): `reasoning_effort=low` aussi cote vie (mesure sur 12 appels reels: 784 a 411 jetons en
+  moyenne, 4,1 s a 2,5 s); `answer_check.py` signale (sans bloquer) les chiffres avec unite qu'aucune valeur du contexte n'explique
+  (0 faux positif sur 64 chiffres reels; il NE detecte PAS un vrai chiffre rattache au mauvais indicateur); reponses directes pour la
+  variation annuelle (meme trimestre, meme base de calendrier) et le classement, vie et dommages; une question qui demande une
+  explication (pourquoi, resume, que retenir) va au modele au lieu d'une consultation partielle. `pnc_yoy.py` est partage par la page
+  et le chat.
 - Audit des actualites vie: `official_news_audit.per_source_json` (colonne ajoutee par mergeSchema le 2026-10-07, wheel 0.10.13).
   Le Job `vigie-official-investor-news` ecrit toujours une ligne d'audit, meme si une source echoue (lot non publie,
   dernier lot valide preserve), et la barre laterale vie nomme la source en echec.

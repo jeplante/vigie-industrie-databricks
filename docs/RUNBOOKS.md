@@ -2,11 +2,12 @@
 
 **Etat observe le 2026-10-07.** Les valeurs (identifiants de Jobs, versions de wheel) changent: relire
 l'etat reel avec `databricks jobs get <id>` avant d'agir, et mettre ce document a jour apres un changement.
-**Statut des procedures.** Eprouvees en conditions reelles le 2026-10-07: relance avec et sans `dry_run` (4), migration vers un
-nouveau wheel (6, sens aller), sauvegarde/deploiement/verification de l'App (7, sens aller), droits de lecture (8), lecture de la
-consommation (9). **Jamais executees**: la pause d'un schedule (3), `RESTORE` d'une table (5), le sens retour des sections 6 et 7
-(les fichiers de retour arriere existent mais n'ont pas ete appliques). L'exercice de panne (10) a ete execute le 2026-10-07: voir son
-resultat. Les executer une premiere fois sur un element sans enjeu avant d'en avoir besoin.
+**Statut des procedures** (2026-10-07). Eprouvees en conditions reelles: relance avec et sans `dry_run` (4), pause et reprise d'un
+schedule (3), `RESTORE` d'une table Delta (5), migration et retour arriere de la configuration d'un Job (6, sur un Job jetable
+supprime ensuite), sauvegarde/deploiement/verification de l'App (7, sens aller), droits de lecture (8), lecture de la consommation (9),
+exercice de panne (10). **Jamais executee**: le retour arriere de l'App (7, sens retour): redeployer volontairement une ancienne
+version en production a ete refuse par le garde-fou de la session; a executer une premiere fois par le user ou avec une autorisation
+explicite, de preference un moment calme.
 
 ## 0. Avant toute commande
 
@@ -48,6 +49,8 @@ courriel est le canal d'alerte.
 
 ## 3. Mettre en pause et reprendre un schedule
 
+*Exercice reel du 2026-10-07 sur `vigie-pnc-news`: pause puis reprise en quelques secondes, etat final identique (cron, fuseau, parametres, courriel, wheel).*
+
 ```powershell
 # pause (remplacer l'identifiant et reprendre les valeurs de cron/fuseau du Job)
 databricks jobs get <id> --output json            # noter quartz_cron_expression et timezone_id
@@ -84,6 +87,12 @@ RESTORE TABLE workspace.vigie.<table> TO VERSION AS OF <n>;
   (voir `docs/PNC_SOURCE_REVIEW.md`): d'abord sans `--publish`, puis avec, puis relecture independante.
 - Journaux et audits (`*_audit`, `pnc_candidates`): ne pas restaurer pour corriger l'App; ce sont des historiques.
 
+**Exercice reel (2026-10-07, table jetable de 3 puis 5 lignes).** `DESCRIBE HISTORY` donne `0 CREATE TABLE`, `1 WRITE` (3 lignes saines),
+`2 WRITE` (l'incident: 2 lignes ajoutees). Piege vecu: restaurer a la version 2 est sans effet, c'est l'etat de l'incident; la bonne
+version est celle d'**avant** l'incident (1). Le controle `SELECT count(*) ... VERSION AS OF <n>` l'avait montre (5 lignes au lieu de 3):
+ne jamais sauter ce controle. `RESTORE TABLE ... TO VERSION AS OF 1` a rendu les 3 lignes saines et a cree lui-meme une nouvelle
+version (3, `RESTORE`): l'historique est conserve, l'operation est donc elle-meme annulable.
+
 ## 6. Retour arriere d'un wheel ou de la configuration d'un Job
 
 Les wheels sont **versionnes et jamais ecrases** dans `/Users/jerome.plante@hotmail.com/vigie_databricks_finance/`
@@ -95,6 +104,9 @@ databricks jobs get <id> --output json > avant.json        # avant le changement
 # retour: reappliquer le fichier de retour arriere prepare (environments avec l'ancien wheel)
 databricks jobs update --json "@retour.json"
 ```
+**Exercice reel**: un Job jetable (jamais execute) a ete cree sur le wheel 0.10.13, migre vers 0.10.14 puis ramene a 0.10.13 avec le
+fichier de retour arriere; seul `environments` change, parametres, schedule et courriel restent identiques. Le Job a ete supprime.
+
 Toujours valider un nouveau wheel par un run `dry_run=true` avant le prochain run planifie, et verifier que le contenu du
 wheel est identique aux sources (comparer `vigie_databricks/<module>.py` du wheel aux fichiers du depot).
 
