@@ -8,11 +8,16 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+APP = ROOT / "apps" / "gold_viewer"
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+# The Streamlit app runs from apps/gold_viewer and imports its siblings
+# (e.g. shared_ui) by bare name; mirror that so apps.gold_viewer.* imports work.
+if str(APP) not in sys.path:
+    sys.path.insert(0, str(APP))
 
 
 def _default_vigie_tables(spark) -> set[str]:
