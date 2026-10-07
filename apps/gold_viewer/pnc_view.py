@@ -58,22 +58,84 @@ def _news_date(value: Any) -> str:
     return value.strftime("%Y-%m-%d") if hasattr(value, "strftime") else (str(value)[:10] if value else "Date non fournie")
 
 
-def render_pnc_news(st, articles):
-    """Official newsroom items per issuer; context only, never a KPI."""
-    st.markdown("<p class='section-eyebrow'>Salles de presse officielles</p>", unsafe_allow_html=True)
+def pnc_company_table(current_rows, all_rows, period):
+    """One issuer's indicators for the reference period, same columns as the life company table."""
+    expected = _prior_year_period(period) if period else None
+    table = []
+    for metric, label in METRICS:
+        row = next((candidate for candidate in current_rows if candidate["metric_id"] == metric), None)
+        yoy = pnc_yoy(row, all_rows) if row else None
+        table.append({
+            "Indicateur": label,
+            "Période": period or "N/A",
+            "Valeur": format_value(row.get("value"), _kind(row)) if row else "N/A",
+            "Variation annuelle": f"{yoy[1]} {yoy[0]}" if yoy else "N/A",
+            "Comparaison": f"vs {expected}" if expected else "N/A",
+        })
+    return table
+
+
+def render_pnc_company(st, company, name, scope, current_rows, all_rows, period, news_articles=None):
+    """The 'Par compagnie' panel: provenance, indicators, validated history and newsroom items."""
+    st.subheader(name)
+    st.caption(f"Périmètre : {scope}")
+    if not current_rows:
+        st.info(f"Aucun indicateur validé pour {period or 'la période de référence'}; les KPI sont indiqués N/A.")
+        if company == "AV":
+            st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
+            st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL, key="pnc-company-aviva-hy26")
+    else:
+        ends = sorted({str(row["period_end"]) for row in current_rows})
+        basis = "Fiscal" if any(row.get("calendar_basis") == "fiscal" for row in current_rows) else "Civil"
+        st.caption(f"Période : {period} · Clôture : {', '.join(ends)} · Calendrier : {basis}")
+        for index, url in enumerate(sorted({row["source_url"] for row in current_rows})):
+            st.link_button("Consulter le rapport officiel ↗", url, key=f"pnc-report-{company}-{index}")
+        parts = []
+        for metric, label in (("combined_ratio", "Ratio combiné"), ("net_income", "Résultat net")):
+            row = next((candidate for candidate in current_rows if candidate["metric_id"] == metric), None)
+            if row:
+                yoy = pnc_yoy(row, all_rows)
+                variation = f"{yoy[1]} {yoy[0]} vs {yoy[2]}" if yoy else "variation annuelle N/A"
+                parts.append(f"{label} : {format_value(row.get('value'), _kind(row))} ({variation}).")
+        if parts:
+            st.info(" ".join(parts))
+    st.dataframe(pnc_company_table(current_rows, all_rows, period), hide_index=True, width="stretch")
+    own_history = [row for row in all_rows if row.get("company_id") == company]
+    if len({row["period_id"] for row in own_history}) > 1:
+        st.markdown("#### Historique trimestriel validé")
+        st.caption("Chaque ligne conserve sa clôture et son calendrier.")
+        st.dataframe(
+            pnc_history_table(own_history), hide_index=True, width="stretch",
+            column_config={"Rapport officiel": st.column_config.LinkColumn("Rapport officiel", display_text="Ouvrir")},
+        )
+    if news_articles is not None:
+        st.markdown("#### Actualités")
+        render_pnc_news(st, news_articles, company=company)
+
+
+def render_pnc_news(st, articles, company=None):
+    """Official newsroom items; context only, never a KPI. `company` narrows to one issuer."""
+    if company is None:
+        st.markdown("<p class='section-eyebrow'>Salles de presse officielles</p>", unsafe_allow_html=True)
     st.caption("Communiqués publiés par les assureurs. Ils apportent du contexte et ne modifient jamais les KPI publiés.")
-    names = {company: name for company, name, _ in COMPANIES}
-    items = [dict(article, news_kind="Source officielle") for article in articles]
+    names = {code: name for code, name, _ in COMPANIES}
+    items = [dict(article, news_kind="Source officielle") for article in articles
+             if company is None or article["company_id"] == company]
     if not items:
-        st.caption("Aucune actualité officielle n’est encore disponible.")
+        st.caption("Aucune actualité officielle n’est encore disponible." if company is None
+                   else "Aucune actualité pertinente n’est encore disponible pour cet assureur.")
         return
+    suffix = company or "all"
     _kinds, source_options, category_options = news_facets(items, NEWS_SOURCE_LABELS)
-    company_column, source_column, category_column = st.columns(3)
-    chosen_companies = company_column.multiselect("Assureur", [name for company, name, _ in COMPANIES if any(a["company_id"] == company for a in items)], key="pnc-news-company")
-    chosen_sources = source_column.multiselect("Source", source_options, key="pnc-news-source")
-    chosen_categories = category_column.multiselect("Catégorie", category_options, key="pnc-news-category")
+    columns = st.columns(3 if company is None else 2)
+    chosen_companies = []
+    if company is None:
+        chosen_companies = columns[0].multiselect(
+            "Assureur", [name for code, name, _ in COMPANIES if any(a["company_id"] == code for a in items)], key="pnc-news-company")
+    chosen_sources = columns[-2].multiselect("Source", source_options, key=f"pnc-news-source-{suffix}")
+    chosen_categories = columns[-1].multiselect("Catégorie", category_options, key=f"pnc-news-category-{suffix}")
     if chosen_companies:
-        wanted = {company for company, name in names.items() if name in chosen_companies}
+        wanted = {code for code, name in names.items() if name in chosen_companies}
         items = [item for item in items if item["company_id"] in wanted]
     items = filter_articles(items, NEWS_SOURCE_LABELS, (), chosen_sources, chosen_categories)
     if not items:
@@ -82,10 +144,10 @@ def render_pnc_news(st, articles):
         metadata = [names.get(article["company_id"], article["company_id"]), NEWS_SOURCE_LABELS.get(article["source"], article["source"])]
         metadata.extend(article.get("categories") or [])
         metadata.append(_news_date(article.get("published_at")))
-        st.markdown(f"**{article['title']}**  \n{' · '.join(metadata)}")
+        st.markdown(f"**{article['title']}**  " + chr(10) + f"{' · '.join(metadata)}")
         if article.get("summary"):
             st.write(article["summary"])
-        st.link_button("Consulter la source ↗", article["source_url"], key=f"pnc-news-{article['article_id']}")
+        st.link_button("Consulter la source ↗", article["source_url"], key=f"pnc-news-{suffix}-{article['article_id']}")
 
 
 def _kind(row: dict[str, Any]) -> str:
@@ -99,17 +161,15 @@ def _prior_year_period(period_id: str) -> str | None:
     return None
 
 
-def pnc_delta(current_row: dict[str, Any], all_rows) -> str:
-    """A year-over-year delta badge, only when the comparison is legitimate.
+def pnc_yoy(current_row: dict[str, Any], all_rows) -> tuple[str, str, str] | None:
+    """(change text, direction symbol, prior period) only when the comparison is legitimate.
 
     Legitimate means: a prior-year same-quarter reviewed observation exists for
-    the same company and metric, with the same calendar basis. Otherwise no
-    delta is shown. The tone is neutral: favourability differs by metric (a
-    lower combined ratio is better), so we never colour the chip green or red.
+    the same company and metric, with the same calendar basis. Otherwise None.
     """
     prior_period = _prior_year_period(str(current_row.get("period_id", "")))
     if not prior_period:
-        return ""
+        return None
     prior = next(
         (row for row in all_rows
          if row.get("company_id") == current_row.get("company_id")
@@ -119,7 +179,7 @@ def pnc_delta(current_row: dict[str, Any], all_rows) -> str:
         None,
     )
     if prior is None or prior.get("value") is None or current_row.get("value") is None:
-        return ""
+        return None
     current_value = float(current_row["value"])
     prior_value = float(prior["value"])
     if _kind(current_row) == "percent":
@@ -127,10 +187,23 @@ def pnc_delta(current_row: dict[str, Any], all_rows) -> str:
         text = f"{change:+.1f} pp"
     else:
         if prior_value == 0:
-            return ""
+            return None
         change = (current_value - prior_value) / prior_value * 100
         text = f"{change:+.1f} %"
     symbol = "▲" if change > 0 else "▼" if change < 0 else "•"
+    return text, symbol, prior_period
+
+
+def pnc_delta(current_row: dict[str, Any], all_rows) -> str:
+    """A year-over-year delta badge, only when the comparison is legitimate.
+
+    The tone is neutral: favourability differs by metric (a lower combined ratio
+    is better), so we never colour the chip green or red.
+    """
+    yoy = pnc_yoy(current_row, all_rows)
+    if yoy is None:
+        return ""
+    text, symbol, prior_period = yoy
     return delta_badge(f"{symbol} {text}", "flat", f"vs {prior_period}")
 
 
@@ -221,12 +294,7 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
             details = "; ".join(f"{name} : {', '.join(dates)}" for name, dates in closes if dates)
             st.warning(f"Attention : les périodes de clôture diffèrent ({details}). "
                        "Les trimestres fiscaux et civils ne couvrent pas les mêmes dates.")
-    labels = ["Synthèse", "Historique validé"] if news is None else ["Synthèse", "Actualités", "Historique validé"]
-    opened = st.tabs(labels)
-    summary_tab, history_tab = opened[0], opened[-1]
-    if news is not None:
-        with opened[1]:
-            render_pnc_news(st, news[0])
+    summary_tab, company_tab = st.tabs(["Synthèse", "Par compagnie"])
     with summary_tab:
         st.markdown("<p class='section-eyebrow'>Comparatif en un coup d'œil</p>", unsafe_allow_html=True)
         st.subheader("Résultats des quatre compagnies")
@@ -242,17 +310,16 @@ def render_pnc_preview(st, published_rows=(), operations_alerts=(), acquisition=
             sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
             for index, url in enumerate(sources):
                 st.link_button(f"Rapport officiel — {name}", url, key=f"pnc-source-{company}-{index}")
-    with history_tab:
-        if len({row["period_id"] for row in all_rows}) > 1:
-            st.subheader("Historique trimestriel validé")
-            st.caption("Chaque ligne conserve sa clôture et son calendrier. Les trimestres fiscaux de TD ne couvrent pas les mêmes dates que les trimestres civils.")
-            st.dataframe(
-                pnc_history_table(all_rows), hide_index=True, width="stretch",
-                column_config={"Rapport officiel": st.column_config.LinkColumn(
-                    "Rapport officiel", display_text="Ouvrir")},
-            )
-        else:
-            st.info("L’historique s’affichera dès que plusieurs trimestres validés seront publiés.")
+    with company_tab:
+        st.caption("Consultez tous les indicateurs, la provenance, l’historique validé et les communiqués pour chaque assureur.")
+        panels = st.tabs([company for company, _name, _scope in COMPANIES])
+        for (company, name, scope), panel in zip(COMPANIES, panels):
+            with panel:
+                render_pnc_company(
+                    st, company, name, scope,
+                    [row for row in published_rows if row["company_id"] == company], all_rows, period,
+                    news[0] if news is not None else None,
+                )
     st.caption("N/A signifie ici qu’aucune valeur validée n’a été publiée, et non que l’assureur n’a pas communiqué de résultat.")
     st.subheader("Périmètres et périodes")
     st.write("Les résultats consolidés d’Intact et de Definity ne représentent pas le même périmètre que les segments Aviva Canada et TD Insurance.")
