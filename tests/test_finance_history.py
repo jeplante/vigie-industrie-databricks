@@ -36,7 +36,7 @@ def test_rejects_disallowed_source_and_context_without_metric_alias():
 
 def test_reports_missing_expected_metrics_by_company_and_period():
     validated = [{"company_id": "MFC", "period_id": "2024-Q2", "metric_id": "core_eps", "validation_status": VALIDATED_STATUS}]
-    assert incomplete_periods(validated)[("MFC", "2024-Q2")] == ("core_earnings", "core_roe", "licat_ratio", "net_income")
+    assert incomplete_periods(validated)[("MFC", "2024-Q2")] == ("core_earnings", "core_roe", "licat_ratio", "net_income", "total_client_assets")
     assert incomplete_periods([], [("IAG", "2024-Q1")])[("IAG", "2024-Q1")] == (
         "assets_under_administration", "core_earnings", "core_eps", "core_roe", "licat_ratio", "net_income"
     )

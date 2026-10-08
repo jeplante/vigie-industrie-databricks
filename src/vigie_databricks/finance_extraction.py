@@ -13,7 +13,9 @@ from vigie_databricks.insurer_contract import InsurerContract
 
 
 ALIASES = {
-    "MFC": {"core_eps": ("core EPS", "BPA tire des activites de base"), "core_earnings": ("core earnings",), "net_income": ("net income attributed to shareholders",), "core_roe": ("core ROE",), "licat_ratio": ("LICAT ratio",)},
+    # Manulife states its total assets under management and administration as "AUMA as at June 30, 2026 was $1.7 trillion";
+    # the same concept as Great-West Lifeco's total client assets.
+    "MFC": {"core_eps": ("core EPS", "BPA tire des activites de base"), "core_earnings": ("core earnings",), "net_income": ("net income attributed to shareholders",), "core_roe": ("core ROE",), "licat_ratio": ("LICAT ratio",), "total_client_assets": ("AUMA as at",)},
     "SLF": {"core_eps": ("underlying EPS", "underlying earnings per share"), "core_earnings": ("underlying net income",), "net_income": ("reported net income",), "core_roe": ("underlying ROE",), "licat_ratio": ("LICAT ratio",), "assets_under_management": ("assets under management",)},
     "GWO": {"core_eps": ("base EPS", "base earnings per common share", "base earnings per share"), "core_earnings": ("Lifeco base earnings", "base earnings"), "net_income": ("Lifeco net earnings - common shareholders", "net earnings"), "core_roe": ("consolidated base ROE", "base return on equity", "base ROE"), "licat_ratio": ("LICAT ratio",), "total_client_assets": ("total client assets", "total assets under administration (AUA)", "total assets under administration")},
     "IAG": {"core_eps": ("core EPS",), "core_earnings": ("core earnings",), "net_income": ("net income attributed to common shareholders",), "core_roe": ("core ROE",), "licat_ratio": ("solvency ratio", "LICAT ratio"), "assets_under_administration": ("assets under management and assets under administration", "assets under management and administration", "assets under administration")},
