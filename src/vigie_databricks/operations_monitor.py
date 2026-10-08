@@ -98,6 +98,31 @@ def evaluate_operations(
     return alerts
 
 
+# A news Job that stops running (paused schedule, deleted Job, compute quota reached) sends no failure email:
+# the age of its latest audit row is the only signal. Each limit leaves room for one missed run.
+NEWS_FRESHNESS_HOURS = {"official_news": 24.0, "pnc_news": 36.0}  # every 6 hours; daily at 06:20
+NEWS_LABELS = {"official_news": "Actualités vie", "pnc_news": "Actualités P&C"}
+
+
+def evaluate_news_freshness(latest_runs: dict[str, datetime | None], now: datetime,
+                            limits: dict[str, float] = NEWS_FRESHNESS_HOURS) -> list[OperationsAlert]:
+    """Alert when a news collection has not recorded a run within its limit (or never)."""
+    alerts = []
+    for feed, limit in limits.items():
+        observed = latest_runs.get(feed)
+        if observed is None:
+            alerts.append(OperationsAlert("news_stale", "warning", feed, f"{NEWS_LABELS[feed]}: aucun run enregistré."))
+            continue
+        if observed.tzinfo is None:
+            observed = observed.replace(tzinfo=now.tzinfo)
+        hours = (now - observed).total_seconds() / 3600
+        if hours > limit:
+            alerts.append(OperationsAlert(
+                "news_stale", "warning", feed,
+                f"{NEWS_LABELS[feed]}: dernier run il y a {hours:.0f} h (limite {limit:.0f} h); le Job ne tourne peut-être plus.",
+            ))
+    return alerts
+
 # --- P&C -------------------------------------------------------------------------------------------------
 # P&C KPIs are discovered, reviewed and published automatically by vigie-pnc-news (pnc_auto_review), so a
 # missing quarter means the report is not found yet or a candidate was rejected by the automatic review; the

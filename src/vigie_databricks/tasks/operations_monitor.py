@@ -9,8 +9,8 @@ import json
 from databricks.sdk import WorkspaceClient
 from pyspark.sql import SparkSession
 
-from vigie_databricks.operations_monitor import (MAX_DAILY_DBUS, OperationsAlert, evaluate_operations, evaluate_pnc, evaluate_usage,
-                                                latest_completed_quarter)
+from vigie_databricks.operations_monitor import (MAX_DAILY_DBUS, OperationsAlert, evaluate_news_freshness, evaluate_operations, evaluate_pnc,
+                                                evaluate_usage, latest_completed_quarter)
 
 
 AUDIT_SCHEMA = "run_id string,observed_at timestamp,status string,alert_type string,severity string,entity string,message string"
@@ -24,6 +24,8 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--audit-object", default="workspace.vigie.operations_monitor_audit")
     parser.add_argument("--pnc-gold-object", default="workspace.vigie.pnc_gold_observations")
     parser.add_argument("--pnc-news-object", default="workspace.vigie.pnc_official_news")
+    parser.add_argument("--news-audit-object", default="workspace.vigie.official_news_audit")
+    parser.add_argument("--pnc-news-audit-object", default="workspace.vigie.pnc_news_audit")
     parser.add_argument("--app-name", default="vigie-gold-viewer")
     parser.add_argument("--max-daily-dbus", type=float, default=MAX_DAILY_DBUS)
     parser.add_argument("--run-id", required=True)
@@ -63,6 +65,13 @@ def main() -> None:
         alerts += evaluate_pnc(pnc_rows, pnc_news, now=observed_at)
     except Exception as error:  # an unreadable P&C table is itself worth an alert, never a monitor crash
         alerts.append(OperationsAlert("pnc_unreadable", "warning", "pnc", f"Tables P&C illisibles: {str(error)[:160]}"))
+    latest_runs = {}
+    for feed, table in (("official_news", args.news_audit_object), ("pnc_news", args.pnc_news_audit_object)):
+        try:
+            latest_runs[feed] = spark.sql(f"SELECT max(observed_at) AS latest FROM {table}").collect()[0]["latest"]
+        except Exception:  # an unreadable audit is reported as "no run recorded"
+            latest_runs[feed] = None
+    alerts += evaluate_news_freshness(latest_runs, observed_at)
     try:
         usage = [(row["usage_date"], row["dbus"]) for row in spark.sql(
             "SELECT usage_date, sum(usage_quantity) AS dbus FROM system.billing.usage "
@@ -81,7 +90,7 @@ def main() -> None:
     ] or [{
         "run_id": args.run_id, "observed_at": observed_at, "status": "healthy",
         "alert_type": "none", "severity": "info", "entity": "vigie",
-        "message": f"Finance, {expected_period}, P&C et App validés.",
+        "message": f"Finance, {expected_period}, P&C, actualités et App validés.",
     }]
     if args.dry_run == "false":
         spark.createDataFrame(rows, AUDIT_SCHEMA).write.format("delta").mode("append").saveAsTable(args.audit_object)

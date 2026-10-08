@@ -70,3 +70,17 @@ def test_usage_check_ignores_partial_today_and_missing_data():
     assert evaluate_usage([], today) == []  # no data is not heavy usage
     assert evaluate_usage([(date(2026, 10, 6), 30.0)], today) == []  # at the threshold is allowed
     assert evaluate_usage([(date(2026, 10, 6), 30.1)], today, max_daily_dbus=40) == []
+
+
+def test_news_freshness_alerts_only_when_a_collection_stops_running():
+    from datetime import timedelta
+    from vigie_databricks.operations_monitor import evaluate_news_freshness
+
+    now = datetime(2026, 10, 8, 10, 45, tzinfo=UTC)
+    fresh = {"official_news": now - timedelta(hours=5), "pnc_news": now - timedelta(minutes=25)}
+    assert evaluate_news_freshness(fresh, now) == []
+    stale = evaluate_news_freshness({"official_news": now - timedelta(hours=30), "pnc_news": None}, now)
+    assert [(a.alert_type, a.severity, a.entity) for a in stale] == [("news_stale", "warning", "official_news"), ("news_stale", "warning", "pnc_news")]
+    assert "30 h" in stale[0].message and "aucun run" in stale[1].message
+    naive = {"official_news": (now - timedelta(hours=2)).replace(tzinfo=None), "pnc_news": now}
+    assert evaluate_news_freshness(naive, now) == []  # Spark returns naive UTC timestamps
