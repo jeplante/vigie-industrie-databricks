@@ -69,6 +69,11 @@ lancer le Job avec `dry_run=true` (decouverte, acquisition et decisions affichee
   ratio combine (tolerance 0,5 pp). Action: verifier le document, corriger par une publication manuelle.
 - `pnc_unreadable` (avertissement): le monitor n'a pas pu lire les tables P&C.
 
+**Fraicheur des actualites (depuis 0.10.17).** `news_stale` (avertissement): aucun run d'actualites vie depuis 24 h
+(Job toutes les 6 h) ou P&C depuis 36 h (Job quotidien), lu dans `official_news_audit` et `pnc_news_audit`. Un Job qui
+ne tourne plus (schedule en pause, Job supprime, quota de calcul atteint) n'envoie aucun courriel d'echec: c'est ce
+qui le revele. Action: `databricks jobs list-runs --job-id <id> --limit 3`, puis la section 4.
+
 ## 2. Verification quotidienne (5 minutes)
 
 1. Courriel d'echec recu? Si non, passer a 2.

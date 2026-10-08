@@ -24,11 +24,6 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
   voit six.
 - **Fait quand :** un chiffre mal étiqueté est signalé, et le chat vie peut répondre sur l'historique.
 
-### 5. Alerte de fraîcheur des actualités vie dans le monitor
-- **Pourquoi :** seule la barre latérale de l'App montre qu'une source d'actualités vie est en retard;
-  personne n'est prévenu par courriel.
-- **Fait quand :** le monitor alerte quand aucune actualité vie n'a été collectée depuis un délai défini.
-
 ### 6. Montrer les résultats semestriels d'Aviva Canada
 - **Pourquoi :** Aviva Canada ne publie pas de trimestre isolé; la Vigie l'affiche N/A alors que des chiffres
   semestriels existent.
@@ -46,3 +41,4 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 - 2026-10-07 : idées 1 et 2 réalisées au-delà de leur portée. La publication P&C est entièrement automatique
   (`pnc_discovery.py` trouve les rapports, `pnc_auto_review.py` remplace la fiche de preuve manuelle) sur décision du
   user ; la fiche manuelle ne sert plus qu'aux exceptions.
+- 2026-10-08 : idée 5 réalisée (alerte `news_stale` du monitor, actualités vie et P&C).
