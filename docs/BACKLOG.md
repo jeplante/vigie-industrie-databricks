@@ -13,11 +13,6 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 
 ## Priorité moyenne
 
-### 3. Afficher les indicateurs P&C déjà définis mais absents de l'App
-- **Pourquoi :** `config/pnc/metrics.yaml` définit les pertes catastrophiques et le rendement des capitaux
-  propres opérationnel, mais l'App ne les montre pas.
-- **Fait quand :** ces indicateurs sont extraits, validés, publiés et affichés, ou leur absence est expliquée.
-
 ### 4. Fiabiliser le chat
 - **Pourquoi :** le contrôle des chiffres (`answer_check.py`) détecte un chiffre inventé, pas un vrai chiffre
   attribué au mauvais indicateur. Le chat vie ne voit que le dernier trimestre, alors que le chat P&C en
@@ -31,6 +26,13 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 
 ## Priorité basse
 
+### 8. Pertes catastrophiques P&C à partir des rapports de gestion
+- **Pourquoi :** le montant trimestriel des pertes catastrophiques ne figure que dans le rapport de TD; Intact et
+  Definity le donnent dans leur rapport de gestion (MD&A), un document que la Vigie ne lit pas encore, et en
+  estimation préliminaire dans un communiqué en cours de trimestre.
+- **Fait quand :** le rapport de gestion d'Intact et de Definity est acquis, le montant extrait et validé
+  automatiquement pour les trois assureurs, et l'indicateur affiché.
+
 ### 7. Exercer le retour arrière de l'App
 - **Pourquoi :** c'est la seule procédure de `docs/RUNBOOKS.md` jamais exécutée.
 - **Fait quand :** un redéploiement volontaire d'une version sauvegardée, puis le retour à la version
@@ -42,3 +44,4 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
   (`pnc_discovery.py` trouve les rapports, `pnc_auto_review.py` remplace la fiche de preuve manuelle) sur décision du
   user ; la fiche manuelle ne sert plus qu'aux exceptions.
 - 2026-10-08 : idée 5 réalisée (alerte `news_stale` du monitor, actualités vie et P&C).
+- 2026-10-08 : idée 3 close, absence expliquée dans l'App (pertes catastrophiques publiées par TD seul; ROE opérationnel sur douze mois glissants). Idée 8 ajoutée pour aller plus loin.

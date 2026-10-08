@@ -425,4 +425,7 @@ def render_pnc_page(st, published_rows=(), operations_alerts=(), acquisition=Non
     st.subheader("Périmètres et périodes")
     st.write("Les résultats consolidés d’Intact et de Definity ne représentent pas le même périmètre que les segments Aviva Canada et TD Insurance.")
     st.write("Les résultats semestriels, les cumuls annuels et les rendements sur douze mois seront distingués des résultats du trimestre.")
+    st.write("Les pertes catastrophiques ne sont pas affichées : seul TD en publie le montant trimestriel dans son rapport; "
+             "Intact et Definity n’en donnent que des estimations préliminaires, dans des communiqués visibles dans les actualités. "
+             "Le rendement des capitaux propres opérationnel n’est pas affiché non plus : il est calculé sur douze mois glissants, pas sur le trimestre.")
     render_pnc_chat(st, all_rows, news[0] if news is not None else [])
