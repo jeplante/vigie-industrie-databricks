@@ -180,6 +180,13 @@ Aucun appel a un fournisseur de modele externe; les appels de modele Databricks 
   `system.billing.usage` (DBU par jour et par produit). Observe: environ 1,2 DBU/jour pour les Jobs seuls, l'App ajoute
   0,5 DBU/h quand elle tourne (jusqu'a 12/jour), l'entrepot SQL s'ajoute a l'usage; des journees a 17-19 DBU ont eu lieu
   sans arret observe.
+- **Depassement vecu le 2026-10-07** (journee de developpement intensive): 41,3 DBU (SQL 21,8, Jobs 8,8, Apps 8,8,
+  le reste < 1). Symptome: l'App est arretee par la plateforme avec `compute_status` = `STOPPED`, message
+  « App compute was stopped due to workspace or account status » (2026-10-08 01:56 UTC), et le monitor signale
+  `app_unavailable` et `usage_spike`. Le seuil se situe donc entre 19 et 41 DBU par jour. Le SQL warehouse est le
+  premier poste un jour de developpement: chaque requete le garde allume 10 minutes (`auto_stop_mins`). Pour une
+  journee de travail: regrouper les requetes, eviter de lancer l'App en local en boucle, privilegier les runs
+  ponctuels sans ecriture au strict necessaire.
 - L'App s'arrete apres 24 h: `vigie-app-start` la redemarre a 06:30 (le monitor la controle a 06:45).
 - Si le quota est un probleme: limiter `vigie-app-start` aux jours ouvrables (le monitor alertera alors l'App arretee la fin
   de semaine: ajuster en consequence), ou ne demarrer l'App qu'a la demande.
