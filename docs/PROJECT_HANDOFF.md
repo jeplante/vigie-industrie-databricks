@@ -456,6 +456,14 @@ sont integrees. Etat au 2026-10-07:
   univers; alertes P&C du monitor (voir RUNBOOKS). Reste volontairement different: les indicateurs, par nature.
 - Publication P&C automatique (0.10.16): la revue humaine par trimestre est remplacee par `pnc_auto_review.py` et la
   recherche manuelle des rapports par `pnc_discovery.py`, dans la tache `pnc_acquire` de `vigie-pnc-news`.
+- Chat, fiabilite (2026-10-08): `answer_check.py` signale aussi un vrai chiffre attribue au mauvais indicateur
+  (`mislabelled_figures`), un montant ecrit dans la mauvaise unite (`misscaled_figures`, ex. 0,716 M$ pour 0,716 G$) et
+  un chiffre prete a la mauvaise compagnie (`misattributed_figures`); chaque constat s'ajoute a la mise en garde, sans
+  bloquer. Le chat vie recoit 6 trimestres d'historique valide (sans les pics masques du graphique) et l'unite de chaque
+  indicateur. Mesure sur 4 series de 16 questions reelles: les erreurs reellement commises par le modele (ratio combine
+  appele ratio de sinistres, BPA appele resultat net par action, revenu de Definity prete a Intact, unites) sont signalees;
+  chaque faux positif observe a ete corrige et fige en test (`tests/test_answer_checks.py`). Les controles s'abstiennent
+  quand l'appariement chiffre/indicateur ou chiffre/compagnie n'est pas ecrit (listes « respectivement », « IFC et DFY ... »).
 - Chat, ajouts du 2026-10-07 (PR #55): `reasoning_effort=low` aussi cote vie (mesure sur 12 appels reels: 784 a 411 jetons en
   moyenne, 4,1 s a 2,5 s); `answer_check.py` signale (sans bloquer) les chiffres avec unite qu'aucune valeur du contexte n'explique
   (0 faux positif sur 64 chiffres reels; il NE detecte PAS un vrai chiffre rattache au mauvais indicateur); reponses directes pour la
