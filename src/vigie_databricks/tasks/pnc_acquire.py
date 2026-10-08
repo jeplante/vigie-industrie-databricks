@@ -121,9 +121,10 @@ def _aviva_half_years(spark, namespace, gold, write):
     from vigie_databricks.pnc_storage import publish_pnc_gold
 
     published = {row["period_id"] for row in gold if row.get("company_id") == "AV" and row.get("validation_status") in STATUS.values()}
+    # two years back: the previous half-year statement stays within reach until the next one is published
     news = [row.asDict() for row in spark.sql(
         f"SELECT company_id, title, source_url FROM {namespace}.pnc_official_news "
-        "WHERE company_id = 'AV' AND COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 400 DAYS").collect()]
+        "WHERE company_id = 'AV' AND COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 800 DAYS").collect()]
     rows, decisions = build_rows(discover_statements(news, published), http_get)
     count = publish_pnc_gold(spark, namespace, rows) if write and rows else 0
     return {"published": count, "decisions": decisions, "rejected": [d for d in decisions if d["decision"] == "rejected"]}
