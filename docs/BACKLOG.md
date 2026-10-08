@@ -13,14 +13,12 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 
 ## Priorité moyenne
 
-### 6. Montrer les résultats semestriels d'Aviva Canada
-- **Pourquoi :** Aviva Canada ne publie pas de trimestre isolé; la Vigie l'affiche N/A alors que des chiffres
-  semestriels existent.
-- **Fait quand :** une série semestrielle distincte est affichée, sans jamais la comparer à un trimestre.
-
 ## Priorité basse
 
 ### 8. Pertes catastrophiques P&C à partir des rapports de gestion
+- **Constat du 2026-10-08 :** le site investisseurs d'Intact refuse les lecteurs automatisés (HTTP 405, y compris
+  sa page de rapports trimestriels); Definity publie ses rapports sur s28.q4cdn.com, liste chargée en JavaScript.
+  Sans Intact, l'indicateur resterait incomparable : idée en attente d'une source accessible pour Intact.
 - **Pourquoi :** le montant trimestriel des pertes catastrophiques ne figure que dans le rapport de TD; Intact et
   Definity le donnent dans leur rapport de gestion (MD&A), un document que la Vigie ne lit pas encore, et en
   estimation préliminaire dans un communiqué en cours de trimestre.
@@ -40,3 +38,4 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 - 2026-10-08 : idée 5 réalisée (alerte `news_stale` du monitor, actualités vie et P&C).
 - 2026-10-08 : idée 3 close, absence expliquée dans l'App (pertes catastrophiques publiées par TD seul; ROE opérationnel sur douze mois glissants). Idée 8 ajoutée pour aller plus loin.
 - 2026-10-08 : idée 4 réalisée. Trois contrôles de plus sur les chiffres du chat (indicateur, unité, compagnie) et historique de 6 trimestres avec unités pour le chat vie; mesuré sur 64 réponses réelles du modèle.
+- 2026-10-08 : idée 6 réalisée (ratios semestriels et annuels d'Aviva Canada, publiés à part, `pnc_aviva.py`).

@@ -46,6 +46,7 @@ def main():
     contract = load_insurer_contract(Path(args.config_directory))
     prior = {}
     spark = None
+    aviva = None
     if args.persist or args.discover or review_only:
         from pyspark.sql import SparkSession
         spark = SparkSession.builder.getOrCreate()
@@ -60,8 +61,11 @@ def main():
         pages = {company: source.url for company, source in contract.financial_sources.items()}
         hosts = {company: source.allowed_hosts for company, source in contract.financial_sources.items()}
         manifest, new = discover_manifest(gold, news, pages, now=datetime.now(UTC), allowed_hosts=hosts)
+        aviva = _aviva_half_years(spark, args.namespace, gold, write=args.auto_publish)
         if not new:
-            print(json.dumps({"status": "nothing_new", "manifest": manifest}, sort_keys=True))
+            print(json.dumps({"status": "nothing_new", "manifest": manifest, "aviva": aviva}, sort_keys=True, default=str))
+            if aviva["rejected"]:
+                raise SystemExit(f"Aviva Canada statement check rejected {len(aviva['rejected'])} statement(s)")
             return
     else:
         manifest = yaml.safe_load(Path(args.manifest).read_text(encoding="utf-8"))["sources"]
@@ -95,7 +99,7 @@ def main():
     print(json.dumps({
         "status": "acquisition_failed" if result.errors else "extraction_incomplete" if unexpected_missing else "acquired_needs_review",
         "dry_run": not args.persist, "published": bool(publication and publication["published"]), "ai_model_calls": 0,
-        "audit": audit, "auto_publication": publication,
+        "audit": audit, "auto_publication": publication, "aviva": aviva,
         "sources_without_candidates": missing,
         "explicitly_unavailable_sources": unavailable,
         "expected_no_candidate_sources": expected_without_candidate,
@@ -103,8 +107,26 @@ def main():
     }, default=str, sort_keys=True))
     if result.errors or unexpected_missing:
         raise SystemExit(1)
+    if aviva and aviva["rejected"]:
+        raise SystemExit(f"Aviva Canada statement check rejected {len(aviva['rejected'])} statement(s)")
     if publication and publication["rejected"]:  # the others are published; the rejection is surfaced so the Job alerts
         raise SystemExit(f"P&C automatic review rejected {len(publication['rejected'])} candidate(s)")
+
+
+def _aviva_half_years(spark, namespace, gold, write):
+    """Aviva Canada's half-year and full-year ratio from its media statements (``pnc_aviva``), published apart
+    from the quarters; with ``write=False`` the statements are read and checked but nothing is stored."""
+    from vigie_databricks.pnc_aviva import STATUS, build_rows, discover_statements
+    from vigie_databricks.pnc_news import http_get
+    from vigie_databricks.pnc_storage import publish_pnc_gold
+
+    published = {row["period_id"] for row in gold if row.get("company_id") == "AV" and row.get("validation_status") in STATUS.values()}
+    news = [row.asDict() for row in spark.sql(
+        f"SELECT company_id, title, source_url FROM {namespace}.pnc_official_news "
+        "WHERE company_id = 'AV' AND COALESCE(published_at, fetched_at) >= current_timestamp() - INTERVAL 400 DAYS").collect()]
+    rows, decisions = build_rows(discover_statements(news, published), http_get)
+    count = publish_pnc_gold(spark, namespace, rows) if write and rows else 0
+    return {"published": count, "decisions": decisions, "rejected": [d for d in decisions if d["decision"] == "rejected"]}
 
 
 def _auto_publish(spark, namespace, result, contract, write=True):

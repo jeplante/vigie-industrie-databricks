@@ -15,7 +15,7 @@ from shared_ui import vigie_header
 from news_filter import filter_articles, news_facets
 from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SidebarSection, SourceRow,
                            alert_rows, audit_freshness_row, finance_sources, news_sources, render_sidebar)
-from pnc_data import fetch_pnc_acquisition, fetch_pnc_news, fetch_pnc_published
+from pnc_data import fetch_pnc_acquisition, fetch_pnc_half_years, fetch_pnc_news, fetch_pnc_published
 from gold_data import GoldConfig, connect_to_warehouse, fetch_comparison_all, fetch_recent_history_all, fetch_editorial_news_all, fetch_latest_finance_provenance_all, fetch_news_all, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_official_news_audit, fetch_official_news_counts
 
 SOURCE_COMPANIES = ("MFC", "SLF", "GWO", "IAG")
@@ -94,6 +94,8 @@ def pnc_acquisition(catalog, schema): return fetch_pnc_acquisition(connection(),
 def pnc_news(catalog, schema): return fetch_pnc_news(connection(), catalog, schema)
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def pnc_published(catalog, schema): return fetch_pnc_published(connection(), catalog, schema)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def pnc_half_years(catalog, schema): return fetch_pnc_half_years(connection(), catalog, schema)
 
 def _safe(call, default):
     try:
@@ -115,7 +117,8 @@ if universe == "Assurance de dommages":
         pnc_rows = []
     render_pnc_page(st, pnc_rows, _safe(lambda: operations_alerts_status(pnc_config), []),
                     _safe(lambda: pnc_acquisition(pnc_config.catalog, pnc_config.schema), None),
-                    _safe(lambda: pnc_news(pnc_config.catalog, pnc_config.schema), None))
+                    _safe(lambda: pnc_news(pnc_config.catalog, pnc_config.schema), None),
+                    _safe(lambda: pnc_half_years(pnc_config.catalog, pnc_config.schema), []))
     st.stop()
 
 st.markdown(vigie_header("Assurance de personnes · Canada", "Vigie de l'industrie", "MFC · SLF · GWO · IAG — résultats et actualités"), unsafe_allow_html=True)
