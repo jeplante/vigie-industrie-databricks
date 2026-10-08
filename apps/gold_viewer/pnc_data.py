@@ -17,6 +17,19 @@ def fetch_pnc_published(connection, catalog, schema):
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
+def fetch_pnc_half_years(connection, catalog, schema):
+    """Aviva Canada's half-year and full-year ratios: published apart from the quarters, never compared with them."""
+    namespace = _namespace(catalog, schema)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT company_id, metric_id, period_id, value, unit, period_end, source_url, validation_status "
+            f"FROM {namespace}.`pnc_gold_observations` "
+            "WHERE validation_status IN ('validated_semiannual', 'validated_annual')"
+        )
+        columns = [column[0] for column in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
 def _namespace(catalog, schema):
     if not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", part) for part in (catalog, schema)):
         raise ValueError("Invalid P&C namespace")

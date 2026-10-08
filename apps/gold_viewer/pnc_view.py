@@ -88,15 +88,45 @@ def pnc_company_table(current_rows, all_rows, period):
     return table
 
 
-def render_pnc_company(st, company, name, scope, current_rows, all_rows, period, news_articles=None, editorial=()):
+def half_year_label(period_id: str) -> str:
+    """'Premier semestre 2026' for 2026-H1, 'Année 2025' for 2025-FY."""
+    return f"Premier semestre {period_id[:4]}" if period_id.endswith("H1") else f"Année {period_id[:4]}"
+
+
+def half_year_table(half_years):
+    """Aviva Canada's half-year and full-year ratios, newest first; never mixed with the quarters."""
+    rows = sorted(half_years, key=lambda row: (row["period_id"][:4], row["period_id"].endswith("FY")), reverse=True)
+    return [{"Période": half_year_label(row["period_id"]), "Ratio combiné": format_value(row["value"], "percent"),
+             "Durée": "6 mois" if row["period_id"].endswith("H1") else "12 mois", "Clôture": str(row["period_end"]),
+             "Communiqué officiel": row["source_url"]} for row in rows]
+
+
+def _aviva_notice(st, half_years, key):
+    """Why Aviva Canada is N/A in the quarterly table, with its latest half-year or annual ratio when published."""
+    if half_years:
+        latest = half_year_table(half_years)[0]
+        st.info(f"Aviva Canada ne publie pas de trimestre canadien isolé : il reste N/A dans la comparaison trimestrielle. "
+                f"Dernier ratio combiné publié : {latest['Ratio combiné']} ({latest['Période'].lower()}, {latest['Durée']}), "
+                "non comparable à un trimestre.")
+        st.link_button("Voir le communiqué officiel d’Aviva Canada", latest["Communiqué officiel"], key=key)
+    else:
+        st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
+        st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL, key=key)
+
+
+def render_pnc_company(st, company, name, scope, current_rows, all_rows, period, news_articles=None, editorial=(), half_years=()):
     """The 'Par compagnie' panel: provenance, indicators, validated history and newsroom items."""
     st.subheader(name)
     st.caption(f"Périmètre : {scope}")
+    if company == "AV" and half_years:
+        st.markdown("#### Résultats semestriels et annuels")
+        st.caption("Ratio combiné canadien (non actualisé) publié par Aviva Canada. Il couvre six ou douze mois : il n’est jamais comparé à un trimestre.")
+        st.dataframe(half_year_table(half_years), hide_index=True, width="stretch",
+                     column_config={"Communiqué officiel": st.column_config.LinkColumn("Communiqué officiel", display_text="Ouvrir")})
     if not current_rows:
         st.info(f"Aucun indicateur validé pour {period or 'la période de référence'}; les KPI sont indiqués N/A.")
         if company == "AV":
-            st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
-            st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL, key="pnc-company-aviva-hy26")
+            _aviva_notice(st, half_years, "pnc-company-aviva-hy26")
     else:
         ends = sorted({str(row["period_end"]) for row in current_rows})
         basis = "Fiscal" if any(row.get("calendar_basis") == "fiscal" for row in current_rows) else "Civil"
@@ -357,7 +387,7 @@ def render_pnc_chat(st, rows, news_articles, ask_fn=None):
                 messages.append({"role": "assistant", "content": answer["answer"]})
 
 
-def render_pnc_page(st, published_rows=(), operations_alerts=(), acquisition=None, news=None):
+def render_pnc_page(st, published_rows=(), operations_alerts=(), acquisition=None, news=None, half_years=()):
     from pnc_data import current_pnc_rows
     all_rows = list(published_rows)
     period, published_rows = current_pnc_rows(all_rows)
@@ -401,9 +431,7 @@ def render_pnc_page(st, published_rows=(), operations_alerts=(), acquisition=Non
                    "existe pour le même assureur et le même calendrier.")
         st.markdown(pnc_comparison_html(period, published_rows, all_rows), unsafe_allow_html=True)
         if published_rows and not any(row["company_id"] == "AV" for row in published_rows):
-            st.info("Aviva Canada : un rapport HY 2026 est disponible, mais son ratio combiné couvre six mois. Il reste N/A dans la comparaison trimestrielle; aucun T2 canadien isolé n’a été validé.")
-            st.link_button("Voir le rapport semestriel officiel d’Aviva Canada", AVIVA_HY26_URL,
-                           key="pnc-aviva-hy26-source")
+            _aviva_notice(st, half_years, "pnc-aviva-hy26-source")
         st.caption("Le résultat net opérationnel est une mesure non-IFRS propre à chaque assureur; ses ajustements peuvent différer. Vérifiez le rapport officiel avant une comparaison directe.")
         for company, name, _ in COMPANIES:
             sources = sorted({row["source_url"] for row in published_rows if row["company_id"] == company})
@@ -420,6 +448,7 @@ def render_pnc_page(st, published_rows=(), operations_alerts=(), acquisition=Non
                     [row for row in published_rows if row["company_id"] == company], all_rows, period,
                     news[0] if news is not None else None,
                     news[3] if news is not None and len(news) > 3 else (),
+                    half_years if company == "AV" else (),
                 )
     st.caption("N/A signifie ici qu’aucune valeur validée n’a été publiée, et non que l’assureur n’a pas communiqué de résultat.")
     st.subheader("Périmètres et périodes")

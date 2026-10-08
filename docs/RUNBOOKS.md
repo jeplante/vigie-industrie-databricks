@@ -53,6 +53,11 @@ alerte. Medias sectoriels: moins de 2 fils lus fait echouer le run, dans les deu
    combine, valeur deja publiee identique ou differente; puis la porte de publication habituelle;
 4. **publie** les valeurs acceptees dans `pnc_gold_observations` et relit la table. Un candidat rejete n'est pas publie
    et fait echouer le run (courriel).
+5. **Aviva Canada** (depuis 0.10.18, `pnc_aviva.py`): ses communiques « posts half-year / full-year results » (aviva.ca,
+   lus par le Job d'actualites) donnent le ratio combine canadien non actualise du semestre et de l'annee. Verifie (etiquette
+   HY26/FY25 du ratio = periode du titre, base non actualisee declaree, plage plausible) puis publie avec son propre statut
+   (`validated_semiannual`, `validated_annual`; periodes `2026-H1`, `2025-FY`). Tout ce qui lit les trimestres l'ignore;
+   l'App l'affiche a part dans le panneau Aviva.
 
 Teste sur tout l'historique (2026-10-07): les memes 169 valeurs que la revue humaine, les 2 erreurs d'extraction de
 2023 rejetees. Exception: apres inspection, une fiche manuelle dans `config/pnc/reviewed_evidence.yaml` et
