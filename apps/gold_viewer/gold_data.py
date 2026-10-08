@@ -237,6 +237,26 @@ def fetch_metric_history(connection: Any, config: GoldConfig, metric_id: str) ->
     )
 
 
+
+def fetch_recent_history_all(connection: Any, config: GoldConfig, company_ids: Sequence[str], quarters: int = 6) -> list[dict[str, Any]]:
+    """Validated quarterly values of every metric for the last ``quarters`` quarters, one statement (chat context)."""
+    if not company_ids or not all(re.fullmatch(r"[A-Z]{2,5}", company) for company in company_ids):
+        raise ValueError("Invalid company identifiers")
+    table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.silver_table))
+    companies = ", ".join(f"'{company}'" for company in company_ids)
+    rows = _query(
+        connection,
+        f"""
+        SELECT company_id, metric_id, period_id, value
+        FROM {table}
+        WHERE company_id IN ({companies})
+          AND period_id RLIKE '^20[0-9]{{2}}-Q[1-4]$'
+        ORDER BY period_id, company_id, metric_id
+        """,
+    )
+    periods = sorted({row["period_id"] for row in rows})[-quarters:]
+    return [row for row in rows if row["period_id"] in periods]
+
 OFFICIAL_NEWS_HOSTS = "('www.manulife.com', 'www.sunlife.com', 'www.greatwestlifeco.com', 'ia.ca')"
 
 

@@ -10,14 +10,18 @@ from typing import Any
 import requests
 from databricks.sdk.core import Config
 
-from answer_check import unsupported_figures
+from answer_check import misattributed_figures, mislabelled_figures, misscaled_figures, unsupported_figures
 from chat_intents import asks_for_explanation, question_intent
 
 DEFAULT_MODEL = "databricks-gpt-oss-20b"
 SYSTEM = """You are Vigie, a French financial-information assistant. Answer only from CONTEXT.
 Never invent values, dates, or sources; do not provide investment advice. Keep the answer under 160 French words. Return strict JSON:
 {"answer":"...","citations":[{"label":"...","url":"..."}],"used_kpis":[{"company_id":"...","metric_id":"...","period_id":"..."}],"caveat":"... or null"}.
-Citations must use only URLs from CONTEXT. Cite at least one URL for factual answers."""
+Citations must use only URLs from CONTEXT. Cite at least one URL for factual answers.
+CONTEXT.comparisons holds the latest quarter with its year-earlier value; CONTEXT.observations holds the validated
+history of recent quarters (period_id, value). Write every amount in the unit of CONTEXT.units: CAD_BILLION values
+in G$ (milliards de dollars), CAD_TRILLION in T$, CAD_PER_SHARE in $ par action, PERCENT in %. Never convert a
+billion to a million. licat_ratio is a capital ratio (LICAT), not a liquidity ratio."""
 
 
 def _json_default(value: Any) -> Any:
@@ -31,10 +35,33 @@ def _json_default(value: Any) -> Any:
     raise TypeError(f"Unsupported context value: {type(value).__name__}")
 
 
+# Stored unit of each life metric, given to the model so it writes amounts in the right unit.
+LIFE_UNITS = {"core_earnings": "CAD_BILLION", "net_income": "CAD_BILLION", "assets_under_management": "CAD_BILLION",
+              "assets_under_administration": "CAD_BILLION", "total_client_assets": "CAD_TRILLION", "core_eps": "CAD_PER_SHARE",
+              "licat_ratio": "PERCENT", "solvency_ratio": "PERCENT", "core_roe": "PERCENT"}
+MAX_HISTORY_OBSERVATIONS = 200
+
+
+def _chat_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Recent validated values, without the points the history chart masks as annual-looking spikes."""
+    from history_quality import flag_suspicious_history
+
+    kept = []
+    for metric in sorted({row.get("metric_id") for row in history}):
+        rows = [row for row in history if row.get("metric_id") == metric and row.get("value") is not None]
+        kept += [{"company_id": row["company_id"], "metric_id": metric, "period_id": row["period_id"], "value": row["value"]}
+                 for row in flag_suspicious_history(rows, metric) if row["display_quality"] == "accepted"]
+    kept.sort(key=lambda row: (row["period_id"], row["company_id"], row["metric_id"]), reverse=True)
+    return kept[:MAX_HISTORY_OBSERVATIONS]
+
+
 def compact_context(
     comparisons: list[dict[str, Any]], news: list[dict[str, Any]], documents: list[dict[str, Any]],
-) -> dict[str, list[dict[str, Any]]]:
-    """Keep only published fields useful to a chat answer and fit a bounded prompt."""
+    history: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Keep only published fields useful to a chat answer and fit a bounded prompt.
+
+    ``history`` (validated recent quarters) lets the chat answer on trends, as the P&C chat does."""
     comparison_fields = ("company_id", "metric_id", "current_period_id", "current_value", "previous_period_id", "previous_value", "change_pct")
     document_fields = ("company_id", "reporting_period", "source_url", "fetched_at")
     return {
@@ -50,6 +77,8 @@ def compact_context(
             for row in news[:8]
         ],
         "documents": [{field: row.get(field) for field in document_fields if row.get(field) is not None} for row in documents[:4]],
+        "observations": _chat_history(history or []),
+        "units": LIFE_UNITS,
     }
 
 
@@ -228,16 +257,35 @@ def ask(
         allowed_kpis = {
             (row.get("company_id"), row.get("metric_id"), row.get("current_period_id"))
             for row in context.get("comparisons", [])
-        }
+        } | {(row.get("company_id"), row.get("metric_id"), row.get("period_id")) for row in context.get("observations", [])}
     parsed["used_kpis"] = [
         item for item in parsed.get("used_kpis") or []
         if isinstance(item, dict)
         and (item.get("company_id"), item.get("metric_id"), item.get("period_id")) in allowed_kpis
     ][:12]
-    unverified = unsupported_figures(parsed.get("answer", ""), context)
-    if unverified:
-        # Not a proof of an error (a rounded or derived figure may escape the check), so it is shown, not blocked.
-        parsed["unverified_figures"] = unverified
-        notice = "Vérification : ces chiffres n’ont pas été retrouvés dans les données publiées : " + ", ".join(unverified) + ". Vérifiez-les avant usage."
+    return attach_figure_checks(parsed, context)
+
+
+FIGURE_CHECKS = (
+    ("unverified_figures", unsupported_figures, "ces chiffres n’ont pas été retrouvés dans les données publiées"),
+    ("mislabelled_figures", mislabelled_figures, "ces chiffres appartiennent à un autre indicateur que celui nommé"),
+    ("misscaled_figures", misscaled_figures, "ces montants semblent écrits dans la mauvaise unité"),
+    ("misattributed_figures", misattributed_figures, "ces chiffres semblent attribués à la mauvaise compagnie"),
+)
+
+
+def attach_figure_checks(parsed: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    """Run every figure check on the model's prose and append one notice per finding to the caveat.
+
+    None of them proves an error (a rounded or derived figure may escape or trip a check), so the answer is
+    shown with the notices, never blocked."""
+    notices = []
+    for key, check, label in FIGURE_CHECKS:
+        found = check(parsed.get("answer", ""), context)
+        if found:
+            parsed[key] = found
+            notices.append(f"{label} : {', '.join(found)}")
+    if notices:
+        notice = "Vérification : " + "; ".join(notices) + ". Vérifiez-les avant usage."
         parsed["caveat"] = f"{parsed['caveat']} {notice}" if parsed.get("caveat") else notice
     return parsed

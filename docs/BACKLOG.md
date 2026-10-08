@@ -13,12 +13,6 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 
 ## Priorité moyenne
 
-### 4. Fiabiliser le chat
-- **Pourquoi :** le contrôle des chiffres (`answer_check.py`) détecte un chiffre inventé, pas un vrai chiffre
-  attribué au mauvais indicateur. Le chat vie ne voit que le dernier trimestre, alors que le chat P&C en
-  voit six.
-- **Fait quand :** un chiffre mal étiqueté est signalé, et le chat vie peut répondre sur l'historique.
-
 ### 6. Montrer les résultats semestriels d'Aviva Canada
 - **Pourquoi :** Aviva Canada ne publie pas de trimestre isolé; la Vigie l'affiche N/A alors que des chiffres
   semestriels existent.
@@ -45,3 +39,4 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
   user ; la fiche manuelle ne sert plus qu'aux exceptions.
 - 2026-10-08 : idée 5 réalisée (alerte `news_stale` du monitor, actualités vie et P&C).
 - 2026-10-08 : idée 3 close, absence expliquée dans l'App (pertes catastrophiques publiées par TD seul; ROE opérationnel sur douze mois glissants). Idée 8 ajoutée pour aller plus loin.
+- 2026-10-08 : idée 4 réalisée. Trois contrôles de plus sur les chiffres du chat (indicateur, unité, compagnie) et historique de 6 trimestres avec unités pour le chat vie; mesuré sur 64 réponses réelles du modèle.

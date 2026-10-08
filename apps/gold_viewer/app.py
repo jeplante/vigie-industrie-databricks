@@ -15,7 +15,7 @@ from news_filter import filter_articles, news_facets
 from source_status import (FINANCE_ERROR_HOURS, FINANCE_WARN_HOURS, NEWS_ERROR_HOURS, NEWS_WARN_HOURS, SidebarSection, SourceRow,
                            alert_rows, audit_freshness_row, finance_sources, news_sources, render_sidebar)
 from pnc_data import fetch_pnc_acquisition, fetch_pnc_news, fetch_pnc_published
-from gold_data import GoldConfig, connect_to_warehouse, fetch_comparison_all, fetch_editorial_news_all, fetch_latest_finance_provenance_all, fetch_news_all, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_official_news_audit, fetch_official_news_counts
+from gold_data import GoldConfig, connect_to_warehouse, fetch_comparison_all, fetch_recent_history_all, fetch_editorial_news_all, fetch_latest_finance_provenance_all, fetch_news_all, fetch_finance_document_periods, fetch_finance_provenance, fetch_latest_finance_attempts, fetch_latest_finance_audit, fetch_latest_finance_provenance, fetch_latest_operations_alerts, fetch_metric_history, fetch_official_news_audit, fetch_official_news_counts
 
 SOURCE_COMPANIES = ("MFC", "SLF", "GWO", "IAG")
 ADDITIVE_METRICS = {"core_earnings", "net_income", "new_business_value", "ape_sales"}
@@ -48,6 +48,8 @@ def company_editorial_news(config, company): return editorial_news_all(config).g
 def company_document(config, company): return documents_all(config).get(company)
 @st.cache_data(ttl=300, show_spinner=False)
 def history(config, metric): return fetch_metric_history(connection(), config, metric)
+@st.cache_data(ttl=300, show_spinner=False)
+def chat_history(config): return fetch_recent_history_all(connection(), config, SOURCE_COMPANIES)
 @st.cache_data(ttl=300, show_spinner=False)
 def document_periods(config): return fetch_finance_document_periods(connection(), config)
 @st.cache_data(ttl=300, show_spinner=False)
@@ -292,6 +294,7 @@ if question:
     context = compact_context(
         [row for rows in current_rows.values() for row in rows], chat_news,
         [document for document in latest_documents.values() if document],
+        _safe(lambda: chat_history(config), []),  # read only when a question is asked
     )
     with st.chat_message("assistant"):
         with st.spinner("Analyse des données publiées..."):
