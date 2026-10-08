@@ -1,0 +1,26 @@
+# TD Insurance standalone net income for fiscal 2024-Q4: TD's own reports of that time give only the combined
+# Wealth Management and Insurance segment; the 2025-Q1 report's comparison gives the standalone figure.
+# Run once with pnc_acquire --manifest <this file> --persist --auto-publish (see docs/RUNBOOKS.md).
+sources:
+- company_id: IFC
+  period_id: 2024-Q4
+  unavailable_reason: outside_backfill_scope
+  reference_url: https://www.intactfc.com/English/investors/financial-results/default.aspx
+  disclosure_scope: not part of this TD backfill
+- company_id: AV
+  period_id: 2024-Q4
+  unavailable_reason: outside_backfill_scope
+  reference_url: https://www.aviva.com/investors/results-reports-and-presentations/
+  disclosure_scope: not part of this TD backfill
+- company_id: TD
+  period_id: 2024-Q4
+  source_url: https://www.td.com/content/dam/tdcom/canada/about-td/pdf/quarterly-results/2025/q1/2025-q1-earnings-newsrelease-en.pdf
+  document_type: quarterly_report
+  disclosure_scope: TD Insurance standalone net income for 2024-Q4, read in the 2025-Q1
+    comparison
+  calendar_basis: fiscal
+- company_id: DFY
+  period_id: 2024-Q4
+  unavailable_reason: outside_backfill_scope
+  reference_url: https://www.definityfinancial.com/English/investors/financial-reports/default.aspx
+  disclosure_scope: not part of this TD backfill

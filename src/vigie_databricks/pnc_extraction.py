@@ -216,6 +216,62 @@ def _td_quarterly_insurance_income(text: str, expected_unit: str) -> ExtractedMe
     return None
 
 
+def _following_period(period_id: str, quarters: int) -> str:
+    year, quarter = int(period_id[:4]), int(period_id[-1]) + quarters
+    return f"{year + (quarter - 1) // 4}-Q{(quarter - 1) % 4 + 1}"
+
+
+def _td_earlier_insurance_income(text: str, expected_unit: str, target_period: str) -> ExtractedMetric | None:
+    """TD's standalone Insurance net income for ``target_period``, from a later report's comparison.
+
+    TD's reports before 2025 give only the combined Wealth Management and Insurance segment. From 2025 each
+    comparison states the standalone figure and its change: "Insurance net income of $168 million, a decrease
+    of $32 million, ... compared with the first quarter last year", or "an increase of $267 million, compared
+    with a loss of $99 million in the prior quarter". A value written in the sentence ($99 million loss) is
+    used as such; otherwise the earlier value is the figure minus the stated change, an exact difference of
+    two published numbers. Only the same quarter of the previous year or the previous quarter is read.
+    """
+    comparisons = re.finditer(
+        r"Quarterly comparison\s*.\s*(?P<quarter>Q[1-4])\s+(?P<year>20\d{2})\s+vs\s*.?\s*(?P<prior_quarter>Q[1-4])\s+(?P<prior_year>20\d{2})"
+        r"(?P<body>.*?)(?=Quarterly comparison|TABLE\s+\d+:|$)",
+        text, re.IGNORECASE | re.DOTALL,
+    )
+    for comparison in comparisons:
+        current_period = f"{comparison.group('year')}-{comparison.group('quarter').upper()}"
+        prior = f"{comparison.group('prior_year')}-{comparison.group('prior_quarter').upper()}"
+        if prior != target_period or current_period not in (_following_period(prior, 4), _following_period(prior, 1)):
+            continue
+        match = re.search(
+            r"and Insurance net income of\s*\$(?P<number>[\d,]+)\s*million\s*,?\s*an?\s+(?P<direction>increase|decrease)"
+            r"\s+of\s*\$(?P<change>[\d,]+)\s*million(?:\s*,\s*or\s*[\d.]+\s*%)?\s*,?\s*compared with\s+"
+            r"(?:(?:a|net)\s+(?:net\s+)?(?P<kind>loss|income)\s+of\s*\$(?P<stated>[\d,]+)\s*million\s+in\s+)?"
+            r"the (?:prior quarter|(?:first|second|third|fourth) quarter last year)",
+            comparison.group("body"), re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            continue
+        current = _normalized_value(match.group("number"), "million", expected_unit)
+        change = _normalized_value(match.group("change"), "million", expected_unit)
+        if current is None or change is None:
+            continue
+        derived = round(current - change if match.group("direction").lower() == "increase" else current + change, 6)
+        if match.group("stated"):
+            stated = _normalized_value(match.group("stated"), "million", expected_unit)
+            value = -stated if match.group("kind").lower() == "loss" else stated
+            if abs(value - derived) > 1e-9:  # the sentence contradicts itself: read nothing
+                continue
+            how = f"stated in the {current_period[-2:]} comparison as {'a loss' if value < 0 else 'income'} of ${match.group('stated')} million"
+        else:
+            value = derived
+            how = (f"derived from a later comparison: ${match.group('number')} million, {match.group('direction').lower()} of "
+                   f"${match.group('change')} million")
+        how = how.replace(current_period[-2:] + " comparison", "next quarter's comparison")
+        millions = round(value * 1000)
+        context = f"{target_period[-2:]} {target_period[:4]} Insurance net income of {millions} million CAD, {how}"
+        return ExtractedMetric("net_income", value, expected_unit, str(millions), context)
+    return None
+
+
 def _dfy_quarterly_insurance_revenue(text: str, expected_unit: str) -> ExtractedMetric | None:
     """Read only the current-quarter insurance revenue in Definity's CAD-millions table."""
     section = re.search(
@@ -336,8 +392,13 @@ def extract_pnc_metrics(
                 continue
             if _reported_current_period(company_id, text) != target_period:
                 continue
-        if (target_period and company_id == "TD"
-                and _reported_current_period(company_id, text) not in {None, target_period}):
+        if target_period and company_id == "TD" and _reported_current_period(company_id, text) not in {None, target_period}:
+            # a report one quarter or one year later still gives this quarter's standalone Insurance net income
+            reported = _reported_current_period(company_id, text)
+            if metric_id == "net_income" and reported in (_following_period(target_period, 4), _following_period(target_period, 1)):
+                derived = _td_earlier_insurance_income(text, expected_unit, target_period)
+                if derived is not None:
+                    extracted.append(derived)
             continue
         if company_id == "AV" and metric_id == "combined_ratio":
             canada_cor = _aviva_canada_quarterly_cor(text, expected_unit, target_period)

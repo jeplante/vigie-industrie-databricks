@@ -44,7 +44,8 @@ def acquire_pnc_documents(contract, manifest, prior_by_url=None, *, persist_raw=
             if expected_gap:
                 raise ValueError("unavailable source cannot also declare an expected no-candidate gap")
             # not_yet_published: automatic discovery found no newer report for this issuer.
-            if entry["unavailable_reason"] not in {"no_quarterly_segment_disclosure", "not_yet_published"}:
+            # outside_backfill_scope: a backfill run that targets other issuers only.
+            if entry["unavailable_reason"] not in {"no_quarterly_segment_disclosure", "not_yet_published", "outside_backfill_scope"}:
                 raise ValueError("unsupported unavailable reason")
             if entry.get("source_url") or entry.get("document_type"):
                 raise ValueError("unavailable source cannot have an acquisition URL or document type")

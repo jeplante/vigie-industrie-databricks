@@ -196,6 +196,26 @@ Aucun appel a un fournisseur de modele externe; les appels de modele Databricks 
 - Si le quota est un probleme: limiter `vigie-app-start` aux jours ouvrables (le monitor alertera alors l'App arretee la fin
   de semaine: ajuster en consequence), ou ne demarrer l'App qu'a la demande.
 
+## 9 ter. Combler les trous historiques (rattrapages ponctuels, a faire quand le quota le permet)
+
+Constat du 2026-10-08 sur les tableaux et graphiques:
+- **TD 2024 (4 trimestres)**: les rapports TD de 2024 ne donnent que le segment combine Gestion de patrimoine et Assurance;
+  les comparaisons des rapports 2025 donnent le resultat net de l'assurance de l'annee precedente (deduit: valeur moins
+  variation, ou ecrit: « compared with a loss of $99 million in the prior quarter »). Manifestes:
+  `config/pnc/backfill/td-2024-Q1.yaml` a `td-2024-Q4.yaml`; lancer pour chacun un run ponctuel de la tache `pnc_acquire`
+  (wheel >= 0.10.19) avec `--manifest <fichier> --persist --auto-publish`. Attendu: 200, 203, 15 et -99 M$.
+- **Definity, produits d'assurance 2025-Q4 et 2026-Q1**: l'extracteur actuel les lit (1,2195 et 1,8239 G$); ils manquaient
+  parce que les revues manuelles de l'epoque ne les retenaient pas. Meme commande avec `config/pnc/history/2025-Q4.yaml`
+  puis `2026-Q1.yaml`: seules les observations absentes sont publiees, les autres sont « deja publiees ».
+- **Manuvie, actifs geres et administres (AUMA)**: aucun libelle n'etait configure. Depuis 0.10.19 l'extracteur vie lit
+  « AUMA as at <date> was $X trillion » (14 rapports trimestriels 2022-2026 verifies; precision de Manulife: 0,1 T$).
+  Ordre de deploiement imperatif: passer **d'abord** `vigie-finance-live` au nouveau wheel (il publiera l'AUMA du trimestre
+  courant au run suivant), **ensuite** le monitor (il attend desormais cet indicateur pour Manuvie). Historique: relancer
+  l'extraction historique puis `vigie-finance-history-publish` avec le nouveau wheel.
+- Restent structurels: produits d'assurance d'Intact (il publie des primes directes souscrites, un autre indicateur),
+  ratios de sinistres et de frais d'Intact (base actualisee), indicateurs de TD autres que le resultat net, trimestres
+  d'Aviva (remplaces par ses ratios semestriels et annuels).
+
 ## 9 bis. Tester l'App sans consommer de quota
 
 Lancer l'App en local contre le warehouse le garde allume (10 minutes apres chaque requete): c'est ce qui a

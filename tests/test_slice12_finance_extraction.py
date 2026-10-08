@@ -121,3 +121,15 @@ def test_gwo_q4_assets_table_without_explicit_scale_is_interpreted_as_millions()
         load_insurer_contract(ROOT / "config"),
     )
     assert {row.metric_id: row.value for row in rows}["total_client_assets"] == pytest.approx(2.497712)
+
+
+def test_manulife_total_assets_under_management_and_administration_is_read_from_its_auma_sentence():
+    from pathlib import Path
+    from vigie_databricks.finance_extraction import extract_finance_metrics
+    from vigie_databricks.insurer_contract import load_insurer_contract
+
+    contract = load_insurer_contract(Path(__file__).resolve().parents[1] / "config")
+    text = ("A5 Assets under management and administration (“AUMA”) AUMA as at June 30, 2026 was $1.8 trillion, "
+            "an increase of 9% compared with December 31, 2025.")
+    metrics = {metric.metric_id: metric for metric in extract_finance_metrics("MFC", text, contract)}
+    assert metrics["total_client_assets"].value == 1.8 and metrics["total_client_assets"].unit == "CAD_TRILLION"
