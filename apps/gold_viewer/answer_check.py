@@ -342,3 +342,65 @@ def misattributed_figures(text: str, context: Any) -> list[str]:
         if owners:
             flagged.append(f"{match.group(0).strip()} ({'/'.join(owners)}, pas {named})")
     return list(dict.fromkeys(flagged))
+
+
+# "par rapport à 2025-Q4", "vs T4 2025", "contre le deuxième trimestre 2025": the period a change is measured from.
+_QUARTER_WORDS = {"premier": 1, "1er": 1, "deuxieme": 2, "2e": 2, "troisieme": 3, "3e": 3, "quatrieme": 4, "4e": 4}
+_COMPARED = re.compile(
+    r"(?:par rapport (?:a|au)|comparativement (?:a|au)|compare (?:a|au)|\bvs\.?|\bversus|\bcontre|\bdepuis)\s+(?:l |le |la |au )?"
+    r"(?:(?P<year>20\d\d)[-\s]?(?:q|t)(?P<quarter>[1-4])|(?:q|t)(?P<quarter2>[1-4])[-\s]?(?P<year2>20\d\d)"
+    r"|(?P<word>premier|1er|deuxieme|2e|troisieme|3e|quatrieme|4e) trimestre(?: de)? (?P<year3>20\d\d))")
+COMPARED_WITHIN_CHARS = 60
+
+
+def _dated_series(context: Any) -> dict[tuple[Any, Any], dict[str, float]]:
+    """Value by period for each (company, metric) of the context."""
+    series: dict[tuple[Any, Any], dict[str, float]] = {}
+    if not isinstance(context, dict):
+        return series
+    for row in context.get("observations", []):
+        if isinstance(row, dict) and isinstance(row.get("value"), (int, float)) and row.get("period_id"):
+            series.setdefault((row.get("company_id"), row.get("metric_id")), {})[str(row["period_id"])] = float(row["value"])
+    for row in context.get("comparisons", []):
+        if not isinstance(row, dict):
+            continue
+        for period_field, value_field in (("current_period_id", "current_value"), ("previous_period_id", "previous_value")):
+            if isinstance(row.get(value_field), (int, float)) and row.get(period_field):
+                series.setdefault((row.get("company_id"), row.get("metric_id")), {})[str(row[period_field])] = float(row[value_field])
+    return series
+
+
+def misdated_figures(text: str, context: Any) -> list[str]:
+    """Changes measured from another period than the one the sentence names (empty list = none found).
+
+    "+40,8 % par rapport à 2025-Q4" is flagged when 40,8 % is the change from 2025-Q2 and the change from
+    2025-Q4 is something else. A change no pair of published values explains is left to the other checks."""
+    series = _dated_series(context)
+    flagged = []
+    for match in FIGURE.finditer(text or ""):
+        if match.group(2).lower() not in ("%", "pp"):
+            continue
+        following = _plain(text[match.end():match.end() + COMPARED_WITHIN_CHARS]).replace("‑", "-")
+        compared = _COMPARED.search(following)
+        if not compared:
+            continue
+        quarter = compared.group("quarter") or compared.group("quarter2") or _QUARTER_WORDS.get(compared.group("word") or "")
+        named = f"{compared.group('year') or compared.group('year2') or compared.group('year3')}-Q{quarter}"
+        number, decimals = _parse(match.group(1))
+        tolerance = 0.5 * 10 ** (-decimals) + 1e-9
+        bases: set[str] = set()
+        named_explains = False
+        for values in series.values():
+            for current, current_value in values.items():
+                for base, base_value in values.items():
+                    if base == current:
+                        continue
+                    changes = [abs(current_value - base_value)]
+                    if base_value:
+                        changes.append(abs((current_value - base_value) / base_value * 100))
+                    if any(abs(change - number) <= tolerance for change in changes):
+                        bases.add(base)
+                        named_explains = named_explains or base == named
+        if bases and not named_explains:
+            flagged.append(f"{match.group(0).strip()} (calculé contre {', '.join(sorted(bases))}, pas {named})")
+    return list(dict.fromkeys(flagged))

@@ -10,7 +10,7 @@ from typing import Any
 import requests
 from databricks.sdk.core import Config
 
-from answer_check import misattributed_figures, mislabelled_figures, misscaled_figures, unsupported_figures
+from answer_check import misattributed_figures, misdated_figures, mislabelled_figures, misscaled_figures, unsupported_figures
 from chat_intents import asks_for_explanation, question_intent
 
 DEFAULT_MODEL = "databricks-gpt-oss-20b"
@@ -271,6 +271,7 @@ FIGURE_CHECKS = (
     ("mislabelled_figures", mislabelled_figures, "ces chiffres appartiennent à un autre indicateur que celui nommé"),
     ("misscaled_figures", misscaled_figures, "ces montants semblent écrits dans la mauvaise unité"),
     ("misattributed_figures", misattributed_figures, "ces chiffres semblent attribués à la mauvaise compagnie"),
+    ("misdated_figures", misdated_figures, "ces variations semblent rapportées à la mauvaise période"),
 )
 
 

@@ -456,6 +456,9 @@ sont integrees. Etat au 2026-10-07:
   univers; alertes P&C du monitor (voir RUNBOOKS). Reste volontairement different: les indicateurs, par nature.
 - Publication P&C automatique (0.10.16): la revue humaine par trimestre est remplacee par `pnc_auto_review.py` et la
   recherche manuelle des rapports par `pnc_discovery.py`, dans la tache `pnc_acquire` de `vigie-pnc-news`.
+- Sobriete (2026-10-08): cache de l'App a 1 h; mode hors ligne (`snapshot.py`, `scripts/record_app_snapshot.py`,
+  `scripts/run_app_offline.py`) pour tester l'App sans warehouse; controle `misdated_figures` (variation rapportee a
+  la mauvaise periode), 0 faux positif sur 98 chiffres de reponses P&C enregistrees.
 - Chat, fiabilite (2026-10-08): `answer_check.py` signale aussi un vrai chiffre attribue au mauvais indicateur
   (`mislabelled_figures`), un montant ecrit dans la mauvaise unite (`misscaled_figures`, ex. 0,716 M$ pour 0,716 G$) et
   un chiffre prete a la mauvaise compagnie (`misattributed_figures`); chaque constat s'ajoute a la mise en garde, sans

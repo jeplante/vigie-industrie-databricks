@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 import logging
+import os
 import pandas as pd
 import streamlit as st
 from display import display_number, display_percentage, display_value
@@ -29,48 +30,69 @@ NEWS_SOURCE_LABELS = {
 st.set_page_config(page_title="Vigie de l'industrie", page_icon="📊", layout="wide")
 st.markdown(f"<style>{Path(__file__).with_name('style.css').read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
+# Published data changes once or twice a day (Finance at 06:15, news every 6 hours), while every cache miss
+# wakes the SQL warehouse for its 10-minute auto-stop window, the largest compute item of a Free Edition day.
+CACHE_TTL_SECONDS = 3600
+
+
 @st.cache_resource(show_spinner=False)
-def connection(): return connect_to_warehouse()
+def connection():
+    # Development only: replay or record the SQL statements instead of (or while) using the warehouse.
+    if os.environ.get("VIGIE_OFFLINE_SNAPSHOT"):
+        from snapshot import ReplayConnection
+        return ReplayConnection(os.environ["VIGIE_OFFLINE_SNAPSHOT"])
+    if os.environ.get("VIGIE_RECORD_SNAPSHOT"):
+        from snapshot import RecordingConnection
+        return RecordingConnection(connect_to_warehouse(), os.environ["VIGIE_RECORD_SNAPSHOT"])
+    return connect_to_warehouse()
+
+
+if os.environ.get("VIGIE_OFFLINE_SNAPSHOT"):  # offline: the chat shows its fallback instead of calling the model
+    import chat_service
+
+    def _offline_ask(*args, **kwargs):
+        raise RuntimeError("offline snapshot: the chat model is not called")
+    ask = chat_service.ask = _offline_ask
 # One statement per kind of data for all four companies: the first load is dominated by the number of
 # statements, not by their size, so these replace what used to be four statements each.
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def comparison_all(config): return fetch_comparison_all(connection(), config, SOURCE_COMPANIES)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def documents_all(config): return fetch_latest_finance_provenance_all(connection(), config, SOURCE_COMPANIES)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def news_all(config): return fetch_news_all(connection(), config, SOURCE_COMPANIES)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def editorial_news_all(config): return fetch_editorial_news_all(connection(), config, SOURCE_COMPANIES)
 def companies(config): return sorted(company for company, rows in comparison_all(config).items() if rows)
 def company_rows(config, company): return comparison_all(config).get(company, [])
 def company_news(config, company): return news_all(config).get(company, [])
 def company_editorial_news(config, company): return editorial_news_all(config).get(company, [])
 def company_document(config, company): return documents_all(config).get(company)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def history(config, metric): return fetch_metric_history(connection(), config, metric)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def chat_history(config): return fetch_recent_history_all(connection(), config, SOURCE_COMPANIES)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def document_periods(config): return fetch_finance_document_periods(connection(), config)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def finance_provenance(config, company, period): return fetch_finance_provenance(connection(), config, company, period)
 # Previously re-queried on every rerun (about 3 s per interaction on the life landing page).
 # Errors are not cached by Streamlit, so the existing try/except fallbacks still apply.
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def finance_audit_status(config): return fetch_latest_finance_audit(connection(), config)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def news_audit_status(config): return fetch_official_news_audit(connection(), config)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def operations_alerts_status(config): return fetch_latest_operations_alerts(connection(), config)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def finance_attempts(config): return fetch_latest_finance_attempts(connection(), config)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def official_news_counts(config): return fetch_official_news_counts(connection(), config)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def pnc_acquisition(catalog, schema): return fetch_pnc_acquisition(connection(), catalog, schema)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def pnc_news(catalog, schema): return fetch_pnc_news(connection(), catalog, schema)
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def pnc_published(catalog, schema): return fetch_pnc_published(connection(), catalog, schema)
 
 def _safe(call, default):

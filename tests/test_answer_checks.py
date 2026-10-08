@@ -70,3 +70,16 @@ def test_wrong_issuer_is_flagged_but_not_a_comparison():
                      "iA affiche un BPA de 3,68 $ contre 1,09 $ pour Manuvie.",
                      "En résumé, IFC et DFY présentent des ratios combinés proches (94,9 % et 93,9 %)."):
         assert misattributed_figures(sentence, PNC | LIFE) == [], sentence
+
+
+def test_a_change_compared_with_the_wrong_quarter_is_flagged():
+    from answer_check import misdated_figures
+
+    life = {"observations": [{"company_id": "SLF", "metric_id": "net_income", "period_id": period, "value": value}
+                             for period, value in (("2025-Q2", 0.716), ("2025-Q3", 1.106), ("2025-Q4", 0.722), ("2026-Q1", 0.465), ("2026-Q2", 1.008))]}
+    wrong = "En 2026‑Q2, le net income s'élevait à 1,008 G$ (augmentation de 40,8 % par rapport à 2025‑Q4)."
+    assert misdated_figures(wrong, life) == ["40,8 % (calculé contre 2025-Q2, pas 2025-Q4)"]
+    assert misdated_figures("Il a progressé de 40,8 % par rapport au deuxième trimestre 2025.", life) == []
+    assert misdated_figures("Il a progressé de 40,8 % vs T2 2025.", life) == []
+    assert misdated_figures("Une hausse de 12 % par rapport à 2025-Q4.", life) == []  # explained by no pair: other checks decide
+    assert misdated_figures("Le ratio combiné de 94,9 % est en hausse.", PNC) == []

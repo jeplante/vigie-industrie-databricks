@@ -191,6 +191,19 @@ Aucun appel a un fournisseur de modele externe; les appels de modele Databricks 
 - Si le quota est un probleme: limiter `vigie-app-start` aux jours ouvrables (le monitor alertera alors l'App arretee la fin
   de semaine: ajuster en consequence), ou ne demarrer l'App qu'a la demande.
 
+## 9 bis. Tester l'App sans consommer de quota
+
+Lancer l'App en local contre le warehouse le garde allume (10 minutes apres chaque requete): c'est ce qui a
+depasse le quota le 2026-10-07. Pour developper:
+1. Une seule fois, quand le quota est disponible: `python scripts/record_app_snapshot.py tmp/app_snapshot.json`
+   (environnement Python de l'App, profil `jeplante`). Il parcourt les deux univers et chaque indicateur de
+   l'historique, et enregistre chaque requete avec son resultat.
+2. Ensuite, sans Databricks: `python scripts/run_app_offline.py tmp/app_snapshot.json` (navigateur) ou
+   `... --check` (verification sans interface des deux univers). Le chat repond par sa reponse de secours.
+Une requete absente de l'instantane leve une erreur qui la nomme: la reenregistrer. `tmp/` n'est pas versionne.
+L'App deployee ne definit jamais `VIGIE_OFFLINE_SNAPSHOT` ni `VIGIE_RECORD_SNAPSHOT` (verifie par un test).
+Le cache de l'App dure 1 heure (`CACHE_TTL_SECONDS`): les donnees changent une ou deux fois par jour.
+
 ## 10. Exercice de panne (sans toucher la production)
 
 La tache `official_news` accepte `--target` et `--audit-table` (par defaut les tables de production) pour pouvoir simuler
