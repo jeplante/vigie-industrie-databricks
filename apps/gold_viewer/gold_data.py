@@ -206,17 +206,21 @@ def fetch_news_all(connection: Any, config: GoldConfig, company_ids: Sequence[st
 
 
 def fetch_editorial_news_all(connection: Any, config: GoldConfig, company_ids: Sequence[str]) -> dict[str, list[dict[str, Any]]]:
-    """Editorial articles per company with the per-company rule: untagged articles apply to every company."""
+    """Editorial articles per company: only those that name the company (as on the P&C side).
+
+    The trade feeds are mostly U.S. and P&C news; an article naming no insurer is noise, not context.
+    """
     table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.editorial_news_table))
     rows = _query(connection, f"""
         SELECT article_id, source, source_type, source_url, title, summary, published_at, categories, relevant_company_ids
         FROM {table}
         WHERE enrichment_status = 'succeeded' AND published_at >= current_timestamp() - INTERVAL 365 DAYS
+          AND size(relevant_company_ids) > 0
         ORDER BY published_at DESC NULLS LAST, article_id
         """)
     tagged = [(row, _as_list(row.get("relevant_company_ids"))) for row in rows]
     return {
-        company: [row for row, tags in tagged if not tags or company in tags][:20]
+        company: [row for row, tags in tagged if company in tags][:20]
         for company in company_ids
     }
 
@@ -332,7 +336,7 @@ def fetch_editorial_news(connection: Any, config: GoldConfig, company_id: str | 
     filters = ["enrichment_status = 'succeeded'", "published_at >= current_timestamp() - INTERVAL 365 DAYS"]
     parameters: list[Any] = []
     if company_id:
-        filters.append("(COALESCE(size(relevant_company_ids), 0) = 0 OR array_contains(relevant_company_ids, ?))")
+        filters.append("array_contains(relevant_company_ids, ?)")
         parameters.append(company_id)
     table = ".".join(f"`{part}`" for part in (config.catalog, config.schema, config.editorial_news_table))
     return _query(connection, f"""
