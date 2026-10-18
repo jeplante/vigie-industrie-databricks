@@ -156,14 +156,14 @@ def test_fetch_finance_document_periods_is_traceable_and_quarterly():
     assert connection.cursor_instance.statement.lstrip().startswith("SELECT")
 
 
-def test_fetch_editorial_news_includes_company_and_general_industry_articles():
+def test_fetch_editorial_news_keeps_only_articles_naming_the_company():
     connection = FakeConnection([], [])
     fetch_editorial_news(connection, config(), "MFC")
     assert connection.cursor_instance.parameters == ["MFC"]
     assert "editorial_news" in connection.cursor_instance.statement
     assert "INTERVAL 365 DAYS" in connection.cursor_instance.statement
     assert "array_contains(relevant_company_ids, ?)" in connection.cursor_instance.statement
-    assert "COALESCE(size(relevant_company_ids), 0) = 0" in connection.cursor_instance.statement
+    assert "size(relevant_company_ids), 0) = 0" not in connection.cursor_instance.statement
 
 
 def test_fetch_latest_finance_audit_exposes_ai_and_retention_counters():
@@ -209,9 +209,10 @@ def test_batched_reads_group_rows_per_company_and_survive_connector_arrays():
     rows = [("a1", AmbiguousArray(["MFC"]), 3), ("a2", AmbiguousArray([]), 2), ("a3", AmbiguousArray(["SLF", "MFC"]), 1)]
     connection = FakeConnection(rows, columns)
     grouped = fetch_editorial_news_all(connection, config(), ["MFC", "SLF", "IAG"])
-    assert [row["article_id"] for row in grouped["MFC"]] == ["a1", "a2", "a3"]
-    assert [row["article_id"] for row in grouped["SLF"]] == ["a2", "a3"]  # untagged applies to everyone
-    assert [row["article_id"] for row in grouped["IAG"]] == ["a2"]
+    assert [row["article_id"] for row in grouped["MFC"]] == ["a1", "a3"]
+    assert [row["article_id"] for row in grouped["SLF"]] == ["a3"]  # an article naming no insurer is shown nowhere
+    assert grouped["IAG"] == []
+    assert "size(relevant_company_ids) > 0" in connection.cursor_instance.statement
     assert connection.cursor_instance.statement.lstrip().startswith("SELECT") and "LIMIT" not in connection.cursor_instance.statement
 
     comparison = FakeConnection([("MFC", "core_eps"), ("SLF", "core_eps"), ("MFC", "net_income")], ["company_id", "metric_id"])

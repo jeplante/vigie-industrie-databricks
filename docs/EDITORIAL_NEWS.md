@@ -21,4 +21,4 @@ Les articles éditoriaux sont collectés dans `workspace.vigie.editorial_news`, 
 - timeout, limite de taille et isolation des échecs par source;
 - association MFC/SLF/GWO/IAG par termes déterministes seulement;
 - étiquette « Source officielle » ou « Média sectoriel » dans l’App et lien vers l’article original;
-- les nouvelles sectorielles générales apparaissent sur chaque page; celles associées déterministement à un assureur apparaissent sur sa page.
+- un article de média n’apparaît que sur la page de l’assureur qu’il nomme (même règle que le volet P&C); un article qui ne nomme aucun assureur vie n’est pas affiché. Depuis 2026-10-17 : avant, les articles généraux paraissaient sur chaque page, et les flux actuels (surtout P&C et américains) remplissaient les quatre pages d’articles sans rapport (0 article sur 181 ne nommait MFC, SLF, GWO ou IAG).
