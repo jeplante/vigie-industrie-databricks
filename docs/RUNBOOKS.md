@@ -166,6 +166,13 @@ databricks apps deploy vigie-gold-viewer --source-code-path $p
 Verifier ensuite: deploiement `SUCCEEDED`, `databricks apps get vigie-gold-viewer` = `RUNNING` / `ACTIVE`, et la source
 deployee identique a `apps/gold_viewer` (`export-dir` puis comparaison fichier par fichier).
 
+Exercice du 2026-10-21 (un jour calme, hors saison de resultats): retour a une sauvegarde (version d'avant la PR #71),
+puis retour a la version courante. Chaque `apps deploy` a pris 12 a 13 s; l'App est `UNAVAILABLE` pendant le
+deploiement, puis `RUNNING`. La source de chaque deploiement se lit dans
+`active_deployment.deployment_artifacts.source_code_path` (`export-dir` de ce chemin pour comparer). Piege vecu: la
+copie de retour etait une ancienne copie de `main` (sans la PR #71); le retour a donc deploye une version en retard.
+Toujours refaire la copie de retour depuis `apps/gold_viewer` juste avant le retour, et la comparer a `main`.
+
 ## 8. Droits de lecture de l'App (lecture seule)
 
 Le service principal de l'App (client id dans `scripts/grant_pnc_app_read.json`) ne recoit que `SELECT`. Accorder:
