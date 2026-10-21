@@ -25,11 +25,6 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 - **Fait quand :** le rapport de gestion d'Intact et de Definity est acquis, le montant extrait et validé
   automatiquement pour les trois assureurs, et l'indicateur affiché.
 
-### 7. Exercer le retour arrière de l'App
-- **Pourquoi :** c'est la seule procédure de `docs/RUNBOOKS.md` jamais exécutée.
-- **Fait quand :** un redéploiement volontaire d'une version sauvegardée, puis le retour à la version
-  courante, sont faits un jour calme et notés dans le runbook.
-
 ## Historique
 - 2026-10-07 : création du backlog.
 - 2026-10-07 : idées 1 et 2 réalisées au-delà de leur portée. La publication P&C est entièrement automatique
@@ -39,3 +34,4 @@ Aucune idée pour le moment (les idées 1 et 2 sont réalisées, voir Historique
 - 2026-10-08 : idée 3 close, absence expliquée dans l'App (pertes catastrophiques publiées par TD seul; ROE opérationnel sur douze mois glissants). Idée 8 ajoutée pour aller plus loin.
 - 2026-10-08 : idée 4 réalisée. Trois contrôles de plus sur les chiffres du chat (indicateur, unité, compagnie) et historique de 6 trimestres avec unités pour le chat vie; mesuré sur 64 réponses réelles du modèle.
 - 2026-10-08 : idée 6 réalisée (ratios semestriels et annuels d'Aviva Canada, publiés à part, `pnc_aviva.py`).
+- 2026-10-21 : idée 7 réalisée (exercice de retour arrière de l'App, noté dans `docs/RUNBOOKS.md` §7).
