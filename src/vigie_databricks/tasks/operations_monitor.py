@@ -45,7 +45,7 @@ def main() -> None:
     finance_audit = audit_rows[0].asDict(recursive=True) if audit_rows else None
     rejected_current = [row.asDict(recursive=True) for row in spark.sql(
         f"SELECT company_id,period_id,metric_id,validation_reason FROM {args.validated_object} "
-        f"WHERE period_id='{expected_period}' AND validation_status='rejected'"
+        f"WHERE period_id>='{expected_period}' AND validation_status='rejected'"
     ).collect()]
     app = WorkspaceClient().apps.get(args.app_name)
     app_state = str(getattr(getattr(app, "app_status", None), "state", "") or "").split(".")[-1]
