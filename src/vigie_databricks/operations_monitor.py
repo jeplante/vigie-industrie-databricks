@@ -75,7 +75,8 @@ def evaluate_operations(
     observed: dict[str, set[str]] = {company: set() for company in EXPECTED_METRICS}
     for row in gold_rows:
         company = str(row.get("company_id") or "")
-        if company in observed and row.get("current_period_id") == expected_period:
+        # A newer quarter is not a missing one: insurers publish before the reporting lag ends.
+        if company in observed and str(row.get("current_period_id") or "") >= expected_period:
             observed[company].add(str(row.get("metric_id") or ""))
     for company, metrics in observed.items():
         missing = sorted(EXPECTED_METRICS[company] - metrics)

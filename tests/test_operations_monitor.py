@@ -43,6 +43,25 @@ def test_healthy_operations_have_no_alerts():
     assert alerts == []
 
 
+def test_a_quarter_newer_than_expected_is_not_missing():
+    # Insurers publish before the reporting lag ends: on 2026-11-05 MFC, SLF and GWO were at Q3 while Q2 was expected.
+    rows = healthy_rows("2026-Q3")
+    alerts = evaluate_operations(
+        rows, {"quality_status": "current", "sources_succeeded": 4, "sources_failed": 0}, [],
+        expected_period="2026-Q2", app_state="RUNNING", compute_state="ACTIVE",
+    )
+    assert alerts == []
+
+
+def test_a_quarter_older_than_expected_is_still_missing():
+    alerts = evaluate_operations(
+        healthy_rows("2026-Q1"), {"quality_status": "current", "sources_succeeded": 4, "sources_failed": 0}, [],
+        expected_period="2026-Q2", app_state="RUNNING", compute_state="ACTIVE",
+    )
+    assert {alert.alert_type for alert in alerts} == {"current_quarter_incomplete"}
+    assert {alert.entity for alert in alerts} == set(EXPECTED_METRICS)
+
+
 def test_monitor_reports_source_kpi_anomaly_and_app_failures():
     rows = healthy_rows()
     rows.pop()

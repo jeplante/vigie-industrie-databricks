@@ -38,6 +38,10 @@ explicite, de preference un moment calme.
 Les Jobs planifies envoient un courriel a l'echec. Le monitor **echoue volontairement** s'il detecte une alerte: son
 courriel est le canal d'alerte.
 
+**Trimestre vie attendu (depuis 0.10.21).** `current_quarter_incomplete` exige, pour chaque KPI, le dernier trimestre clos
+depuis 50 jours **ou un plus recent**: un assureur qui publie avant la fin de ce delai ne declenche plus d'alerte. Les valeurs
+rejetees sont controlees a partir de ce meme trimestre.
+
 **Regle de publication des actualites (vie et P&C, depuis 0.10.15).** Les sources qui repondent sont publiees; une source
 en echec garde ses derniers articles (le `MERGE` ne supprime jamais), l'audit la nomme et le run echoue pour que le Job
 alerte. Medias sectoriels: moins de 2 fils lus fait echouer le run, dans les deux univers.
